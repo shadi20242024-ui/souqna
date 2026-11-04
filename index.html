@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>سوقنا | Souqna</title>
+<meta name="theme-color" content="#14357f">
+<style>
+:root{--b:#14357f;--b2:#e8eefb;--g:#c9971c;--bg:#f5f7fb;--c:#fff;--t:#1b2433;--m:#66728a;--bd:#dfe5f0;--wa:#1fa04b;--r:#c0392b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t);font-family:Tahoma,Arial,sans-serif;line-height:1.6;padding-bottom:72px}
+header{background:var(--b);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:20px;flex:1}header h1 span{color:var(--g)}
+main{max-width:920px;margin:auto;padding:12px}
+.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+@media(min-width:600px){.cats{grid-template-columns:repeat(5,1fr)}}
+.cat{background:var(--c);border:1px solid var(--bd);border-radius:12px;padding:10px 4px;text-align:center;font:inherit;font-size:13px;color:var(--t)}
+.cat.on{background:var(--b);color:#fff;border-color:var(--b)}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;background:#fff;color:var(--t);font:inherit;margin-bottom:8px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.item{background:var(--c);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.img{height:140px;background:var(--b2) center/cover;display:flex;align-items:center;justify-content:center;font-size:40px;color:var(--b)}
+.bd{padding:10px 12px}.price{color:var(--b);font-weight:bold}.mut{color:var(--m);font-size:13px}
+.tag{background:var(--b2);color:var(--b);border-radius:6px;padding:1px 8px;font-size:12px}
+.tag.g{background:#fbf2d8;color:#8a6710}.tag.r{background:#fbe3e0;color:var(--r)}
+.btn{display:inline-block;border:0;border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;color:#fff;background:var(--b);text-decoration:none}
+.btn.g{background:var(--g)}.btn.wa{background:var(--wa)}.btn.r{background:var(--r)}.btn.l{background:#e9edf5;color:var(--t)}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.box{background:var(--c);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--bd);display:flex;padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px))}
+nav button{flex:1;background:none;border:0;font:inherit;font-size:12px;color:var(--m)}nav button.on{color:var(--b);font-weight:bold}
+.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:20px;font-size:14px;z-index:9}
+</style>
+</head>
+<body>
+<header><h1>سوقنا <span>|</span> Souqna</h1><a id="adm-wa" class="btn g" style="display:none" target="_blank">تواصل مع الإدارة</a></header>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
+const auth=getAuth(app),db=getFirestore(app);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const STAFF=["admin","moderator","accountant","editor"];
+let me=null,cats=[],ads=[],mine=[],pend=[],wa="",view="home",cur="all",q="",photo="",authMode="login";
+const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2400)};
+const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
+const isStaff=()=>me&&STAFF.includes(me.role);
+
+async function loadPublic(){
+  const [c,a,s]=await Promise.all([getDocs(collection(db,"categories")),getDocs(query(collection(db,"ads"),where("status","==","approved"))),getDoc(doc(db,"settings","contact"))]);
+  cats=c.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.active).sort((x,y)=>x.order-y.order);
+  ads=a.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.createdAt-x.createdAt);
+  wa=s.exists()?(s.data().whatsapp||""):"";
+  const w=$("#adm-wa");if(wa){w.href="https://wa.me/"+wa;w.style.display=""}else w.style.display="none";
+}
+async function loadMine(){
+  if(!me)return;
+  const m=await getDocs(query(collection(db,"ads"),where("ownerId","==",me.uid)));
+  mine=m.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.createdAt-x.createdAt);
+  if(isStaff()){const p=await getDocs(query(collection(db,"ads"),where("status","==","pending")));pend=p.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.createdAt-x.createdAt)}
+}
+const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
+function card(a,mode){
+  const msg=encodeURIComponent("مرحبًا، بخصوص إعلانك في سوقنا: "+a.title);
+  return `<div class="item"><div class="img" style="${a.img?`background-image:url(${a.img})`:""}">${a.img?"":"🛍️"}</div><div class="bd">
+  <span class="tag">${esc(catName(a.cat))}</span> ${mode?stTag(a.status):""}
+  <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div>
+  <div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
+  <div class="acts">${mode=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
+  :mode=="mine"?`<button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
+  :`<a class="btn wa" target="_blank" href="https://wa.me/${esc(a.phone)}?text=${msg}">واتساب</a>`}</div></div></div>`}
+
+function nav(){
+  const b=[["home","🏠","الرئيسية"],["add","➕","أضف إعلان"],["mine","📋","إعلاناتي"],[isStaff()?"admin":"acc",isStaff()?"🛠️":"👤",isStaff()?"الإدارة":"حسابي"]];
+  $("#nav").innerHTML=b.map(x=>`<button data-v="${x[0]}" class="${view==x[0]?"on":""}">${x[1]}<br>${x[2]}</button>`).join("");
+}
+function loginBox(){
+  const reg=authMode=="reg";
+  return `<div class="box"><h3>${reg?"إنشاء حساب":"تسجيل الدخول"}</h3>
+  ${reg?'<input id="l-name" placeholder="الاسم">':""}
+  <input id="l-mail" type="email" placeholder="البريد الإلكتروني" dir="ltr"><input id="l-pass" type="password" placeholder="كلمة المرور (6 أحرف على الأقل)" dir="ltr">
+  <button class="btn" style="width:100%" data-a="auth">${reg?"إنشاء الحساب":"دخول"}</button>
+  <div class="acts"><button class="btn l" data-a="swap">${reg?"لدي حساب":"حساب جديد"}</button>${reg?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
+
+function render(){
+  nav();const A=$("#app");
+  if(view=="home"){
+    const l=ads.filter(a=>(cur=="all"||a.cat==cur)&&(!q||(a.title+a.desc+a.area).includes(q)));
+    A.innerHTML=`<input id="q" placeholder="🔍 ابحث في سوقنا..." value="${esc(q)}">
+    <div class="cats"><button class="cat ${cur=="all"?"on":""}" data-c="all">الكل</button>${cats.map(c=>`<button class="cat ${cur==c.id?"on":""}" data-c="${c.id}">${esc(c.name_ar)}</button>`).join("")}</div>
+    <div class="grid">${l.map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات بعد.</p>'}</div>`;
+    const i=$("#q");i.oninput=()=>{q=i.value;const p=i.selectionStart;render();const n=$("#q");n.focus();n.setSelectionRange(p,p)};
+  }else if(view=="add"){
+    A.innerHTML=!me?loginBox():`<div class="box"><h3>➕ أضف إعلانك</h3><select id="a-cat">${cats.map(c=>`<option value="${c.id}">${esc(c.name_ar)}</option>`).join("")}</select>
+    <input id="a-title" placeholder="عنوان الإعلان"><div class="row"><input id="a-price" type="number" placeholder="السعر"><select id="a-cur"><option>$</option><option>ل.س</option></select></div>
+    <input id="a-area" placeholder="المنطقة (السويداء، شهبا، صلخد...)"><textarea id="a-desc" rows="3" placeholder="التفاصيل"></textarea>
+    <input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><input id="a-img" type="file" accept="image/*">
+    <button class="btn g" style="width:100%" data-a="post">إرسال للمراجعة</button><p class="mut">يظهر إعلانك بعد موافقة الإدارة.</p></div>`;
+    const f=$("#a-img");if(f)f.onchange=()=>shrink(f.files[0]);
+  }else if(view=="mine"){
+    A.innerHTML=!me?loginBox():`<div class="grid">${mine.map(a=>card(a,"mine")).join("")||'<p class="mut">لا توجد إعلانات لك.</p>'}</div>`;
+  }else if(view=="admin"&&isStaff()){
+    A.innerHTML=`${me.role=="admin"?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>`:""}
+    <h3>بانتظار المراجعة (${pend.length})</h3><div class="grid">${pend.map(a=>card(a,"pend")).join("")||'<p class="mut">لا شيء بانتظار المراجعة.</p>'}</div>`;
+  }else{
+    A.innerHTML=!me?loginBox():`<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><button class="btn l" data-a="out">تسجيل الخروج</button></div>`;
+  }
+}
+function shrink(f){if(!f)return;const im=new Image();im.onload=()=>{const k=Math.min(1,600/im.width),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);photo=c.toDataURL("image/jpeg",.6)};im.src=URL.createObjectURL(f)}
+const val=i=>($(i)?.value||"").trim();
+
+document.addEventListener("click",async e=>{
+  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(view=="admin"||view=="mine")await loadMine();return render()}
+  const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;return render()}
+  const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
+  try{
+    if(a=="swap"){authMode=authMode=="reg"?"login":"reg";render()}
+    else if(a=="auth"){
+      if(authMode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");
+        const u=await createUserWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
+        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0})}
+      else await signInWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
+    }
+    else if(a=="reset"){await sendPasswordResetEmail(auth,val("#l-mail"));toast("أُرسل رابط استعادة كلمة المرور إلى بريدك")}
+    else if(a=="out"){await signOut(auth)}
+    else if(a=="post"){
+      const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
+      if(!t||!val("#a-price")||p.length<9)return toast("أكمل العنوان والسعر ورقم واتساب صحيح");
+      await addDoc(collection(db,"ads"),{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,ownerId:me.uid,ownerName:me.name,status:"pending",createdAt:Date.now()});
+      photo="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
+    else if(a=="ok"||a=="no"){await updateDoc(doc(db,"ads",id),{status:a=="ok"?"approved":"rejected"});await loadPublic();await loadMine();render()}
+    else if(a=="del"){if(!confirm("حذف الإعلان؟"))return;await deleteDoc(doc(db,"ads",id));await loadPublic();await loadMine();render()}
+    else if(a=="savewa"){const n=val("#s-wa").replace(/\D/g,"");await setDoc(doc(db,"settings","contact"),{whatsapp:n});wa=n;await loadPublic();toast("تم الحفظ")}
+  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":"تعذر تنفيذ العملية")}
+});
+onAuthStateChanged(auth,async u=>{
+  me=null;
+  if(u){const s=await getDoc(doc(db,"users",u.uid));me=s.exists()?{uid:u.uid,...s.data()}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0};await loadMine()}
+  else{mine=[];pend=[]}
+  if(view=="admin"&&!isStaff())view="home";
+  render();
+});
+loadPublic().then(render).catch(e=>{console.error(e);$("#app").innerHTML='<p class="mut">تعذر تحميل البيانات.</p>'});
+</script>
+</body>
+</html>
