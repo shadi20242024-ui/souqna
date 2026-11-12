@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>سوقنا | Souqna</title>
-<meta name="theme-color" content="#0a2a72">
+<meta name="theme-color" content="#0a2a72"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png">
 <style>
 :root{--n:#0a2a72;--b:#1747b8;--g:#f4b400;--bg:#eef3fc;--t:#12203f;--m:#66728a;--bd:#dbe4f5;--r:#c0392b;--wa:#1fa04b}
 *{box-sizing:border-box}
@@ -45,6 +45,22 @@ nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid 
 nav button{flex:1;background:none;border:0;font:inherit;font-size:12px;color:var(--m)}nav button.on{color:var(--b);font-weight:bold}
 nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:60px;border-radius:50%;background:linear-gradient(160deg,#ffd54a,#f4a000);color:#fff;font-size:34px;align-items:center;justify-content:center;margin:auto;font-style:normal;box-shadow:0 4px 10px #0004}
 .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:20px;font-size:14px;z-index:9}
+.sp{background:url(ui.jpg) no-repeat}
+.lg{width:230px;height:108px;background-size:456px auto;background-position:-206px -27px}.top .lgi{width:auto;height:84px;border:0;border-radius:0}
+.ci{width:66px;height:66px;margin:auto;background-size:464px auto}
+.i1{background-position:-369px -545px}.i2{background-position:-256px -545px}.i3{background-position:-144px -545px}.i4{background-position:-30px -545px}.i5{background-position:-369px -663px}.i6{background-position:-256px -663px}.i7{background-position:-144px -663px}.i8{background-position:-30px -663px}
+.bp{width:170px;height:130px;border-radius:14px;background-size:331px auto;background-position:-153px -215px;flex:none}
+.sr2{display:flex;gap:10px;overflow-x:auto;padding:2px 0 12px}.sc{width:62px;height:62px;border-radius:50%;border:3px solid var(--g);flex:none;background:#e4ecfb center/cover;padding:0}.sc.add{border:2px dashed var(--g);background:#fff;color:var(--b);font:inherit;font-size:11px;font-weight:bold;line-height:1.2}
+.bnr{width:100%;border-radius:18px;margin-bottom:12px;display:block}
+.tk{display:flex;align-items:center;background:#fff;border-radius:12px;height:40px;overflow:hidden;margin-bottom:10px;box-shadow:0 2px 8px #1747b81a}.tk b{background:var(--r);color:#fff;padding:0 12px;height:100%;display:flex;align-items:center;font-size:12px}.tkw{flex:1;overflow:hidden;white-space:nowrap;font-size:13px;font-weight:bold}.tkw span{display:inline-block;min-width:100%;animation:tkm 30s linear infinite;padding:0 10px}@keyframes tkm{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+.wx{display:flex;align-items:center;gap:12px;background:linear-gradient(120deg,#fff,#e6efff);border-radius:16px;padding:10px 16px;margin-bottom:10px;box-shadow:0 2px 8px #1747b81a}.wx span{font-size:34px}.wx div{flex:1}.wx i{font-style:normal;font-size:28px;font-weight:900;color:var(--b)}
+.spn{border:1.5px solid var(--g);border-radius:18px;background:linear-gradient(120deg,#13203f,#0a2a72) center/cover;color:#fff;padding:14px;margin-bottom:6px}.spn small{color:#ffd54a;font-size:11px}.spn .sco{color:#ffd54a;font-weight:bold;font-size:13px}.spn b{display:block;font-size:18px}
+.cta{display:block;text-align:left;color:var(--b);font-size:12px;font-weight:bold;margin-bottom:10px;text-decoration:none}
+.chips{display:flex;gap:8px;overflow-x:auto;margin-bottom:8px}.chips button{border:1px solid var(--bd);background:#fff;border-radius:16px;padding:6px 14px;font:inherit;font-size:12px;font-weight:bold;white-space:nowrap}.chips button.on{background:var(--r);color:#fff;border-color:var(--r)}
+.dr{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:8px;box-shadow:0 2px 8px #1747b81a}.av{width:44px;height:44px;border-radius:50%;background:#e4ecfb;color:var(--b);font-weight:900;display:flex;align-items:center;justify-content:center}.gs{color:var(--g)}
+.stc{flex:none;width:84px;background:none;border:0;font:inherit;font-size:12px;font-weight:bold;color:var(--t)}.stc span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.stl{width:64px;height:64px;border-radius:18px;background:#e4ecfb center/cover;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:var(--b);border:2px solid var(--g)}
+.cv{height:140px;background:linear-gradient(120deg,#0a2a72,#1a4fc4) center/cover;border-radius:18px;position:relative;margin:10px 0 48px}.cv .stl{position:absolute;bottom:-40px;right:16px;width:80px;height:80px;background-color:#fff;margin:0}
 </style>
 </head>
 <body>
@@ -61,7 +77,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
-let me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false;
+let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
@@ -70,18 +86,44 @@ const val=i=>($(i)?.value||"").trim();
 const waLink=t=>"https://wa.me/"+wa+(t?"?text="+encodeURIComponent(t):"");
 const q2=(c,f,v)=>getDocs(query(collection(db,c),where(f,"==",v))).then(s=>s.docs.map(d=>({id:d.id,...d.data()})));
 
+const CI={electronics:"i1",jobs:"i2",cars:"i3",real_estate:"i4",misc:"i5",community:"i6",services:"i7",furniture:"i8"};
+const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس"};
+const wxTxt=c=>c==0?"صافٍ":c<4?"غائم جزئيًا":c<50?"ضباب":c<70?"أمطار":c<80?"ثلوج":c<90?"زخات مطر":"عاصفة رعدية";
+async function loadWx(){try{const j=await(await fetch("https://api.open-meteo.com/v1/forecast?latitude=32.71&longitude=36.57&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto")).json();wx={t:Math.round(j.current.temperature_2m),c:j.current.weather_code,hi:Math.round(j.daily.temperature_2m_max[0]),lo:Math.round(j.daily.temperature_2m_min[0])};if(view=="home")render()}catch(e){wx=null}}
+const wxHtml=()=>wx&&site.weatherOn!==false?`<div class="wx"><span>${wx.c==0?"☀️":wx.c<4?"⛅":wx.c<50?"🌫️":wx.c<80?"🌧️":"⛈️"}</span><div><b>طقس السويداء الآن</b><div class="mut">${wxTxt(wx.c)} · العظمى ${wx.hi}° · الصغرى ${wx.lo}°</div></div><i>${wx.t}°</i></div>`:"";
+function tkHtml(){if(site.tickerOn===false)return"";const it=[...dr.filter(x=>x.type=="pharmacy"&&x.onDuty).map(x=>`صيدلية ${x.name}${x.area?" ("+x.area+")":""} مناوبة اليوم`),...ads.filter(isF).map(a=>"⭐ "+a.title),...(site.ticker||"").split("\n").filter(Boolean)];return it.length?`<div class="tk"><b>عاجل</b><div class="tkw"><span>${it.map(esc).join(" &nbsp;•&nbsp; ")}</span></div></div>`:""}
+function spHtml(){const l=sp.filter(s=>s.active&&s.to>Date.now()),cta=wa?`<a class="cta" target="_blank" href="${waLink("أريد حجز بانر إعلاني في سوقنا")}">هل تريد إعلانك هنا؟ تواصل معنا ‹</a>`:"";if(!l.length)return cta;const s=l[spi%l.length];return `<div class="spn" style="${s.img?`background-image:linear-gradient(90deg,#0a2a72f2,#0a2a7299),url(${s.img})`:""}"><small>إعلان برعاية</small><div class="sco">${esc(s.company)}</div><b>${esc(s.title)}</b><div>${esc(s.desc||"")}</div>${s.phone?`<a class="gold" style="margin-top:8px" target="_blank" href="https://wa.me/${esc(s.phone)}">تواصل مع الشركة</a>`:""}</div>`+cta}
+function dirHtml(){const L=dr.filter(x=>x.type==dtype&&x.active!==false&&(dtype!="pharmacy"||x.onDuty)).sort((x,y)=>(y.stars||0)-(x.stars||0));return L.map(x=>`<div class="dr"><div class="av">${esc((x.name||"?")[0])}</div><div style="flex:1"><b>${esc(x.name)}</b> <span class="gs">${"★".repeat(x.stars||0)}</span>${x.onDuty?' <span class="tag">مناوبة اليوم</span>':""}<div class="mut">${esc(x.spec||"")}${x.area?" · "+esc(x.area):""}</div></div>${x.phone?`<a class="btn g" href="tel:${esc(x.phone)}">اتصال</a>`:""}</div>`).join("")||'<p class="mut">لا توجد بيانات بعد.</p>'}
+const adHtml=()=>site.adClient?`<ins class="adsbygoogle" style="display:block;margin:12px 0" data-ad-client="${esc(site.adClient)}" data-ad-slot="${esc(site.adSlot||"")}" data-ad-format="auto" data-full-width-responsive="true"></ins>`:"";
+function initAds(){if(site.adClient&&!document.getElementById("ads-js")){const e=document.createElement("script");e.id="ads-js";e.async=true;e.crossOrigin="anonymous";e.src="https://pagead2.googleapis.com/pagead/js/adsbygoogle.js?client="+encodeURIComponent(site.adClient);document.head.append(e)}}
+const pushAds=()=>document.querySelectorAll("ins.adsbygoogle").forEach(()=>{try{(window.adsbygoogle=window.adsbygoogle||[]).push({})}catch(e){}});
+function pick(f,k,w){if(!f)return;const im=new Image();im.onload=()=>{const r=Math.min(1,w/im.width),c=document.createElement("canvas");c.width=im.width*r;c.height=im.height*r;c.getContext("2d").drawImage(im,0,0,c.width,c.height);tmp[k]=c.toDataURL("image/jpeg",.65);toast("تم اختيار الصورة")};im.src=URL.createObjectURL(f)}
+const stImg=(s,k)=>s[k]?`background-image:url(${s[k]})`:"";
+const storesHtml=()=>stores.length?`<div class="sec"><b>🏪 متاجر سوقنا</b><a data-v="stores">عرض الكل ‹</a></div><div class="sr2">${[...stores].sort((x,y)=>(planOf(y)?.order||0)-(planOf(x)?.order||0)).map(s=>`<button class="stc" data-st="${s.id}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div><span>${esc(s.name)}</span>${planTag(s)}</button>`).join("")}</div>`:"";
+const planOf=s=>(s.planUntil>Date.now()&&plans.find(p=>p.id==s.plan&&p.active!==false))||plans.find(p=>p.id=="free")||null;
+const planTag=s=>{const p=planOf(s);return p&&p.id!="free"?`<span class="tag g">${esc(p.badge||p.name)}</span>`:""};
+const ledger=(uid,type,amount,note)=>addDoc(collection(db,"transactions"),{userId:uid,type,amount,note,createdAt:Date.now()});
+const SL={new:"جديد",progress:"قيد التنفيذ",done:"مكتمل",rejected:"مرفوض"};
+const notify=(uid,text)=>addDoc(collection(db,"notifs"),{userId:uid,text,read:false,createdAt:Date.now()});
+async function loadStoreX(id){const [f,r]=await Promise.all([q2("follows","storeId",id).catch(()=>[]),q2("reviews","storeId",id).catch(()=>[])]);stx={f,r:r.sort((x,y)=>y.createdAt-x.createdAt)}}
+const avg=()=>stx.r.length?(stx.r.reduce((t,x)=>t+x.stars,0)/stx.r.length).toFixed(1):"—";
+function xHtml(s){const fl=me&&stx.f.some(x=>x.userId==me.uid),my=me&&stx.r.find(x=>x.userId==me.uid);
+return `<div class="box"><b>👥 ${stx.f.length} متابع</b> · <b>⭐ ${avg()}</b> (${stx.r.length} تقييم)<div class="acts"><button class="btn ${fl?"l":"g"}" data-a="follow" data-id="${s.id}">${fl?"إلغاء المتابعة":"متابعة المتجر"}</button></div>
+${me&&me.uid!=s.ownerId?`<select id="rv-s" style="margin-top:8px">${[5,4,3,2,1].map(n=>`<option value="${n}" ${my&&my.stars==n?"selected":""}>${"★".repeat(n)}</option>`).join("")}</select><input id="rv-t" placeholder="رأيك في المتجر" value="${esc(my?.text||"")}"><button class="btn" data-a="rate" data-id="${s.id}">${my?"تعديل تقييمي":"أضف تقييمًا"}</button>`:""}
+${stx.r.slice(0,5).map(r=>`<div class="mut" style="margin-top:6px"><b>${esc(r.userName)}</b> ${"★".repeat(r.stars)} ${esc(r.text||"")}</div>`).join("")}</div>`}
+const storeList=()=>[...stores].filter(s=>!sq||(s.name+(s.desc||"")+(s.area||"")).includes(sq)).sort((x,y)=>(planOf(y)?.order||0)-(planOf(x)?.order||0)).map(s=>`<button class="dr" data-st="${s.id}" style="width:100%;border:0;text-align:right;font:inherit"><div class="stl" style="${stImg(s,"logo")};margin:0;flex:none;width:52px;height:52px">${s.logo?"":esc((s.name||"?")[0])}</div><div style="flex:1"><b>${esc(s.name)}</b> ${planTag(s)}<div class="mut">${esc(s.area||"")}</div></div></button>`).join("")||'<p class="mut">لا نتائج.</p>';
 async function loadPublic(){
-  const [c,a,s,p]=await Promise.all([getDocs(collection(db,"categories")),q2("ads","status","approved"),getDoc(doc(db,"settings","contact")),getDocs(collection(db,"packages"))]);
+  const sf=x=>x.catch(()=>null);const [c,a,s,p,st,sps,drs,sts,pls,svs,pts]=await Promise.all([getDocs(collection(db,"categories")),q2("ads","status","approved"),getDoc(doc(db,"settings","contact")),getDocs(collection(db,"packages")),sf(getDoc(doc(db,"settings","site"))),sf(getDocs(collection(db,"sponsors"))),sf(getDocs(collection(db,"directory"))),sf(getDocs(query(collection(db,"stores"),where("status","==","approved")))),sf(getDocs(collection(db,"plans"))),sf(getDocs(collection(db,"services"))),sf(getDocs(collection(db,"partners")))]);
   cats=c.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.active).sort((x,y)=>x.order-y.order);
-  ads=a;wa=s.exists()?(s.data().whatsapp||""):"";
+  ads=a;wa=s.exists()?(s.data().whatsapp||""):"";site=st&&st.exists()?st.data():{};sp=sps?sps.docs.map(d=>({id:d.id,...d.data()})):[];dr=drs?drs.docs.map(d=>({id:d.id,...d.data()})):[];stores=sts?sts.docs.map(d=>({id:d.id,...d.data()})):[];plans=pls?pls.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(x.order||0)-(y.order||0)):[];services=svs?svs.docs.map(d=>({id:d.id,...d.data()})):[];partners=pts?pts.docs.map(d=>({id:d.id,...d.data()})):[];initAds();
   pk=p.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.active!==false).sort((x,y)=>x.stars-y.stars||x.days-y.days);
 }
 async function loadMine(){
   if(!me)return;
   const u=await getDoc(doc(db,"users",me.uid));if(u.exists())Object.assign(me,u.data());
-  mine=(await q2("ads","ownerId",me.uid)).sort((x,y)=>y.createdAt-x.createdAt);
-  if(isStaff()){pend=(await q2("ads","status","pending")).sort((x,y)=>y.createdAt-x.createdAt);
-    if(isAdm()){orders=await q2("starOrders","status","pending");promos=await q2("promos","status","pending")}}
+  mine=(await q2("ads","ownerId",me.uid)).sort((x,y)=>y.createdAt-x.createdAt);myStores=await q2("stores","ownerId",me.uid).catch(()=>[]);const byT=(x,y)=>y.createdAt-x.createdAt;txs=(await q2("transactions","userId",me.uid).catch(()=>[])).sort(byT);notifs=(await q2("notifs","userId",me.uid).catch(()=>[])).sort(byT);mySorders=(await q2("sorders","userId",me.uid).catch(()=>[])).sort(byT);
+  if(isStaff()){pend=(await q2("ads","status","pending")).sort((x,y)=>y.createdAt-x.createdAt);pendStores=await q2("stores","status","pending").catch(()=>[]);sorders=(await getDocs(collection(db,"sorders")).catch(()=>({docs:[]}))).docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.createdAt-x.createdAt);
+    if(isAdm()){orders=await q2("starOrders","status","pending");promos=await q2("promos","status","pending");subs=await q2("subs","status","pending").catch(()=>[]);allUsers=(await getDocs(collection(db,"users"))).docs.map(d=>({id:d.id,...d.data()}));allTx=(await getDocs(collection(db,"transactions"))).docs.map(d=>d.data())}}
 }
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
@@ -96,12 +138,12 @@ function card(a,m){
 function drawHd(){
   const H=$("#hd");
   if(view=="home"){H.className="hd big";
-    H.innerHTML=`<div class="top"><img src="logo.png" alt=""><div><h1>سوقنا</h1><b>Souqna</b><small>كل ما تحتاجه .. في مكان واحد</small></div><a class="ic" ${wa?`href="${waLink()}" target="_blank"`:""}>📞</a></div><div class="sr"><span>🇸🇾</span><input id="q" placeholder="ابحث في سوقنا ..." value="${esc(q)}"><i>🔍</i></div>`;
+    H.innerHTML=`<div class="top">${site.logo?`<img class="lgi" src="${site.logo}" alt="">`:'<div class="sp lg"></div>'}<div></div><a class="ic" ${wa?`href="${waLink()}" target="_blank"`:""}>📞</a></div><div class="sr"><span>🇸🇾</span><input id="q" placeholder="ابحث في سوقنا ..." value="${esc(q)}"><i>🔍</i></div>`;
     $("#q").oninput=e=>{q=e.target.value;drawList()};
   }else{H.className="hd";H.innerHTML='<img class="s" src="logo.png" alt=""><h2>سوقنا | Souqna</h2>'}
 }
 function drawNav(){
-  const b=[["home","🏠","الرئيسية"],["mine","📋","إعلاناتي"],["add","<i>＋</i>","أضف إعلان","pl"],["stars","⭐","النجوم"],["acc","👤","حسابي"]];
+  const b=[["home","🏠","الرئيسية"],["mine","📋","إعلاناتي"],["add","<i>＋</i>","أضف إعلان","pl"],["stars","⭐","النجوم"],["acc","👤"+(notifs.some(n=>!n.read)?'<b style="color:#c0392b">●</b>':""),"حسابي"]];
   $("#nav").innerHTML=b.map(x=>`<button data-v="${x[0]}" class="${x[3]||""} ${view==x[0]?"on":""}">${x[1]}<br>${x[2]}</button>`).join("");
 }
 function drawList(){
@@ -118,19 +160,43 @@ function loginBox(){
 function render(){
   drawHd();drawNav();const A=$("#app");
   if(view=="home"){
-    A.innerHTML=`<div class="bn"><img src="logo.png" alt=""><div><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><em>📍 السويداء</em></div>
+    A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>a.img).slice(0,8).map(a=>`<button class="sc" data-c="${a.cat}" aria-label="${esc(a.title)}" style="background-image:url(${a.img})"></button>`).join("")}</div>
+    ${site.banner?`<img class="bnr" src="${site.banner}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
+    ${tkHtml()}${wxHtml()}<div id="spw">${spHtml()}</div>${storesHtml()}
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
-    <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}"><i>${IC[c.id]||"📦"}</i>${esc(c.name_ar)}</button>`).join("")}</div>
+    <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
+    <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
     <div class="qt"><button data-a="feat"><i>📢</i>إعلانات مميزة</button><button data-c="services"><i>📍</i>دليل الخدمات</button><button data-v="add"><i>⭐</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}><i>🎧</i>دعم فني</a></div>
     <div class="cm"><b>معاً .. نبني مجتمعاً أفضل في السويداء 👥</b><button class="gold" data-c="community">انضم إلينا</button></div>
-    <div class="sec"><b>${feat?"الإعلانات المميزة":"أحدث الإعلانات"}</b></div><div class="grid" id="list"></div>`;drawList();
+    <button class="cm" style="width:100%;border:0;font:inherit;cursor:pointer;text-align:right" data-v="services"><b>🎨 خدمات التصميم والفيديو والحملات التسويقية</b><span class="gold">اطلب الآن</span></button>
+    <div class="sec"><b>${feat?"الإعلانات المميزة":"أحدث الإعلانات"}</b></div><div class="grid" id="list"></div>${adHtml()}`;pushAds();
+    drawList();
   }else if(view=="add"){
-    A.innerHTML=!me?loginBox():`<div class="box"><h3>➕ أضف إعلانك</h3><select id="a-cat">${cats.map(c=>`<option value="${c.id}">${esc(c.name_ar)}</option>`).join("")}</select>
+    A.innerHTML=!me?loginBox():`<div class="box"><h3>➕ أضف إعلانك</h3><select id="a-cat">${cats.map(c=>`<option value="${c.id}">${esc(c.name_ar)}</option>`).join("")}</select>${myStores.some(s=>s.status=="approved")?`<select id="a-st"><option value="">إعلان شخصي (بدون متجر)</option>${myStores.filter(s=>s.status=="approved").map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>`:""}
     <input id="a-title" placeholder="عنوان الإعلان"><div class="row"><input id="a-price" type="number" placeholder="السعر"><select id="a-cur"><option>$</option><option>ل.س</option></select></div>
     <input id="a-area" placeholder="المنطقة (السويداء، شهبا، صلخد...)"><textarea id="a-desc" rows="3" placeholder="التفاصيل"></textarea>
     <input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><input id="a-img" type="file" accept="image/*">
     <button class="btn g" style="width:100%" data-a="post">إرسال للمراجعة</button><p class="mut">يظهر إعلانك بعد موافقة الإدارة.</p></div>`;
     const f=$("#a-img");if(f)f.onchange=()=>shrink(f.files[0]);
+  }else if(view=="store"){const s=stores.find(x=>x.id==curStore)||myStores.find(x=>x.id==curStore)||{};
+    A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><div class="cv" style="${stImg(s,"cover")}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div></div><h2 style="margin:0">${esc(s.name)} ${planTag(s)}</h2><div class="mut">${esc(s.desc||"")}</div><div class="mut">📍 ${esc(s.area||"")}</div><div class="acts">${s.phone?`<a class="btn wa" target="_blank" href="https://wa.me/${esc(s.phone)}">واتساب</a><a class="btn" href="tel:${esc(s.phone)}">اتصال</a>`:""}${s.map?`<a class="btn l" target="_blank" href="${esc(s.map)}">الموقع على الخريطة</a>`:""}</div>${xHtml(s)}<div class="sec"><b>إعلانات المتجر</b></div><div class="grid">${ads.filter(a=>a.storeId==s.id).map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات للمتجر.</p>'}</div>`;
+  }else if(view=="mystores"){
+    A.innerHTML=!me?loginBox():`<button class="btn l" data-v="acc">‹ رجوع</button><div style="height:10px"></div>${myStores.map(s=>`<div class="box"><b>${esc(s.name)}</b> ${stTag(s.status)} ${planTag(s)}<div class="mut">${esc(s.desc||"")}</div><div class="mut">الاشتراك: ${esc(planOf(s)?.name||"—")}${s.planUntil>Date.now()?" · حتى "+new Date(s.planUntil).toLocaleDateString("ar"):""}</div>${s.status=="approved"&&plans.some(p=>p.id!="free"&&p.active!==false)?`<div class="row"><select id="pl-${s.id}">${plans.filter(p=>p.id!="free"&&p.active!==false).map(p=>`<option value="${p.id}">${esc(p.name)} · ${p.stars}★ / ${p.days} يوم</option>`).join("")}</select><button class="btn g" data-a="subreq" data-id="${s.id}">اشترك / جدّد</button></div>`:""}<div class="acts"><button class="btn" data-st="${s.id}">فتح</button><button class="btn l" data-a="edst" data-id="${s.id}">تعديل</button><button class="btn r" data-a="delst" data-id="${s.id}">حذف</button></div></div>`).join("")}
+    <div class="box"><h3>${editSt?"تعديل المتجر":"🏪 متجر جديد"}</h3><input id="t-n" placeholder="اسم المتجر / النشاط" value="${esc(editSt?.name||"")}"><textarea id="t-d" rows="3" placeholder="وصف النشاط">${esc(editSt?.desc||"")}</textarea><input id="t-p" dir="ltr" placeholder="واتساب/هاتف مع رمز الدولة" value="${esc(editSt?.phone||"")}"><input id="t-a" placeholder="المنطقة / العنوان" value="${esc(editSt?.area||"")}"><input id="t-m" dir="ltr" placeholder="رابط الموقع من خرائط Google (اختياري)" value="${esc(editSt?.map||"")}">
+    <label class="mut">الشعار</label><input type="file" accept="image/*" data-img="stlogo"><label class="mut">الغلاف</label><input type="file" accept="image/*" data-img="stcover">
+    <button class="btn g" style="width:100%" data-a="savest">${editSt?"حفظ التعديل":"إرسال للمراجعة"}</button>${editSt?'<button class="btn l" data-a="cancelst">إلغاء</button>':""}</div>`;
+  }else if(view=="stores"){
+    A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><input id="sq" placeholder="🔍 ابحث عن متجر أو شركة" value="${esc(sq)}" style="margin-top:10px"><div id="sl">${storeList()}</div>`;$("#sq").oninput=e=>{sq=e.target.value;$("#sl").innerHTML=storeList()};
+  }else if(view=="wallet"){
+    A.innerHTML=!me?loginBox():`<button class="btn l" data-v="acc">‹ رجوع</button><div class="box" style="margin-top:10px"><h3>💰 محفظتي</h3><div style="font-size:30px;font-weight:900;color:var(--b)">⭐ ${me.stars||0}</div><div class="mut">النجمة = 1 دولار</div><div class="acts"><button class="btn g" data-v="stars">شحن / باقات التمييز</button></div></div><h3>سجل المعاملات</h3>${txs.map(t=>`<div class="box"><b style="color:${t.amount>0?"#177a3a":"#c0392b"}">${t.amount>0?"+":""}${t.amount} ⭐</b> ${esc(t.note||"")}<div class="mut">${new Date(t.createdAt).toLocaleString("ar")}</div></div>`).join("")||'<p class="mut">لا معاملات بعد.</p>'}`;
+  }else if(view=="notifs"){
+    A.innerHTML=!me?loginBox():`<button class="btn l" data-v="acc">‹ رجوع</button><div style="height:8px"></div>${notifs.map(n=>`<div class="box" style="${n.read?"":"border-color:var(--g)"}">${esc(n.text)}<div class="mut">${new Date(n.createdAt).toLocaleString("ar")}</div></div>`).join("")||'<p class="mut">لا إشعارات.</p>'}`;
+  }else if(view=="orders"){
+    A.innerHTML=!me?loginBox():`<button class="btn l" data-v="acc">‹ رجوع</button><div style="height:8px"></div>${mySorders.map(x=>`<div class="box"><b>${esc(x.serviceName)}</b> <span class="tag g">${SL[x.status]||x.status}</span><div class="mut">${esc(x.details)}</div>${x.note?`<div class="mut">ملاحظة الإدارة: ${esc(x.note)}</div>`:""}</div>`).join("")||'<p class="mut">لا طلبات بعد.</p>'}`;
+  }else if(view=="services"){
+    A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><div class="sec"><b>🎨 خدمات سوقنا</b></div>${services.filter(x=>x.active!==false).map(x=>`<div class="box"><b>${esc(x.name)}</b> <span class="tag g">${x.price?esc(x.price)+" $":"حسب الاتفاق"}</span><div class="mut">${esc(x.desc||"")}</div></div>`).join("")||'<p class="mut">لا خدمات متاحة حاليًا.</p>'}
+    <div class="sec"><b>📣 شبكة شركاء النشر</b></div>${partners.filter(x=>x.active!==false).map(x=>`<div class="dr"><div class="av">${esc((x.platform||"?")[0].toUpperCase())}</div><div style="flex:1"><b>${esc(x.name)}</b><div class="mut">${esc(x.platform||"")} · ${esc(x.region||"")} · ${esc(x.audience||"")}</div></div><span class="tag g">${x.price?esc(x.price)+" $":"حسب الاتفاق"}</span></div>`).join("")||'<p class="mut">قريبًا.</p>'}
+    <div class="box"><h3>طلب خدمة أو حملة</h3>${me?`<select id="o-s">${services.filter(x=>x.active!==false).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select><select id="o-p"><option value="">بدون شريك نشر</option>${partners.filter(x=>x.active!==false).map(x=>`<option value="${x.id}">${esc(x.name)} (${esc(x.platform||"")})</option>`).join("")}</select><textarea id="o-d" rows="3" placeholder="تفاصيل الطلب: النص، المقاس، الجمهور المستهدف..."></textarea><button class="btn g" style="width:100%" data-a="sorder">إرسال الطلب</button>`:"<p class='mut'>سجّل الدخول لإرسال طلب.</p>"}</div>`;
   }else if(view=="mine"){
     A.innerHTML=!me?loginBox():`<div class="grid">${mine.map(a=>card(a,"mine")).join("")||'<p class="mut">لا توجد إعلانات لك.</p>'}</div>`;
   }else if(view=="stars"){
@@ -143,18 +209,35 @@ function render(){
     A.innerHTML=(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
+    <div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label class="mut">أخبار الشريط العاجل (سطر لكل خبر)</label><textarea id="s-tk" rows="3">${esc(site.ticker||"")}</textarea>
+    <label><input type="checkbox" id="s-tkon" style="width:auto" ${site.tickerOn!==false?"checked":""}> إظهار الشريط العاجل</label><br><label><input type="checkbox" id="s-wxon" style="width:auto" ${site.weatherOn!==false?"checked":""}> إظهار الطقس</label>
+    <input id="s-adc" dir="ltr" placeholder="Google AdSense: ca-pub-XXXXXXXXXXXXXXXX" value="${esc(site.adClient||"")}"><input id="s-ads" dir="ltr" placeholder="رقم وحدة الإعلان (slot)" value="${esc(site.adSlot||"")}"><label class="mut">الحد الأقصى لمتاجر الحساب الواحد</label><input id="s-mx" type="number" min="1" value="${site.maxStores??3}"><div class="acts"><button class="btn" data-a="savesite">حفظ</button><button class="btn l" data-a="clrimg">حذف الشعار والبانر المخصصين</button></div></div>
+    <div class="box"><h3>📢 بانرات الشركات (مدفوعة)</h3>${sp.map(s=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(s.company)} · ${Math.max(0,Math.ceil((s.to-Date.now())/864e5))} يوم</span><button class="btn l" data-a="togsp" data-id="${s.id}">${s.active?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="delsp" data-id="${s.id}">حذف</button></div>`).join("")}
+    <input id="p-co" placeholder="اسم الشركة"><input id="p-ti" placeholder="عنوان العرض"><input id="p-de" placeholder="تفاصيل قصيرة"><input id="p-ph" dir="ltr" placeholder="واتساب الشركة (اختياري)"><input id="p-days" type="number" placeholder="مدة الإعلان بالأيام"><input type="file" accept="image/*" data-img="sp"><button class="btn g" data-a="addsp">إضافة البانر</button></div>
+    <div class="box"><h3>📋 الدليل المميز</h3>${dr.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} (${TY[x.type]||""}) ${"★".repeat(x.stars||0)}</span>${x.type=="pharmacy"?`<button class="btn ${x.onDuty?"g":"l"}" data-a="duty" data-id="${x.id}">${x.onDuty?"مناوبة اليوم":"غير مناوبة"}</button>`:""}<button class="btn r" data-a="deldir" data-id="${x.id}">حذف</button></div>`).join("")}
+    <select id="d-t"><option value="pharmacy">صيدلية</option><option value="doctor">طبيب</option><option value="lawyer">محامٍ</option><option value="engineer">مهندس</option></select><input id="d-n" placeholder="الاسم"><input id="d-s" placeholder="الاختصاص"><input id="d-a" placeholder="الحي / المنطقة"><input id="d-p" dir="ltr" placeholder="رقم الهاتف"><select id="d-st"><option value="1">★</option><option value="2">★★</option><option value="3" selected>★★★</option></select><button class="btn g" data-a="adddir">إضافة</button></div>
+    <div class="box"><h3>📊 التقارير</h3>${(()=>{const cr=allTx.filter(t=>t.amount>0).reduce((q,t)=>q+t.amount,0),sx=allTx.filter(t=>t.amount<0).reduce((q,t)=>q-t.amount,0);return [["المستخدمون",allUsers.length],["نجوم مشحونة (≈ دولار)",cr],["نجوم مُنفقة",sx],["نجوم في المحافظ",allUsers.reduce((q,u)=>q+(u.stars||0),0)],["إعلانات منشورة",ads.length],["متاجر منشورة",stores.length],["اشتراكات فعّالة",stores.filter(x=>x.planUntil>Date.now()).length],["بانرات نشطة",sp.filter(x=>x.active&&x.to>Date.now()).length],["طلبات خدمات جديدة",sorders.filter(x=>x.status=="new").length]].map(([k,v])=>`<div class="row"><span>${k}</span><b>${v}</b></div>`).join("")})()}</div>
+    <div class="box"><h3>👥 المستخدمون</h3>${allUsers.slice(0,60).map(u=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(u.name)} · ${esc(u.role)} · ⭐${u.stars||0}</span><button class="btn l" data-a="ustars" data-id="${u.id}">± نجوم</button><button class="btn l" data-a="urole" data-id="${u.id}">الدور</button></div>`).join("")}</div>
+    <div class="box"><h3>🎨 الخدمات</h3>${services.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${x.price||"اتفاق"}</span><button class="btn l" data-a="svprice" data-id="${x.id}">السعر</button><button class="btn l" data-a="svtog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="svdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="sv-n" placeholder="اسم الخدمة"><input id="sv-d" placeholder="الوصف"><input id="sv-p" type="number" placeholder="السعر بالدولار (فارغ = حسب الاتفاق)"><div class="acts"><button class="btn g" data-a="svadd">إضافة</button>${services.length?"":'<button class="btn" data-a="svseed">الخدمات الافتراضية</button>'}</div></div>
+    <div class="box"><h3>📣 شركاء النشر</h3>${partners.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${esc(x.platform||"")}</span><button class="btn l" data-a="pttog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="ptdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="pt-n" placeholder="اسم الصفحة / الشريك"><select id="pt-pl"><option>facebook</option><option>instagram</option><option>tiktok</option><option>other</option></select><input id="pt-r" placeholder="المنطقة (مثل: ألمانيا، الخليج)"><input id="pt-a" placeholder="الجمهور / عدد المتابعين"><input id="pt-p" type="number" placeholder="السعر بالدولار"><button class="btn g" data-a="ptadd">إضافة</button></div>
+    <div class="box"><h3>💎 باقات اشتراك المتاجر</h3>${plans.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(p.name)} · ${p.stars}★ · ${p.days||"∞"} يوم · ${p.maxAds||"∞"} إعلان</span><button class="btn l" data-a="edpl" data-id="${p.id}">تعديل</button><button class="btn l" data-a="togpl" data-id="${p.id}">${p.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="delpl" data-id="${p.id}">حذف</button></div>`).join("")}${plans.length?"":'<button class="btn g" data-a="seedpl">إنشاء الباقات الافتراضية</button>'}
+    <h4>${editPl?"تعديل: "+esc(editPl.name):"باقة جديدة"}</h4>${editPl?"":'<input id="pl-id" dir="ltr" placeholder="المعرّف بالإنجليزية (مثل: silver)">'}<input id="pl-n" placeholder="الاسم" value="${esc(editPl?.name||"")}"><div class="row"><input id="pl-s" type="number" placeholder="السعر بالنجوم" value="${editPl?.stars??""}"><input id="pl-d" type="number" placeholder="المدة بالأيام" value="${editPl?.days??""}"></div><div class="row"><input id="pl-m" type="number" placeholder="حد الإعلانات (0 = بلا حد)" value="${editPl?.maxAds??""}"><input id="pl-o" type="number" placeholder="الترتيب" value="${editPl?.order??""}"></div><input id="pl-b" placeholder="الشارة (مثل: ذهبي)" value="${esc(editPl?.badge||"")}"><input id="pl-f" placeholder="الميزات (نص حر)" value="${esc(editPl?.features||"")}"><div class="acts"><button class="btn g" data-a="savepl">حفظ</button>${editPl?'<button class="btn l" data-a="cancelpl">إلغاء</button>':""}</div></div>
+    <h3>طلبات الاشتراك (${subs.length})</h3>${subs.map(r=>`<div class="box"><b>${esc(r.userName)}</b> · ${esc(r.storeName)}<div class="mut">${esc(r.planName)} · ${r.stars}★ · ${r.days} يوم</div><div class="acts"><button class="btn" data-a="subok" data-id="${r.id}">موافقة وخصم</button><button class="btn l" data-a="subno" data-id="${r.id}">رفض</button></div></div>`).join("")}
     <h3>طلبات شراء النجوم (${orders.length})</h3>${orders.map(o=>`<div class="box"><b>${esc(o.userName)}</b> يطلب ${o.stars} نجمة (${o.stars}$)<div class="acts"><button class="btn" data-a="ordok" data-id="${o.id}">تأكيد الاستلام</button><button class="btn l" data-a="ordno" data-id="${o.id}">رفض</button></div></div>`).join("")}
     <h3>طلبات التمييز (${promos.length})</h3>${promos.map(p=>`<div class="box"><b>${esc(p.userName)}</b>: ${esc(p.adTitle)}<div class="mut">${p.stars} نجوم · ${p.days} يوم</div><div class="acts"><button class="btn" data-a="prok" data-id="${p.id}">موافقة وخصم</button><button class="btn l" data-a="prno" data-id="${p.id}">رفض</button></div></div>`).join("")}`:"")+
-    `<h3>إعلانات بانتظار المراجعة (${pend.length})</h3><div class="grid">${pend.map(a=>card(a,"pend")).join("")||'<p class="mut">لا شيء بانتظار المراجعة.</p>'}</div>`;
+    `<h3>طلبات الخدمات (${sorders.filter(x=>x.status=="new"||x.status=="progress").length})</h3>${sorders.filter(x=>x.status=="new"||x.status=="progress").map(x=>`<div class="box"><b>${esc(x.userName)}</b> · ${esc(x.serviceName)}${x.partnerName?" · "+esc(x.partnerName):""} <span class="tag g">${SL[x.status]}</span><div class="mut">${esc(x.details)}</div><div class="acts"><button class="btn" data-a="sost" data-s="progress" data-id="${x.id}">قيد التنفيذ</button><button class="btn g" data-a="sost" data-s="done" data-id="${x.id}">مكتمل</button><button class="btn l" data-a="sost" data-s="rejected" data-id="${x.id}">رفض</button></div></div>`).join("")}
+    <h3>متاجر بانتظار المراجعة (${pendStores.length})</h3>${pendStores.map(s=>`<div class="box"><b>${esc(s.name)}</b> · ${esc(s.ownerName)}<div class="mut">${esc(s.desc||"")}</div><div class="acts"><button class="btn" data-a="stok" data-id="${s.id}">قبول</button><button class="btn l" data-a="stno" data-id="${s.id}">رفض</button><button class="btn r" data-a="delst" data-id="${s.id}">حذف</button></div></div>`).join("")||'<p class="mut">لا توجد متاجر بانتظار المراجعة.</p>'}<h3>إعلانات بانتظار المراجعة (${pend.length})</h3><div class="grid">${pend.map(a=>card(a,"pend")).join("")||'<p class="mut">لا شيء بانتظار المراجعة.</p>'}</div>`;
   }else{
-    A.innerHTML=!me?loginBox():`<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts">${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
+    A.innerHTML=!me?loginBox():`<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
   }
 }
 function shrink(f){if(!f)return;const im=new Image();im.onload=()=>{const k=Math.min(1,600/im.width),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);photo=c.toDataURL("image/jpeg",.6)};im.src=URL.createObjectURL(f)}
 const need=()=>{if(!me){toast("سجّل الدخول أولًا");view="acc";render();return false}return true};
 
 document.addEventListener("click",async e=>{
-  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars"].includes(view))await loadMine();feat=false;return render()}
+  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc"].includes(view))await loadMine();feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
+  const ss=e.target.closest("[data-st]");if(ss){curStore=ss.dataset.st;view="store";stx={f:[],r:[]};await loadStoreX(curStore);render();return scrollTo(0,0)}
+  const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;$("#dir").innerHTML=dirHtml();document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt==dtype));return}
   const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view="home";feat=false;render();return scrollTo(0,0)}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   try{
@@ -172,7 +255,8 @@ document.addEventListener("click",async e=>{
     else if(a=="post"){
       const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
       if(!t||!val("#a-price")||p.length<9)return toast("أكمل العنوان والسعر ورقم واتساب صحيح");
-      await addDoc(collection(db,"ads"),{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,ownerId:me.uid,ownerName:me.name,status:"pending",createdAt:Date.now()});
+      const sid=$("#a-st")?$("#a-st").value:"";if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
+      await addDoc(collection(db,"ads"),{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{}),ownerId:me.uid,ownerName:me.name,status:"pending",createdAt:Date.now()});
       photo="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
     else if(a=="buy"){if(!need())return;const n=Math.floor(+val("#n-st"));if(!(n>0))return toast("اكتب عدد النجوم");
       await addDoc(collection(db,"starOrders"),{userId:me.uid,userName:me.name,stars:n,status:"pending",createdAt:Date.now()});
@@ -181,23 +265,64 @@ document.addEventListener("click",async e=>{
       if(!ad)return toast("اختر إعلانًا منشورًا أولًا");if((me.stars||0)<p.stars)return toast("رصيدك لا يكفي، اشترِ نجومًا أولًا");
       await addDoc(collection(db,"promos"),{userId:me.uid,userName:me.name,adId,adTitle:ad.title,pkgId:p.id,stars:p.stars,days:p.days,status:"pending",createdAt:Date.now()});
       toast("أُرسل طلب التمييز وسيُفعّل بعد موافقة الإدارة")}
-    else if(a=="ok"||a=="no"){await updateDoc(doc(db,"ads",id),{status:a=="ok"?"approved":"rejected"});await loadPublic();await loadMine();render()}
+    else if(a=="ok"||a=="no"){await updateDoc(doc(db,"ads",id),{status:a=="ok"?"approved":"rejected"});{const x=pend.find(y=>y.id==id);if(x)await notify(x.ownerId,(a=="ok"?"تمت الموافقة على إعلانك: ":"تم رفض إعلانك: ")+x.title)}await loadPublic();await loadMine();render()}
     else if(a=="del"){if(!confirm("حذف الإعلان؟"))return;await deleteDoc(doc(db,"ads",id));await loadPublic();await loadMine();render()}
     else if(a=="savewa"){const n=val("#s-wa").replace(/\D/g,"");await setDoc(doc(db,"settings","contact"),{whatsapp:n});wa=n;toast("تم الحفظ")}
     else if(a=="seed"){for(const [s,d] of [[5,15],[10,30],[15,30],[20,30],[25,30]])await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
     else if(a=="addpk"){const s=+val("#k-s"),d=+val("#k-d");if(!(s>0&&d>0))return toast("أدخل النجوم والأيام");await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
     else if(a=="delpk"){await deleteDoc(doc(db,"packages",id));await loadPublic();render()}
-    else if(a=="ordok"){const o=orders.find(x=>x.id==id);await updateDoc(doc(db,"users",o.userId),{stars:increment(o.stars)});await updateDoc(doc(db,"starOrders",id),{status:"done"});toast("أُضيفت النجوم");await loadMine();render()}
+    else if(a=="follow"){if(!need())return;const k=id+"_"+me.uid;if(stx.f.some(x=>x.userId==me.uid))await deleteDoc(doc(db,"follows",k));else await setDoc(doc(db,"follows",k),{storeId:id,userId:me.uid});await loadStoreX(id);render()}
+    else if(a=="rate"){if(!need())return;await setDoc(doc(db,"reviews",id+"_"+me.uid),{storeId:id,userId:me.uid,userName:me.name,stars:+$("#rv-s").value,text:val("#rv-t"),createdAt:Date.now()});await loadStoreX(id);toast("شكرًا لتقييمك");render()}
+    else if(a=="sorder"){if(!need())return;const sv=services.find(x=>x.id==$("#o-s").value);if(!sv||!val("#o-d"))return toast("اختر الخدمة واكتب التفاصيل");const pt=partners.find(x=>x.id==$("#o-p").value);await addDoc(collection(db,"sorders"),{userId:me.uid,userName:me.name,serviceId:sv.id,serviceName:sv.name,partnerName:pt?pt.name:"",details:val("#o-d"),status:"new",createdAt:Date.now()});toast("أُرسل طلبك، ستتواصل معك الإدارة");if(wa)open(waLink("طلب خدمة: "+sv.name+(pt?" · شريك: "+pt.name:"")+"\n"+val("#o-d")+"\nالاسم: "+me.name),"_blank");await loadMine();view="orders";render()}
+    else if(a=="sost"){const o=sorders.find(x=>x.id==id),st=b.dataset.s;await updateDoc(doc(db,"sorders",id),{status:st,note:st=="rejected"?(prompt("سبب الرفض:")||""):""});await notify(o.userId,"طلبك ("+o.serviceName+"): "+SL[st]);await loadMine();render()}
+    else if(a=="ustars"){const n=+prompt("عدد النجوم (سالب للخصم):");if(!n)return;const nt=prompt("السبب:")||"تعديل من الإدارة";await updateDoc(doc(db,"users",id),{stars:increment(n)});await ledger(id,n>0?"credit":"debit",n,nt);await notify(id,(n>0?"أُضيف ":"خُصم ")+Math.abs(n)+" نجمة: "+nt);await loadMine();render()}
+    else if(a=="urole"){const r=prompt("الدور: user / moderator / accountant / editor / admin");if(!["user","moderator","accountant","editor","admin"].includes(r))return toast("دور غير صحيح");await updateDoc(doc(db,"users",id),{role:r});await loadMine();render()}
+    else if(a=="svadd"){if(!val("#sv-n"))return toast("اكتب اسم الخدمة");await addDoc(collection(db,"services"),{name:val("#sv-n"),desc:val("#sv-d"),price:+val("#sv-p")||0,active:true});await loadPublic();render()}
+    else if(a=="svseed"){for(const n of ["تصميم إعلان","تصميم شعار وهوية","فيديو إعلاني","مونتاج فيديو","حملة تسويقية"])await addDoc(collection(db,"services"),{name:n,desc:"",price:0,active:true});await loadPublic();render()}
+    else if(a=="svprice"){const p=prompt("السعر بالدولار (0 = حسب الاتفاق):");if(p===null)return;await updateDoc(doc(db,"services",id),{price:+p||0});await loadPublic();render()}
+    else if(a=="svtog"){await updateDoc(doc(db,"services",id),{active:services.find(x=>x.id==id).active===false});await loadPublic();render()}
+    else if(a=="svdel"){await deleteDoc(doc(db,"services",id));await loadPublic();render()}
+    else if(a=="ptadd"){if(!val("#pt-n"))return toast("اكتب اسم الشريك");await addDoc(collection(db,"partners"),{name:val("#pt-n"),platform:$("#pt-pl").value,region:val("#pt-r"),audience:val("#pt-a"),price:+val("#pt-p")||0,active:true});await loadPublic();render()}
+    else if(a=="pttog"){await updateDoc(doc(db,"partners",id),{active:partners.find(x=>x.id==id).active===false});await loadPublic();render()}
+    else if(a=="ptdel"){await deleteDoc(doc(db,"partners",id));await loadPublic();render()}
+    else if(a=="subreq"){const p=plans.find(x=>x.id==$("#pl-"+id).value),st=myStores.find(x=>x.id==id);if((me.stars||0)<p.stars)return toast("رصيدك لا يكفي، اشترِ نجومًا أولًا");await addDoc(collection(db,"subs"),{userId:me.uid,userName:me.name,storeId:id,storeName:st.name,planId:p.id,planName:p.name,stars:p.stars,days:p.days,status:"pending",createdAt:Date.now()});toast("أُرسل طلب الاشتراك وسيُفعّل بعد موافقة الإدارة")}
+    else if(a=="subok"){const r=subs.find(x=>x.id==id),u=await getDoc(doc(db,"users",r.userId));if((u.data().stars||0)<r.stars)return toast("رصيد المستخدم لا يكفي");const b=(await getDoc(doc(db,"stores",r.storeId))).data(),base=b.plan==r.planId?Math.max(Date.now(),b.planUntil||0):Date.now();await updateDoc(doc(db,"users",r.userId),{stars:increment(-r.stars)});await updateDoc(doc(db,"stores",r.storeId),{plan:r.planId,planUntil:base+r.days*864e5});await ledger(r.userId,"debit",-r.stars,"اشتراك "+r.planName+" - "+r.storeName);await notify(r.userId,"تم تفعيل اشتراك "+r.planName+" لمتجر "+r.storeName);await updateDoc(doc(db,"subs",id),{status:"done"});await loadPublic();await loadMine();toast("فُعّل الاشتراك");render()}
+    else if(a=="subno"){await updateDoc(doc(db,"subs",id),{status:"rejected"});await loadMine();render()}
+    else if(a=="seedpl"){for(const [i,n,st,d,m,bd,o] of [["free","مجانية",0,0,5,"",0],["silver","فضية",10,30,30,"فضي",1],["gold","ذهبية",25,30,100,"ذهبي",2],["vip","VIP",50,30,0,"VIP",3]])await setDoc(doc(db,"plans",i),{name:n,stars:st,days:d,maxAds:m,badge:bd,order:o,active:true,features:""});await loadPublic();render()}
+    else if(a=="savepl"){const k=editPl?editPl.id:val("#pl-id").toLowerCase().replace(/[^a-z0-9_]/g,"");if(!k||!val("#pl-n"))return toast("اكتب المعرّف (إنجليزي) والاسم");await setDoc(doc(db,"plans",k),{name:val("#pl-n"),stars:+val("#pl-s")||0,days:+val("#pl-d")||0,maxAds:+val("#pl-m")||0,badge:val("#pl-b"),order:+val("#pl-o")||0,features:val("#pl-f"),active:editPl?editPl.active!==false:true});editPl=null;await loadPublic();render()}
+    else if(a=="edpl"){editPl=plans.find(x=>x.id==id);render()}
+    else if(a=="cancelpl"){editPl=null;render()}
+    else if(a=="togpl"){await updateDoc(doc(db,"plans",id),{active:plans.find(x=>x.id==id).active===false});await loadPublic();render()}
+    else if(a=="delpl"){if(!confirm("حذف الباقة؟"))return;await deleteDoc(doc(db,"plans",id));await loadPublic();render()}
+    else if(a=="savest"){if(!val("#t-n"))return toast("اكتب اسم المتجر");const m=val("#t-m");if(m&&!/^https?:\/\//.test(m))return toast("رابط الخريطة يجب أن يبدأ بـ https://");const o={name:val("#t-n"),desc:val("#t-d"),phone:val("#t-p").replace(/\D/g,""),area:val("#t-a"),map:m};
+      if(editSt){if(tmp.stlogo)o.logo=tmp.stlogo;if(tmp.stcover)o.cover=tmp.stcover;await updateDoc(doc(db,"stores",editSt.id),o);editSt=null}
+      else{const lim=site.maxStores??3;if(myStores.length>=lim)return toast("وصلت للحد الأقصى من المتاجر ("+lim+")");await addDoc(collection(db,"stores"),{...o,logo:tmp.stlogo||"",cover:tmp.stcover||"",ownerId:me.uid,ownerName:me.name,status:"pending",createdAt:Date.now()})}
+      tmp.stlogo=tmp.stcover="";toast("تم الحفظ");await loadMine();render()}
+    else if(a=="edst"){editSt=myStores.find(x=>x.id==id);render();scrollTo(0,99999)}
+    else if(a=="cancelst"){editSt=null;render()}
+    else if(a=="delst"){if(!confirm("حذف المتجر؟"))return;await deleteDoc(doc(db,"stores",id));await loadPublic();await loadMine();render()}
+    else if(a=="stok"||a=="stno"){await updateDoc(doc(db,"stores",id),{status:a=="stok"?"approved":"rejected"});{const x=pendStores.find(y=>y.id==id);if(x)await notify(x.ownerId,(a=="stok"?"تمت الموافقة على متجرك: ":"تم رفض متجرك: ")+x.name)}await loadPublic();await loadMine();render()}
+    else if(a=="savesite"){await setDoc(doc(db,"settings","site"),{ticker:val("#s-tk"),tickerOn:$("#s-tkon").checked,weatherOn:$("#s-wxon").checked,adClient:val("#s-adc"),adSlot:val("#s-ads"),maxStores:+val("#s-mx")||3,logo:tmp.logo||site.logo||"",banner:tmp.banner||site.banner||""},{merge:true});tmp.logo=tmp.banner="";await loadPublic();toast("تم الحفظ");render()}
+    else if(a=="clrimg"){await setDoc(doc(db,"settings","site"),{logo:"",banner:""},{merge:true});await loadPublic();render()}
+    else if(a=="addsp"){const d=+val("#p-days");if(!val("#p-co")||!(d>0))return toast("اكتب اسم الشركة والمدة");await addDoc(collection(db,"sponsors"),{company:val("#p-co"),title:val("#p-ti"),desc:val("#p-de"),phone:val("#p-ph").replace(/\D/g,""),img:tmp.sp||"",from:Date.now(),to:Date.now()+d*864e5,active:true});tmp.sp="";await loadPublic();render()}
+    else if(a=="togsp"){await updateDoc(doc(db,"sponsors",id),{active:!sp.find(x=>x.id==id).active});await loadPublic();render()}
+    else if(a=="delsp"){await deleteDoc(doc(db,"sponsors",id));await loadPublic();render()}
+    else if(a=="adddir"){if(!val("#d-n"))return toast("اكتب الاسم");await addDoc(collection(db,"directory"),{type:$("#d-t").value,name:val("#d-n"),spec:val("#d-s"),area:val("#d-a"),phone:val("#d-p").replace(/[^\d+]/g,""),stars:+$("#d-st").value,onDuty:false,active:true,createdAt:Date.now()});await loadPublic();render()}
+    else if(a=="duty"){await updateDoc(doc(db,"directory",id),{onDuty:!dr.find(x=>x.id==id).onDuty});await loadPublic();render()}
+    else if(a=="deldir"){await deleteDoc(doc(db,"directory",id));await loadPublic();render()}
+    else if(a=="ordok"){const o=orders.find(x=>x.id==id);await updateDoc(doc(db,"users",o.userId),{stars:increment(o.stars)});await ledger(o.userId,"credit",o.stars,"شحن نجوم");await notify(o.userId,"أُضيف "+o.stars+" نجمة إلى رصيدك");await updateDoc(doc(db,"starOrders",id),{status:"done"});toast("أُضيفت النجوم");await loadMine();render()}
     else if(a=="ordno"){await updateDoc(doc(db,"starOrders",id),{status:"rejected"});await loadMine();render()}
     else if(a=="prok"){const p=promos.find(x=>x.id==id),u=await getDoc(doc(db,"users",p.userId));
       if((u.data().stars||0)<p.stars)return toast("رصيد المستخدم لا يكفي");
       const ad=await getDoc(doc(db,"ads",p.adId)),base=Math.max(Date.now(),ad.data().featuredUntil||0);
-      await updateDoc(doc(db,"users",p.userId),{stars:increment(-p.stars)});
+      await updateDoc(doc(db,"users",p.userId),{stars:increment(-p.stars)});await ledger(p.userId,"debit",-p.stars,"تمييز إعلان: "+p.adTitle);await notify(p.userId,"تم تمييز إعلانك: "+p.adTitle);
       await updateDoc(doc(db,"ads",p.adId),{featuredUntil:base+p.days*864e5});
       await updateDoc(doc(db,"promos",id),{status:"done"});await loadPublic();await loadMine();toast("فُعّل التمييز");render()}
     else if(a=="prno"){await updateDoc(doc(db,"promos",id),{status:"rejected"});await loadMine();render()}
   }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":"تعذر تنفيذ العملية")}
 });
+document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900}[f.dataset.img])});
+setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
 onAuthStateChanged(auth,async u=>{
   me=null;
   if(u){const s=await getDoc(doc(db,"users",u.uid));me=s.exists()?{uid:u.uid,...s.data()}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0};await loadMine()}
@@ -205,6 +330,7 @@ onAuthStateChanged(auth,async u=>{
   if(view=="admin"&&!isStaff())view="home";
   render();
 });
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 loadPublic().then(render).catch(e=>{console.error(e);$("#app").innerHTML='<p class="mut">تعذر تحميل البيانات.</p>'});
 </script>
 </body>
