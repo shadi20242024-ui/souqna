@@ -48,6 +48,7 @@ async function seed(){
   const entries=[
     ["users","alice",{name:"Alice",email:"alice@example.com",role:"user",stars:100}],
     ["users","bob",{name:"Bob",email:"bob@example.com",role:"user",stars:0}],
+    ["users","charlie",{name:"Charlie",email:"charlie@example.com",role:"user",stars:0}],
     ["users","admin",{name:"Admin",email:"admin@example.com",role:"admin",stars:0}],
     ["users","staff",{name:"Moderator",email:"staff@example.com",role:"moderator",stars:0}],
     ["starOrders","topup1",{userId:"alice",stars:20,status:"pending"}],
@@ -102,9 +103,9 @@ test("real Firestore emulator transactions: approval, debit, audit, moderation a
       assert.equal((await read("transactions","manual_1234567890abcdef")).balanceAfter,75);
     });
     await t.test("role changes are audited and cannot grant admin",async()=>{
-      const data={userId:"bob",role:"editor",mutationId:"rolechange123456"};
+      const data={userId:"charlie",role:"editor",mutationId:"rolechange123456"};
       assert.equal((await call("changeUserRole",data)).status,"done");
-      assert.equal((await read("users","bob")).role,"editor");
+      assert.equal((await read("users","charlie")).role,"editor");
       assert.equal((await call("changeUserRole",data)).status,"already_processed");
       assert.equal((await read("auditLogs","role_rolechange123456")).previousRole,"user");
       await assert.rejects(call("changeUserRole",{...data,role:"admin",mutationId:"newrole1234567890"}),e=>e.code==="invalid-argument");
