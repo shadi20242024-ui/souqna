@@ -1,4 +1,24 @@
-const C="souqna-v1",F=["./","index.html","ui.jpg","logo.png","icon-192.png","manifest.webmanifest"];
-self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F)).catch(()=>{}));self.skipWaiting()});
-self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!=C).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",e=>{if(e.request.method!="GET"||new URL(e.request.url).origin!=location.origin)return;e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(C).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request)))});
+const CACHE_NAME = "souqna-static-v2";
+const PRECACHE_URLS = ["./", "./index.html", "./logo.png", "./icon-192.png", "./icon-512.png", "./manifest.webmanifest"];
+self.addEventListener("install", event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS)));
+  self.skipWaiting();
+});
+self.addEventListener("activate", event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+});
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request).catch(() => caches.match("./index.html")));
+    return;
+  }
+  event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
+    if (response.ok && response.type === "basic") {
+      const copy = response.clone();
+      event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, copy)));
+    }
+    return response;
+  })));
+});
