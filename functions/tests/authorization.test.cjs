@@ -8,12 +8,13 @@ class HttpsError extends Error {
   constructor(code,message){super(message);this.code=code;}
 }
 let transactionCount=0;
+const callableOptions=[];
 const firestore={
   collection(name){return {doc(id){return {name,id};}};},
   runTransaction(){transactionCount++;throw new Error("Transactions must not run on invalid input");}
 };
 const modules={
-  "firebase-functions/v2/https":{onCall:(_options,handler)=>handler,HttpsError},
+  "firebase-functions/v2/https":{onCall:(options,handler)=>{callableOptions.push(options);return handler;},HttpsError},
   "firebase-admin/app":{initializeApp(){}},
   "firebase-admin/firestore":{getFirestore:()=>firestore,FieldValue:{serverTimestamp:()=>({})}}
 };
@@ -47,3 +48,11 @@ for(const name of moderation){
   });
 }
 test("invalid inputs never enter Firestore transactions",()=>assert.equal(transactionCount,0));
+
+test("all eight callables require App Check and use the configured region",()=>{
+  assert.equal(callableOptions.length,8);
+  for(const options of callableOptions){
+    assert.equal(options.region,"europe-west1");
+    assert.equal(options.enforceAppCheck,true);
+  }
+});
