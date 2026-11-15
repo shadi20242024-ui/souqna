@@ -5,7 +5,7 @@ service cloud.firestore {
     function userPath(uid) { return /databases/$(database)/documents/users/$(uid); }
     function myProfile() { return auth() && exists(userPath(request.auth.uid)); }
     function role() { return get(userPath(request.auth.uid)).data.role; }
-    function staff() { return myProfile() && role() in ['admin', 'moderator', 'accountant', 'editor']; }
+    function staff() { return admin() || (myProfile() && role() in ['admin', 'moderator', 'accountant', 'editor']); }
     function admin() { return auth() && request.auth.token.admin == true; }
     function owner(field) { return auth() && resource.data[field] == request.auth.uid; }
     function onlyChanged(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields); }
