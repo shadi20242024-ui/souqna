@@ -31,6 +31,9 @@ for(const name of [...financial,...moderation]){
   test(name+" denies unauthenticated callers",async()=>{
     await assert.rejects(handlers[name]({data:{requestId:"test",orderId:"test",recordId:"test",decision:"approved"}}),e=>e.code==="permission-denied");
   });
+  test(name+" denies malformed authentication without token claims",async()=>{
+    await assert.rejects(handlers[name]({auth:{uid:"broken"},data:{requestId:"test",orderId:"test",recordId:"test",decision:"approved"}}),e=>e.code==="permission-denied");
+  });
   test(name+" denies non-admin users",async()=>{
     await assert.rejects(handlers[name]({auth:{uid:"member",token:{admin:false}},data:{requestId:"test",orderId:"test",recordId:"test",decision:"approved"}}),e=>e.code==="permission-denied");
   });
