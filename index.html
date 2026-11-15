@@ -181,9 +181,13 @@ main:has(.souqna-home-layout){padding:8px 8px 90px}.souqna-home-layout{grid-temp
 .souqna-list #list{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
+@media(max-width:850px){#nav .desktop-extra{display:none}} 
+#souqna-topnav button,#souqna-topnav a{cursor:pointer}
+@media(max-width:850px){.souqna-topnav-inner{min-height:51px}.souqna-logo{font-size:20px}.souqna-logo img{width:31px;height:31px}.souqna-profile{font-size:11px;padding:6px 8px}}
 </style>
 </head>
 <body>
+<div id="souqna-topnav" class="souqna-topnav" aria-label="قائمة سوقنا الرئيسية"></div>
 <div id="hd" class="hd"></div>
 <div id="newsbar" aria-label="الأخبار المحلية والعروض"></div>
 <main id="app"></main>
@@ -306,16 +310,39 @@ function card(a,m){
   :m=="mine"?`<button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
   :`<a class="btn wa" target="_blank" href="https://wa.me/${esc(a.phone)}?text=${encodeURIComponent(msg)}">واتساب</a>`}</div></div></div>`}
 
+function drawDesktopNav(){
+  const container=$("#souqna-topnav");
+  if(!container)return;
+  const logo=esc(site.logo||"logo.png");
+  const routes=[["home","⌂ الرئيسية"],["home","📣 الإعلانات"],["services","⚒ الخدمات"],["stores","▣ المتاجر"]];
+  const menu=routes.map(x=>'<button type="button" data-v="'+x[0]+'" class="'+(view===x[0]?"on":"")+'">'+x[1]+'</button>').join("");
+  container.innerHTML='<div class="souqna-topnav-inner">'+
+    '<a class="souqna-logo" href="#" data-v="home"><img src="'+logo+'" alt="شعار سوقنا"><span>سوقنا<small>SOUQNA</small></span></a>'+
+    '<div class="souqna-links">'+menu+'</div>'+
+    '<button class="souqna-vip" data-v="stars">♛ الباقات والنجوم</button>'+
+    '<button class="souqna-balance" data-v="wallet">⭐ <b>'+Number(me?.stars||0).toLocaleString("ar")+'</b> نجمة</button>'+
+    '<button class="souqna-profile" data-v="'+(isAdm()?"admin":"acc")+'">👤 '+esc(me?.name||"حسابي")+'</button>'+
+    '</div>';
+}
 function drawHd(){
   const H=$("#hd");
-  if(view=="home"){H.className="hd big";
-    H.innerHTML=`<div class="top">${site.logo?`<img class="lgi" src="${site.logo}" alt="">`:'<div class="sp lg"></div>'}<div></div><a class="ic" ${wa?`href="${waLink()}" target="_blank"`:""}>📞</a></div><div class="sr"><span>🇸🇾</span><input id="q" placeholder="ابحث في سوقنا ..." value="${esc(q)}"><i>🔍</i></div>`;
+  if(view==="home"){
+    H.className="hd big souqna-hero";
+    H.innerHTML=
+      (site.banner?'<img class="souqna-city-art" src="'+esc(site.banner)+'" alt="بانر سوقنا المعتمد">':"")+
+      '<div class="souqna-hero-title"><img src="'+esc(site.logo||"logo.png")+'" alt="شعار سوقنا">'+
+      '<div><h1>سوقنا - السويداء</h1><small>سوق إلكتروني للإعلانات والمتاجر والخدمات في السويداء</small></div></div>'+
+      '<div class="sr"><span>🔍</span><input id="q" aria-label="ابحث في إعلانات سوقنا" placeholder="ابحث عن سيارة، عقار، هاتف أو أي منتج..." value="'+esc(q)+'">'+
+      '<button type="button" class="souqna-searchbtn" data-a="search">بحث</button></div>';
     $("#q").oninput=e=>{q=e.target.value;drawList()};
-  }else{H.className="hd";H.innerHTML='<img class="s" src="logo.png" alt=""><h2>سوقنا | Souqna</h2>'}
+  }else{
+    H.className="hd";
+    H.innerHTML='<img class="s" src="logo.png" alt="شعار سوقنا"><h2>سوقنا | Souqna</h2>';
+  }
 }
 function drawNav(){
-  const b=[["home","🏠","الرئيسية"],["mine","📋","إعلاناتي"],["add","<i>＋</i>","أضف إعلان","pl"],["stars","⭐","النجوم"],["acc","👤"+(notifs.some(n=>!n.read)?'<b style="color:#c0392b">●</b>':""),"حسابي"]];
-  $("#nav").innerHTML=b.map(x=>`<button data-v="${x[0]}" class="${x[3]||""} ${view==x[0]?"on":""}">${x[1]}<br>${x[2]}</button>`).join("");
+  const b=[["home","⌂","الرئيسية"],["mine","▤","إعلاناتي"],["add","<i>＋</i>","أضف إعلان","pl"],["stars","⭐","النجوم"],["acc","👤"+(notifs.some(n=>!n.read)?'<b style="color:#c0392b">●</b>':""),"حسابي"],["stores","🏪","المتاجر"],["services","⚒️","الخدمات"]];
+  $("#nav").innerHTML=b.map((x,i)=>'<button type="button" data-v="'+x[0]+'" class="'+(x[3]||"")+' '+(view===x[0]?"on":"")+' '+(i>=5?"desktop-extra":"")+'">'+x[1]+'<br>'+x[2]+'</button>').join("");
 }
 function drawList(){
   const l=ads.filter(a=>(cur=="all"||a.cat==cur)&&(!feat||isF(a))&&(!q||(a.title+a.desc+a.area).includes(q))).sort((x,y)=>isF(y)-isF(x)||y.createdAt-x.createdAt);
@@ -329,7 +356,7 @@ function loginBox(){
   <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
 
 function render(){
-  drawHd();drawNav();const news=$("#newsbar");if(news)news.innerHTML=tkHtml();const A=$("#app");
+  drawHd();drawNav();drawDesktopNav();const news=$("#newsbar");if(news)news.innerHTML=tkHtml();const A=$("#app");
   if(view=="home"){
     A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>a.img).slice(0,8).map(a=>`<button class="sc" data-c="${a.cat}" aria-label="${esc(a.title)}" style="background-image:url(${a.img})"></button>`).join("")}</div>
     ${site.banner?`<img class="bnr" src="${site.banner}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
