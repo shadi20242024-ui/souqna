@@ -107,3 +107,22 @@ test("staff cannot mark an ad as featured directly", async () => {
 test("staff can moderate store status without changing paid fields", async () => {
   await assertSucceeds(updateDoc(doc(dbFor("admin",{admin:true}),"stores","shop"),{status:"rejected"}));
 });
+
+test("store owner cannot self-approve a pending store", async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(),"stores","pending-owner-store"),{ownerId:"alice",status:"pending",name:"New Store"});
+  });
+  await assertFails(updateDoc(doc(dbFor("alice"),"stores","pending-owner-store"),{status:"approved"}));
+});
+test("advertiser cannot approve their own pending ad", async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(),"ads","pending-owner-ad"),{ownerId:"alice",status:"pending",title:"New Ad"});
+  });
+  await assertFails(updateDoc(doc(dbFor("alice"),"ads","pending-owner-ad"),{status:"approved"}));
+});
+test("administrator can approve a pending advertisement", async () => {
+  await assertSucceeds(updateDoc(doc(dbFor("admin",{admin:true}),"ads","pending-owner-ad"),{status:"approved"}));
+});
+test("administrator cannot modify an advertisement paid feature expiry", async () => {
+  await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"ads","pending-owner-ad"),{featuredUntil:Date.now()+86400000}));
+});
