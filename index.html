@@ -92,6 +92,95 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 .admin-hint{display:block;font-size:11px;color:#63718e;margin:-2px 0 12px}
 @media(max-width:600px){.tk{height:41px;border-radius:0}.tk b{padding:0 10px;font-size:11px}.news-chip{font-size:11px}.hero-sponsor{min-height:185px;border-radius:18px}.hero-sponsor .hero-copy{padding:35px 15px 43px;max-width:92%}.hero-sponsor .hero-copy h2{font-size:21px}.hero-sponsor .hero-copy p{font-size:11px}.hero-sponsor .sponsor-mark{top:8px;right:9px;font-size:10px}.hero-sponsor .sponsor-arrows button{width:30px;height:30px}.hero-booking{font-size:11px}}
 
+
+/* Screenshot-locked SOUQNA desktop-first layout, implemented over the existing live Firebase modules */
+#souqna-topnav{background:linear-gradient(100deg,#05152e,#08234e 65%,#061736);color:#fff;min-height:66px}
+.souqna-topnav-inner{max-width:1680px;padding:8px 20px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.souqna-logo{display:flex;align-items:center;gap:9px;color:#fff;font-weight:900;font-size:24px;white-space:nowrap}
+.souqna-logo img{width:42px;height:42px;object-fit:contain;border-radius:10px}
+.souqna-logo small{display:block;letter-spacing:2px;font-size:11px;line-height:1;color:#f1f4ff}
+.souqna-links{display:flex;align-items:center;gap:5px}
+.souqna-links button,.souqna-profile{border:0;background:transparent;color:#fff;border-radius:10px;font-size:14px;font-weight:900;padding:10px 16px}
+.souqna-links button:hover,.souqna-links button.on{background:linear-gradient(110deg,#1d70ed,#0753c8);box-shadow:inset 0 1px 0 #ffffff66}
+.souqna-balance{border:1px solid #e9ae35;border-radius:25px;padding:6px 13px;color:#fff;background:#0a254e;font-weight:900;white-space:nowrap}
+.souqna-balance b{color:#ffd455}
+.souqna-vip{border:0;color:#281d04;background:linear-gradient(#ffe18b,#e5a623);border-radius:25px;font-weight:900;padding:8px 18px;white-space:nowrap}
+.souqna-profile{white-space:nowrap}
+#hd.hd.big.souqna-hero{max-width:1680px;margin:auto;border-radius:0;min-height:171px;position:relative;padding:22px 26px 11px;background:linear-gradient(105deg,#0a3c84,#0b3474 35%,#061b43 72%);overflow:hidden}
+#hd.souqna-hero .souqna-city-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.7}
+#hd.souqna-hero:before{content:"";pointer-events:none;position:absolute;inset:0;background:linear-gradient(270deg,#061a40e8,#0b2e62a6 42%,#102a5b3b 90%)}
+#hd.souqna-hero .souqna-hero-title{position:relative;z-index:1;display:flex;align-items:center;justify-content:flex-start;gap:20px;color:#fff}
+#hd.souqna-hero .souqna-hero-title>img{width:110px;height:90px;object-fit:contain;filter:drop-shadow(0 4px 8px #0005)}
+#hd.souqna-hero .souqna-hero-title h1{margin:0;font-size:clamp(24px,3vw,39px);color:#fff;text-shadow:0 2px 5px #031331}
+#hd.souqna-hero .souqna-hero-title small{font-size:13px;font-weight:800;color:#dce7ff}
+#hd.souqna-hero .sr{position:relative;z-index:2;max-width:960px;margin:7px 170px 0 auto;border-radius:17px;background:#f8faff;height:49px;box-shadow:0 4px 12px #0a1a3c72}
+#hd.souqna-hero .sr input{height:100%;margin:0;font-size:14px;color:#1c3b71}
+#hd.souqna-hero .souqna-searchbtn{background:linear-gradient(110deg,#1b73eb,#0d58cb);border:0;color:#fff;padding:10px 22px;border-radius:11px;font-weight:900}
+main:has(.souqna-home-layout){max-width:1680px;padding:10px 12px 86px}
+.souqna-home-layout{display:grid;direction:ltr;grid-template-columns:292px minmax(0,1fr);gap:12px;align-items:start}
+.souqna-aside,.souqna-feed{direction:rtl;min-width:0}
+.souqna-aside .souqna-service{border:1px solid #99c5d5;border-radius:14px;background:linear-gradient(115deg,#074a2f,#059c51);color:#fff;padding:11px;margin-bottom:10px;box-shadow:0 5px 15px #0a2c5424}
+.souqna-aside .souqna-service.fuel{background:linear-gradient(110deg,#092f67,#1368bb);border-color:#b2c8e7}
+.souqna-aside .souqna-service b{font-size:17px}
+.souqna-aside .souqna-service small{font-size:11px;color:#e8f7ff;display:block}
+.souqna-aside .souqna-service button{margin-top:7px;border:0;border-radius:17px;background:#f8fbff;color:#0b2753;padding:4px 14px;font-weight:900}
+.souqna-aside .wx{border:1px solid #8babdd;background:linear-gradient(115deg,#10458c,#2476d6 65%,#062d69);color:#fff;min-height:130px}
+.souqna-aside .wx .mut{color:#dfeaff}
+.souqna-aside .wx i{color:#fff}
+.souqna-aside .souqna-city-services{border:1px solid var(--bd);border-radius:13px;background:#f8faff;padding:8px;margin-bottom:10px}
+.souqna-city-services .chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:7px 0}
+.souqna-city-services .chips button{font-size:11px;padding:7px 5px;white-space:normal}
+.souqna-city-services h3{margin:2px 0 8px;font-size:14px}
+.souqna-aside #dir .dr{font-size:11px;padding:8px}
+.souqna-feed .cg{grid-template-columns:repeat(8,minmax(0,1fr));gap:9px;margin:0 0 11px}
+.souqna-feed .cc{min-width:0;min-height:112px;padding:6px 0 8px;background:linear-gradient(#f7faff,#eaf2ff);border-radius:16px;font-weight:900;box-shadow:0 4px 8px #0a32702a;transition:transform .2s}
+.souqna-feed .cc:hover{transform:translateY(-3px);border-color:#1a69dc}
+.souqna-feed .cc .sp.ci{margin:0 auto 7px;transform:scale(1.04)}
+.souqna-feed .cc i{font-size:38px;margin-bottom:4px}
+.souqna-promo-strip{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;margin-bottom:12px}
+.souqna-promo-strip .souqna-promo{border:1px solid #bcd4f4;background:linear-gradient(120deg,#091c44,#1260c2);border-radius:16px;min-height:145px;color:#fff;position:relative;overflow:hidden;display:flex;align-items:center;padding:15px;gap:8px}
+.souqna-promo-strip .souqna-promo.store{background:linear-gradient(110deg,#0b48a1,#061d49)}
+.souqna-promo .copy{position:relative;z-index:2;flex:1}
+.souqna-promo h2{font-size:20px;margin:0 0 5px}
+.souqna-promo p{font-size:12px;margin:5px 0 10px}
+.souqna-promo .photo{max-width:40%;max-height:132px;object-fit:cover;border-radius:12px;box-shadow:0 4px 12px #071b4e8e}
+.souqna-promo button{border:0;border-radius:17px;padding:6px 17px;background:linear-gradient(#ffe57b,#e6aa22);color:#30240a;font-weight:900}
+.souqna-feed .souqna-list{background:#fff;border:1px solid var(--bd);border-radius:17px;padding:12px;box-shadow:0 4px 15px #14375d16}
+.souqna-list .sec{margin:0 0 10px;font-size:20px;font-weight:900}
+.souqna-list #list{grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+.souqna-list #list .item{min-width:0;border-radius:12px}
+.souqna-list #list .item .img{height:110px;font-size:40px}
+.souqna-list #list .item .bd{padding:8px 7px;font-size:11px}
+.souqna-list #list .item .bd b{display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.souqna-list #list .item .mut{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.souqna-list #list .item .price{font-weight:900;font-size:13px;white-space:nowrap}
+.souqna-list #list .item .btn{padding:5px 9px;font-size:11px}
+.souqna-news-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;background:linear-gradient(120deg,#062355,#093574);padding:7px 13px;border:1px solid #72a4df;border-radius:0 0 17px 17px;max-width:1680px;margin:auto;box-shadow:0 6px 15px #10294d2b}
+.souqna-news-shortcuts button{border:1px solid #477fcd;min-width:0;border-radius:10px;background:linear-gradient(#1360b9,#062d6f);padding:7px 9px;color:#fff;font-weight:900;font-size:12px}
+.souqna-news-shortcuts button.green{background:linear-gradient(#16b36b,#08723e);border-color:#64dc97}
+.souqna-news-shortcuts button.purple{background:linear-gradient(#892be2,#4d1d92);border-color:#bd7af1}
+.souqna-news-shortcuts .quick-weather{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#newsbar{background:transparent}
+#newsbar>.tk{margin:0 auto;max-width:1680px;border-radius:0;height:42px}
+@media(max-width:1260px){
+.souqna-topnav-inner{gap:5px;padding:7px 9px}.souqna-links button{padding:9px}.souqna-home-layout{grid-template-columns:235px minmax(0,1fr)}
+.souqna-list #list{grid-template-columns:repeat(3,minmax(0,1fr))}.souqna-feed .cg{overflow-x:auto;display:flex}.souqna-feed .cc{flex:0 0 111px}
+}
+@media(max-width:850px){
+.souqna-topnav-inner{min-height:56px}.souqna-links{display:none}.souqna-vip,.souqna-balance{display:none}
+main:has(.souqna-home-layout){padding:8px 8px 90px}.souqna-home-layout{grid-template-columns:1fr;direction:rtl}
+.souqna-feed{order:0}.souqna-aside{order:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.souqna-aside .wx,.souqna-city-services{grid-column:1/-1}.souqna-promo-strip{grid-template-columns:1fr}
+.souqna-promo-strip .souqna-promo{min-height:130px}
+#hd.hd.big.souqna-hero{padding:17px 11px;min-height:146px}
+#hd.souqna-hero .souqna-hero-title>img{height:56px;width:65px}
+#hd.souqna-hero .souqna-hero-title h1{font-size:24px}
+#hd.souqna-hero .sr{margin:12px auto 0;max-width:100%;height:42px}
+#hd.souqna-hero .souqna-searchbtn{padding:7px 11px;font-size:12px}
+.souqna-news-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:6px}
+.souqna-list #list{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
 </style>
 </head>
 <body>
