@@ -13,7 +13,7 @@ const escapeHtml=value=>String(value??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<"
 function view(input={}){
   const data={
     site:{tickerOn:true,showPharmacies:true,showFuel:true,showOffers:true,tickerSpeed:32},
-    dr:[],ads:[],sp:[],wa:"",spi:0,
+    dr:[],ads:[],sp:[],wa:"",spi:0,wx:null,
     Date,Object,Number,String,Math,
     isF:a=>a.featuredUntil>now,
     esc:escapeHtml,
