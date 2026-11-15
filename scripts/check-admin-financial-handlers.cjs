@@ -11,7 +11,10 @@ new vm.SourceTextModule(stripped,{identifier:"souqna-app"});
 for(const [action,call] of [
   ["ordok","approveStarOrder"],
   ["subok","approveSubscription"],
-  ["prok","approvePromotion"]
+  ["prok","approvePromotion"],
+  ["ordno","rejectStarOrder"],
+  ["subno","rejectSubscription"],
+  ["prno","rejectPromotion"]
 ]){
   const start=source.indexOf('else if(a=="'+action+'")');
   assert(start>=0,"Missing handler: "+action);
@@ -22,4 +25,4 @@ for(const [action,call] of [
   assert(!/updateDoc\s*\(|\bledger\s*\(|\bnotify\s*\(/.test(handler),action+" must not perform client financial writes");
 }
 assert(source.includes('getFunctions(app,"europe-west1")'),"Cloud Functions region mismatch");
-console.log("PASS: JavaScript module syntax and 3 financial approval handlers");
+console.log("PASS: JavaScript module syntax and 6 financial approval/rejection handlers");
