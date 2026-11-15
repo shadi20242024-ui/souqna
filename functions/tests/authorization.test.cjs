@@ -50,8 +50,8 @@ for(const name of moderation){
 }
 test("invalid inputs never enter Firestore transactions",()=>assert.equal(transactionCount,0));
 
-test("all ten callables require App Check and use the configured region",()=>{
-  assert.equal(callableOptions.length,10);
+test("all eleven callables require App Check and use the configured region",()=>{
+  assert.equal(callableOptions.length,11);
   for(const options of callableOptions){
     assert.equal(options.region,"europe-west1");
     assert.equal(options.enforceAppCheck,true);
@@ -87,4 +87,28 @@ test("admin cannot alter their own staff role",async()=>{
     auth:{uid:"root",token:{admin:true}},
     data:{userId:"root",role:"editor",mutationId:"1234567890abcdef"}
   }),e=>e.code==="failed-precondition");
+});
+
+test("service order handler denies missing authentication",async()=>{
+  await assert.rejects(handlers.updateServiceOrder({
+    data:{orderId:"service1",status:"done"}
+  }),e=>e.code==="unauthenticated");
+});
+test("service order handler rejects invalid IDs",async()=>{
+  await assert.rejects(handlers.updateServiceOrder({
+    auth:{uid:"staff",token:{}},
+    data:{orderId:"../unsafe",status:"done"}
+  }),e=>e.code==="invalid-argument");
+});
+test("service order handler rejects invalid target statuses",async()=>{
+  await assert.rejects(handlers.updateServiceOrder({
+    auth:{uid:"staff",token:{}},
+    data:{orderId:"service1",status:"approved"}
+  }),e=>e.code==="invalid-argument");
+});
+test("service order rejection requires a reason",async()=>{
+  await assert.rejects(handlers.updateServiceOrder({
+    auth:{uid:"staff",token:{}},
+    data:{orderId:"service1",status:"rejected",reason:""}
+  }),e=>e.code==="invalid-argument");
 });
