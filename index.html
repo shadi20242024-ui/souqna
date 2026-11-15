@@ -221,6 +221,18 @@ const TY={pharmacy:"صيدلية",fuel:"محطة وقود",doctor:"طبيب",law
 const wxTxt=c=>c==0?"صافٍ":c<4?"غائم جزئيًا":c<50?"ضباب":c<70?"أمطار":c<80?"ثلوج":c<90?"زخات مطر":"عاصفة رعدية";
 async function loadWx(){try{const j=await(await fetch("https://api.open-meteo.com/v1/forecast?latitude=32.71&longitude=36.57&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto")).json();wx={t:Math.round(j.current.temperature_2m),c:j.current.weather_code,hi:Math.round(j.daily.temperature_2m_max[0]),lo:Math.round(j.daily.temperature_2m_min[0])};if(view=="home")render()}catch(e){wx=null}}
 const wxHtml=()=>wx&&site.weatherOn!==false?`<div class="wx"><span>${wx.c==0?"☀️":wx.c<4?"⛅":wx.c<50?"🌫️":wx.c<80?"🌧️":"⛈️"}</span><div><b>طقس السويداء الآن</b><div class="mut">${wxTxt(wx.c)} · العظمى ${wx.hi}° · الصغرى ${wx.lo}°</div></div><i>${wx.t}°</i></div>`:"";
+function souqnaShortcutsHtml(){
+  const now=Date.now();
+  const dutyCount=dr.filter(x=>x.type==="pharmacy"&&x.active!==false&&x.onDuty&&Number(x.dutyUntil)>now).length;
+  const fuelCount=dr.filter(x=>x.type==="fuel"&&x.active!==false&&Number(x.statusUpdatedAt)>now-86400000&&x.fuelStatus!=="unknown").length;
+  const offersCount=ads.filter(isF).length;
+  return '<div class="souqna-news-shortcuts" aria-label="ملخص الخدمات والأخبار">'+
+    '<button type="button" class="quick-weather" data-v="home">⛅ طقس السويداء '+(wx?Math.round(wx.t)+"°":"—")+'</button>'+
+    '<button type="button" class="green" data-dt="pharmacy">💊 الصيدليات المناوبة'+(dutyCount?" ("+dutyCount+")":"")+'</button>'+
+    '<button type="button" data-dt="fuel">⛽ محطات الوقود'+(fuelCount?" ("+fuelCount+")":"")+'</button>'+
+    '<button type="button" class="purple" data-a="feat">🎁 أفضل العروض'+(offersCount?" ("+offersCount+")":"")+'</button>'+
+    '</div>';
+}
 function tkHtml(){
   if(site.tickerOn===false)return "";
   const items=[], now=Date.now();
@@ -246,7 +258,7 @@ function tkHtml(){
   if(!items.length)items.push({icon:"📍",tag:"سوقنا السويداء",text:"أهلاً بكم في سوقنا — تابعوا آخر العروض والخدمات المحلية"});
   const pieces=items.map(x=>'<span class="news-chip"><span>'+x.icon+'</span><strong>'+esc(x.tag)+'</strong><span>'+esc(x.text)+'</span></span><span class="news-dot">✦</span>').join("");
   const speed=Math.min(120,Math.max(14,Number(site.tickerSpeed)||34));
-  return '<div class="tk" role="region" aria-label="شريط أخبار سوقنا"><b>📢 أخبار السويداء</b><div class="tkw"><div class="news-loop" style="--news-speed:'+speed+'s"><div class="news-segment">'+pieces+'</div><div class="news-segment" aria-hidden="true">'+pieces+'</div></div></div></div>';
+  return '<div class="tk" role="region" aria-label="شريط أخبار سوقنا"><b>📢 أخبار السويداء</b><div class="tkw"><div class="news-loop" style="--news-speed:'+speed+'s"><div class="news-segment">'+pieces+'</div><div class="news-segment" aria-hidden="true">'+pieces+'</div></div></div></div>'+souqnaShortcutsHtml();
 }
 function spHtml(){
   const now=Date.now();
@@ -498,13 +510,14 @@ const need=()=>{if(!me){toast("سجّل الدخول أولًا");view="acc";ren
 document.addEventListener("click",async e=>{
   const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc"].includes(view))await loadMine();feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
   const ss=e.target.closest("[data-st]");if(ss){curStore=ss.dataset.st;view="store";stx={f:[],r:[]};await loadStoreX(curStore);render();return scrollTo(0,0)}
-  const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;$("#dir").innerHTML=dirHtml();document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt==dtype));return}
+  const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;if(view!=="home"){view="home";render()}else{const directory=$("#dir");if(directory)directory.innerHTML=dirHtml()}document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt===dtype));return}
   const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view="home";feat=false;render();return scrollTo(0,0)}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   try{
     if(a=="more"){more=!more;render()}
+    else if(a=="search"){view="home";drawList();$("#list")?.scrollIntoView({behavior:"smooth",block:"start"})}
     else if(a=="spnext"||a=="spprev"){const items=sp.filter(s=>s.active===true&&s.paymentVerified===true&&Number(s.to)>Date.now()&&Number(s.from||0)<=Date.now());if(items.length){spi=(spi+(a=="spnext"?1:items.length-1))%items.length;const e=$("#spw");if(e)e.innerHTML=spHtml()}}
-    else if(a=="feat"){feat=!feat;cur="all";render()}
+    else if(a=="feat"){feat=!feat;cur="all";view="home";render()}
     else if(a=="swap"){mode=mode=="reg"?"login":"reg";render()}
     else if(a=="auth"){
       if(mode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");
