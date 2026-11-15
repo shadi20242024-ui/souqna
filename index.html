@@ -61,10 +61,42 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 .stc{flex:none;width:84px;background:none;border:0;font:inherit;font-size:12px;font-weight:bold;color:var(--t)}.stc span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .stl{width:64px;height:64px;border-radius:18px;background:#e4ecfb center/cover;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:var(--b);border:2px solid var(--g)}
 .cv{height:140px;background:linear-gradient(120deg,#0a2a72,#1a4fc4) center/cover;border-radius:18px;position:relative;margin:10px 0 48px}.cv .stl{position:absolute;bottom:-40px;right:16px;width:80px;height:80px;background-color:#fff;margin:0}
+
+/* Always-visible SOUQNA news rail */
+#newsbar{position:relative;z-index:5;background:#061b4a}
+.tk{max-width:1250px;margin:0 auto 0;border:1px solid #e2a930;border-radius:0 0 14px 14px;background:linear-gradient(100deg,#061942,#0b3478);color:#fff;height:48px;box-shadow:0 5px 20px #09245435}
+.tk b{flex-shrink:0;border-radius:0;background:linear-gradient(130deg,#edb747,#b77709);color:#061b42;font-size:13px;padding:0 16px}
+.tkw{height:100%;display:flex;align-items:center;direction:ltr;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+.news-loop{display:flex;align-items:center;flex:none;width:max-content;animation:news-marquee var(--news-speed,32s) linear infinite;will-change:transform}
+.news-segment{display:flex;align-items:center;flex:none;gap:22px;padding:0 12px;direction:rtl}
+.news-chip{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:13px;color:#fff;font-weight:700}
+.news-chip strong{color:#ffe2a0}
+.news-dot{color:#ffcb59;font-size:15px}
+.tk:focus-within .news-loop,.tk:hover .news-loop{animation-play-state:paused}
+@keyframes news-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.news-loop{animation:none}.tkw{overflow:auto}.news-segment[aria-hidden="true"]{display:none}}
+/* Premium paid placement, distinct from the branded welcome banner */
+.hero-sponsor{position:relative;isolation:isolate;overflow:hidden;min-height:220px;display:flex;align-items:flex-end;margin:6px 0 14px;border-radius:22px;background:radial-gradient(circle at 14% 20%,#2a66c6,#0a2354 66%);color:#fff;border:2px solid #e9b546;box-shadow:0 12px 30px #0b2b7240}
+.hero-sponsor>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2}
+.hero-sponsor:after{content:"";position:absolute;inset:0;background:linear-gradient(270deg,#061637eb 0%,#082756c8 42%,#061d4430 85%);z-index:-1}
+.hero-sponsor .hero-copy{padding:25px 24px 43px;max-width:80%;text-shadow:0 3px 12px #051a53a0}
+.hero-sponsor .hero-copy h2{font-size:clamp(21px,3vw,32px);margin:7px 0;font-weight:900;line-height:1.3}
+.hero-sponsor .hero-copy p{font-size:14px;opacity:.95;margin:6px 0 14px}
+.hero-sponsor .sponsor-mark{position:absolute;top:14px;right:16px;background:#071e43bb;border:1px solid #edc064;color:#ffe39c;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:800}
+.hero-sponsor .sponsor-arrows{position:absolute;bottom:12px;left:15px;display:flex;gap:8px}
+.hero-sponsor .sponsor-arrows button{border:1px solid #ffe7ae;color:#fff;background:#091f4fb0;font-size:21px;border-radius:12px;width:35px;height:35px;cursor:pointer}
+.hero-sponsor .sponsor-counter{position:absolute;bottom:16px;right:18px;font-size:12px;color:#fce09d;font-weight:800}
+.hero-sponsor .gold{display:inline-flex;text-decoration:none;padding:9px 17px;border-radius:16px;font-weight:800}
+.hero-booking{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px dashed #daa439;border-radius:13px;padding:9px 14px;margin:0 0 14px;font-size:12px}
+.hero-booking .cta{margin:0;text-align:left}
+.admin-hint{display:block;font-size:11px;color:#63718e;margin:-2px 0 12px}
+@media(max-width:600px){.tk{height:41px;border-radius:0}.tk b{padding:0 10px;font-size:11px}.news-chip{font-size:11px}.hero-sponsor{min-height:185px;border-radius:18px}.hero-sponsor .hero-copy{padding:35px 15px 43px;max-width:92%}.hero-sponsor .hero-copy h2{font-size:21px}.hero-sponsor .hero-copy p{font-size:11px}.hero-sponsor .sponsor-mark{top:8px;right:9px;font-size:10px}.hero-sponsor .sponsor-arrows button{width:30px;height:30px}.hero-booking{font-size:11px}}
+
 </style>
 </head>
 <body>
 <div id="hd" class="hd"></div>
+<div id="newsbar" aria-label="الأخبار المحلية والعروض"></div>
 <main id="app"></main>
 <nav id="nav"></nav>
 <script type="module">
@@ -96,7 +128,33 @@ const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer
 const wxTxt=c=>c==0?"صافٍ":c<4?"غائم جزئيًا":c<50?"ضباب":c<70?"أمطار":c<80?"ثلوج":c<90?"زخات مطر":"عاصفة رعدية";
 async function loadWx(){try{const j=await(await fetch("https://api.open-meteo.com/v1/forecast?latitude=32.71&longitude=36.57&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto")).json();wx={t:Math.round(j.current.temperature_2m),c:j.current.weather_code,hi:Math.round(j.daily.temperature_2m_max[0]),lo:Math.round(j.daily.temperature_2m_min[0])};if(view=="home")render()}catch(e){wx=null}}
 const wxHtml=()=>wx&&site.weatherOn!==false?`<div class="wx"><span>${wx.c==0?"☀️":wx.c<4?"⛅":wx.c<50?"🌫️":wx.c<80?"🌧️":"⛈️"}</span><div><b>طقس السويداء الآن</b><div class="mut">${wxTxt(wx.c)} · العظمى ${wx.hi}° · الصغرى ${wx.lo}°</div></div><i>${wx.t}°</i></div>`:"";
-function tkHtml(){if(site.tickerOn===false)return"";const it=[...dr.filter(x=>x.type=="pharmacy"&&x.onDuty).map(x=>`صيدلية ${x.name}${x.area?" ("+x.area+")":""} مناوبة اليوم`),...ads.filter(isF).map(a=>"⭐ "+a.title),...(site.ticker||"").split("\n").filter(Boolean)];return it.length?`<div class="tk"><b>عاجل</b><div class="tkw"><span>${it.map(esc).join(" &nbsp;•&nbsp; ")}</span></div></div>`:""}
+function tkHtml(){
+  if(site.tickerOn===false)return "";
+  const items=[], now=Date.now();
+  if(site.showPharmacies!==false){
+    for(const x of dr.filter(x=>x.type==="pharmacy"&&x.active!==false&&x.onDuty&&(!x.dutyUntil||x.dutyUntil>now)).slice(0,8)){
+      items.push({icon:"💊",tag:"صيدلية مناوبة",text:x.name+(x.area?" — "+x.area:"")+" (بحسب تحديث الإدارة)"});
+    }
+  }
+  if(site.showFuel!==false){
+    const labels={available:"الوقود متوفر",limited:"توفر محدود",unavailable:"غير متوفر"};
+    for(const x of dr.filter(x=>x.type==="fuel"&&x.active!==false&&Object.hasOwn(labels,x.fuelStatus)).slice(0,8)){
+      items.push({icon:"⛽",tag:"محطة وقود",text:x.name+" — "+labels[x.fuelStatus]+" (بحسب تحديث الإدارة)"});
+    }
+  }
+  if(site.showOffers!==false){
+    for(const x of ads.filter(isF).slice(0,5))items.push({icon:"✨",tag:"عرض مميز",text:x.title});
+  }
+  for(const line of String(site.ticker||"").split("\n").map(x=>x.trim()).filter(Boolean).slice(0,25)){
+    const categories=[["[وقود]","⛽","وقود"],["[صيدليات]","💊","صيدليات"],["[عروض]","⭐","عروض"],["[خبر]","📢","خبر"]];
+    const found=categories.find(x=>line.startsWith(x[0]));
+    items.push({icon:found?found[1]:"📢",tag:found?found[2]:"من سوقنا",text:found?line.slice(found[0].length).trim():line});
+  }
+  if(!items.length)items.push({icon:"📍",tag:"سوقنا السويداء",text:"أهلاً بكم في سوقنا — تابعوا آخر العروض والخدمات المحلية"});
+  const pieces=items.map(x=>'<span class="news-chip"><span>'+x.icon+'</span><strong>'+esc(x.tag)+'</strong><span>'+esc(x.text)+'</span></span><span class="news-dot">✦</span>').join("");
+  const speed=Math.min(120,Math.max(14,Number(site.tickerSpeed)||34));
+  return '<div class="tk" role="region" aria-label="شريط أخبار سوقنا"><b>📢 أخبار السويداء</b><div class="tkw"><div class="news-loop" style="--news-speed:'+speed+'s"><div class="news-segment">'+pieces+'</div><div class="news-segment" aria-hidden="true">'+pieces+'</div></div></div></div>';
+}
 function spHtml(){const l=sp.filter(s=>s.active&&s.to>Date.now()),cta=wa?`<a class="cta" target="_blank" href="${waLink("أريد حجز بانر إعلاني في سوقنا")}">هل تريد إعلانك هنا؟ تواصل معنا ‹</a>`:"";if(!l.length)return cta;const s=l[spi%l.length];return `<div class="spn" style="${s.img?`background-image:linear-gradient(90deg,#0a2a72f2,#0a2a7299),url(${s.img})`:""}"><small>إعلان برعاية</small><div class="sco">${esc(s.company)}</div><b>${esc(s.title)}</b><div>${esc(s.desc||"")}</div>${s.phone?`<a class="gold" style="margin-top:8px" target="_blank" href="https://wa.me/${esc(s.phone)}">تواصل مع الشركة</a>`:""}</div>`+cta}
 function dirHtml(){const L=dr.filter(x=>x.type==dtype&&x.active!==false&&(dtype!="pharmacy"||x.onDuty)).sort((x,y)=>(y.stars||0)-(x.stars||0));return L.map(x=>`<div class="dr"><div class="av">${esc((x.name||"?")[0])}</div><div style="flex:1"><b>${esc(x.name)}</b> <span class="gs">${"★".repeat(x.stars||0)}</span>${x.onDuty?' <span class="tag">مناوبة اليوم</span>':""}<div class="mut">${esc(x.spec||"")}${x.area?" · "+esc(x.area):""}</div></div>${x.phone?`<a class="btn g" href="tel:${esc(x.phone)}">اتصال</a>`:""}</div>`).join("")||'<p class="mut">لا توجد بيانات بعد.</p>'}
 const adHtml=()=>site.adClient?`<ins class="adsbygoogle" style="display:block;margin:12px 0" data-ad-client="${esc(site.adClient)}" data-ad-slot="${esc(site.adSlot||"")}" data-ad-format="auto" data-full-width-responsive="true"></ins>`:"";
@@ -163,11 +221,11 @@ function loginBox(){
   <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
 
 function render(){
-  drawHd();drawNav();const A=$("#app");
+  drawHd();drawNav();const news=$("#newsbar");if(news)news.innerHTML=tkHtml();const A=$("#app");
   if(view=="home"){
     A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>a.img).slice(0,8).map(a=>`<button class="sc" data-c="${a.cat}" aria-label="${esc(a.title)}" style="background-image:url(${a.img})"></button>`).join("")}</div>
     ${site.banner?`<img class="bnr" src="${site.banner}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
-    ${tkHtml()}${wxHtml()}<div id="spw">${spHtml()}</div>${storesHtml()}
+    ${wxHtml()}<div id="spw">${spHtml()}</div>${storesHtml()}
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
     <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
     <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
