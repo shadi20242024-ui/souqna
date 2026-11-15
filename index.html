@@ -101,7 +101,7 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 <nav id="nav"></nav>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import{getAuth,getIdTokenResult,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,increment}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import{getFunctions,httpsCallable}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
@@ -117,7 +117,7 @@ const STAFF=["admin","moderator","accountant","editor"];
 let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],sq="",plans=[],subs=[],editPl=null,editSp=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
-const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
+const isStaff=()=>me&&(me.adminClaim===true||STAFF.includes(me.role)),isAdm=()=>me&&me.adminClaim===true;
 const isF=a=>(a.featuredUntil||0)>Date.now();
 const val=i=>($(i)?.value||"").trim();
 const waLink=t=>"https://wa.me/"+wa+(t?"?text="+encodeURIComponent(t):"");
@@ -443,7 +443,7 @@ document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
 onAuthStateChanged(auth,async u=>{
   me=null;
-  if(u){const s=await getDoc(doc(db,"users",u.uid));me=s.exists()?{uid:u.uid,...s.data()}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0};await loadMine()}
+  if(u){const s=await getDoc(doc(db,"users",u.uid));let adminClaim=false;try{adminClaim=(await getIdTokenResult(u)).claims.admin===true}catch(error){console.warn("تعذر التحقق من صلاحية المدير",error)}me=s.exists()?{uid:u.uid,...s.data(),adminClaim}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0,adminClaim};await loadMine()}
   else{mine=[];pend=[];orders=[];promos=[]}
   if(view=="admin"&&!isStaff())view="home";
   render();
