@@ -18,7 +18,9 @@ for(const [action,call] of [
 ]){
   const start=source.indexOf('else if(a=="'+action+'")');
   assert(start>=0,"Missing handler: "+action);
-  const end=source.indexOf("else if(a==",start+12);
+  const next=source.indexOf("else if(a==",start+12);
+  const catchBoundary=source.indexOf("}catch(err)",start+12);
+  const end=next>=0 ? next : catchBoundary;
   assert(end>start,"Missing handler boundary: "+action);
   const handler=source.slice(start,end);
   assert(handler.includes('approveSecure("'+call+'",id)'),action+" must call "+call);
@@ -44,7 +46,10 @@ for (const [action,call] of [
 ]){
   const start=source.indexOf(action);
   assert(start>=0,"Missing moderation handler "+action);
-  const end=source.indexOf("else if(a==",start+action.length);
+  const next=source.indexOf("else if(a==",start+action.length);
+  const catchBoundary=source.indexOf("}catch(err)",start+action.length);
+  const end=next>=0 ? next : catchBoundary;
+  assert(end>start,"Missing moderation handler boundary: "+action);
   const handler=source.slice(start,end);
   assert(handler.includes('moderateSecure("'+call+'",id,'),"Missing server moderation "+call);
   assert(!/updateDoc\s*\(|\bnotify\s*\(/.test(handler),"Moderation must not write directly to Firestore");
