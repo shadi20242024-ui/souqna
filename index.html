@@ -71,8 +71,11 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,increment}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import{getFunctions,httpsCallable}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
 const auth=getAuth(app),db=getFirestore(app);
+const secureFunctions=getFunctions(app,"europe-west1");
+const approveSecure=(name,requestId)=>httpsCallable(secureFunctions,name)({[name==="approveStarOrder"?"orderId":"requestId"]:requestId});
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
@@ -286,7 +289,7 @@ document.addEventListener("click",async e=>{
     else if(a=="pttog"){await updateDoc(doc(db,"partners",id),{active:partners.find(x=>x.id==id).active===false});await loadPublic();render()}
     else if(a=="ptdel"){await deleteDoc(doc(db,"partners",id));await loadPublic();render()}
     else if(a=="subreq"){const p=plans.find(x=>x.id==$("#pl-"+id).value),st=myStores.find(x=>x.id==id);if((me.stars||0)<p.stars)return toast("رصيدك لا يكفي، اشترِ نجومًا أولًا");await addDoc(collection(db,"subs"),{userId:me.uid,userName:me.name,storeId:id,storeName:st.name,planId:p.id,planName:p.name,stars:p.stars,days:p.days,status:"pending",createdAt:Date.now()});toast("أُرسل طلب الاشتراك وسيُفعّل بعد موافقة الإدارة")}
-    else if(a=="subok"){const r=subs.find(x=>x.id==id),u=await getDoc(doc(db,"users",r.userId));if((u.data().stars||0)<r.stars)return toast("رصيد المستخدم لا يكفي");const b=(await getDoc(doc(db,"stores",r.storeId))).data(),base=b.plan==r.planId?Math.max(Date.now(),b.planUntil||0):Date.now();await updateDoc(doc(db,"users",r.userId),{stars:increment(-r.stars)});await updateDoc(doc(db,"stores",r.storeId),{plan:r.planId,planUntil:base+r.days*864e5});await ledger(r.userId,"debit",-r.stars,"اشتراك "+r.planName+" - "+r.storeName);await notify(r.userId,"تم تفعيل اشتراك "+r.planName+" لمتجر "+r.storeName);await updateDoc(doc(db,"subs",id),{status:"done"});await loadPublic();await loadMine();toast("فُعّل الاشتراك");render()}
+    else if(a=="subok"){await approveSecure("approveSubscription",id);await loadPublic();await loadMine();toast("فُعّل الاشتراك بأمان");render()}
     else if(a=="subno"){await updateDoc(doc(db,"subs",id),{status:"rejected"});await loadMine();render()}
     else if(a=="seedpl"){for(const [i,n,st,d,m,bd,o] of [["free","مجانية",0,0,5,"",0],["silver","فضية",10,30,30,"فضي",1],["gold","ذهبية",25,30,100,"ذهبي",2],["vip","VIP",50,30,0,"VIP",3]])await setDoc(doc(db,"plans",i),{name:n,stars:st,days:d,maxAds:m,badge:bd,order:o,active:true,features:""});await loadPublic();render()}
     else if(a=="savepl"){const k=editPl?editPl.id:val("#pl-id").toLowerCase().replace(/[^a-z0-9_]/g,"");if(!k||!val("#pl-n"))return toast("اكتب المعرّف (إنجليزي) والاسم");await setDoc(doc(db,"plans",k),{name:val("#pl-n"),stars:+val("#pl-s")||0,days:+val("#pl-d")||0,maxAds:+val("#pl-m")||0,badge:val("#pl-b"),order:+val("#pl-o")||0,features:val("#pl-f"),active:editPl?editPl.active!==false:true});editPl=null;await loadPublic();render()}
@@ -310,14 +313,9 @@ document.addEventListener("click",async e=>{
     else if(a=="adddir"){if(!val("#d-n"))return toast("اكتب الاسم");await addDoc(collection(db,"directory"),{type:$("#d-t").value,name:val("#d-n"),spec:val("#d-s"),area:val("#d-a"),phone:val("#d-p").replace(/[^\d+]/g,""),stars:+$("#d-st").value,onDuty:false,active:true,createdAt:Date.now()});await loadPublic();render()}
     else if(a=="duty"){await updateDoc(doc(db,"directory",id),{onDuty:!dr.find(x=>x.id==id).onDuty});await loadPublic();render()}
     else if(a=="deldir"){await deleteDoc(doc(db,"directory",id));await loadPublic();render()}
-    else if(a=="ordok"){const o=orders.find(x=>x.id==id);await updateDoc(doc(db,"users",o.userId),{stars:increment(o.stars)});await ledger(o.userId,"credit",o.stars,"شحن نجوم");await notify(o.userId,"أُضيف "+o.stars+" نجمة إلى رصيدك");await updateDoc(doc(db,"starOrders",id),{status:"done"});toast("أُضيفت النجوم");await loadMine();render()}
+    else if(a=="ordok"){await approveSecure("approveStarOrder",id);await loadMine();toast("تمت معالجة طلب النجوم بأمان");render()}
     else if(a=="ordno"){await updateDoc(doc(db,"starOrders",id),{status:"rejected"});await loadMine();render()}
-    else if(a=="prok"){const p=promos.find(x=>x.id==id),u=await getDoc(doc(db,"users",p.userId));
-      if((u.data().stars||0)<p.stars)return toast("رصيد المستخدم لا يكفي");
-      const ad=await getDoc(doc(db,"ads",p.adId)),base=Math.max(Date.now(),ad.data().featuredUntil||0);
-      await updateDoc(doc(db,"users",p.userId),{stars:increment(-p.stars)});await ledger(p.userId,"debit",-p.stars,"تمييز إعلان: "+p.adTitle);await notify(p.userId,"تم تمييز إعلانك: "+p.adTitle);
-      await updateDoc(doc(db,"ads",p.adId),{featuredUntil:base+p.days*864e5});
-      await updateDoc(doc(db,"promos",id),{status:"done"});await loadPublic();await loadMine();toast("فُعّل التمييز");render()}
+    else if(a=="prok"){await approveSecure("approvePromotion",id);await loadPublic();await loadMine();toast("فُعّل تمييز الإعلان بأمان");render()}
     else if(a=="prno"){await updateDoc(doc(db,"promos",id),{status:"rejected"});await loadMine();render()}
   }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":"تعذر تنفيذ العملية")}
 });
