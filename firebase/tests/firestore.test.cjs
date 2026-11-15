@@ -1,5 +1,4 @@
 const {test, before, after} = require("node:test");
-const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const {initializeTestEnvironment, assertFails, assertSucceeds} = require("@firebase/rules-unit-testing");
 const {doc, setDoc, updateDoc, getDoc} = require("firebase/firestore");
@@ -47,4 +46,23 @@ test("store owner cannot directly assign paid plan", async () => {
 });
 test("public can read approved store", async () => {
   await assertSucceeds(getDoc(doc(env.unauthenticatedContext().firestore(),"stores","shop")));
+});
+
+test("anonymous users cannot create star top-ups", async () => {
+  await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(),"starOrders","anon"),{userId:"alice",userName:"Alice",stars:10,status:"pending",createdAt:Date.now()}));
+});
+test("users cannot submit top-ups on behalf of others", async () => {
+  await assertFails(setDoc(doc(dbFor("bob"),"starOrders","impersonation"),{userId:"alice",userName:"Alice",stars:10,status:"pending",createdAt:Date.now()}));
+});
+test("users cannot create financial ledger entries", async () => {
+  await assertFails(setDoc(doc(dbFor("alice"),"transactions","fake"),{userId:"alice",type:"credit",amount:10000,createdAt:Date.now()}));
+});
+test("users cannot approve their own advertisements", async () => {
+  await assertFails(setDoc(doc(dbFor("alice"),"ads","fake-approved"),{ownerId:"alice",status:"approved",title:"Fake"}));
+});
+test("owners cannot alter approved store ownership", async () => {
+  await assertFails(updateDoc(doc(dbFor("alice"),"stores","shop"),{ownerId:"bob"}));
+});
+test("user cannot create notification impersonating admin", async () => {
+  await assertFails(setDoc(doc(dbFor("alice"),"notifs","fake"),{userId:"bob",text:"Approved",read:false}));
 });
