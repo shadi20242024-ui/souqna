@@ -355,20 +355,59 @@ function loginBox(){
   <button class="btn" style="width:100%" data-a="auth">${r?"إنشاء الحساب":"دخول"}</button>
   <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
 
+function approvedHomeHtml(){
+  const vehicle=ads.find(x=>x.cat==="cars"||x.cat==="vehicles")||null;
+  const store=stores[0]||null;
+  const duties=dr.filter(x=>x.type==="pharmacy"&&x.onDuty&&Number(x.dutyUntil)>Date.now());
+  const fuel=dr.filter(x=>x.type==="fuel"&&x.active!==false&&Number(x.statusUpdatedAt)>Date.now()-86400000);
+  return `<div class="souqna-home-layout">
+    <aside class="souqna-aside" aria-label="خدمات السويداء">
+      ${wxHtml()||'<div class="wx"><span>⛅</span><div><b>طقس السويداء</b><div class="mut">جاري تحميل بيانات الطقس...</div></div><i>—</i></div>'}
+      <section class="souqna-service">
+        <b>💊 الصيدليات المناوبة</b><small>${duties.length?duties.length+" مناوبة مؤكدة من الإدارة":"لا توجد مناوبة مؤكدة حالياً"}</small>
+        <button type="button" data-dt="pharmacy">عرض الصيدليات</button>
+      </section>
+      <section class="souqna-service fuel">
+        <b>⛽ محطات الوقود</b><small>${fuel.length?fuel.length+" تحديث خلال 24 ساعة":"بانتظار تحديث الإدارة"}</small>
+        <button type="button" data-dt="fuel">عرض المحطات</button>
+      </section>
+      <section class="souqna-city-services"><h3>📍 خدمات المدينة</h3>
+        <div class="chips">${[["pharmacy","💊 الصيدليات"],["fuel","⛽ المحطات"],["doctor","🏥 الأطباء"],["lawyer","⚖️ المحامون"],["engineer","🛠️ المهندسون"]].map(([t,n])=>`<button type="button" data-dt="${t}" class="${dtype===t?"on":""}">${n}</button>`).join("")}</div>
+        <div id="dir">${dirHtml()}</div>
+        <span class="mut">معلومات المناوبات والوقود يحدّثها فريق سوقنا يدوياً ولا تعد بيانات رسمية لحظية.</span>
+      </section>
+    </aside>
+    <div class="souqna-feed">
+      <div class="cg" aria-label="أقسام سوقنا">
+        ${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur===c.id?"on":""}" data-c="${c.id}" title="${esc(c.name_ar)}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}
+      </div>
+      <div class="souqna-promo-strip" aria-label="إعلانات سوقنا">
+        <div class="souqna-promo vehicles">
+          <div class="copy"><h2>إعلانات المركبات</h2><p>سيارات جديدة ومستعملة بأفضل العروض المحلية</p><button type="button" data-c="cars">🚙 تصفح السيارات</button></div>
+          ${vehicle?.img?`<img class="photo" src="${esc(vehicle.img)}" alt="صورة إعلان سيارة">`:'<span style="font-size:65px">🚙</span>'}
+        </div>
+        <div class="souqna-promo store">
+          <div class="copy"><h2>افتح متجرك الآن على سوقنا</h2><p>متجر متكامل • إدارة سهلة • وصول لآلاف الزوار</p><button type="button" data-v="mystores">🏪 إنشاء متجر</button></div>
+          ${store?.logo?`<img class="photo" src="${esc(store.logo)}" alt="شعار متجر">`:'<span style="font-size:66px">🏪</span>'}
+        </div>
+      </div>
+      <div id="spw">${spHtml()}</div>
+      <section class="souqna-list">
+        <div class="sec"><b>📣 ${feat?"الإعلانات المميزة":"أحدث الإعلانات"}</b><div class="acts"><button class="btn l" data-c="all">الكل</button><button class="btn l" data-c="cars">مركبات</button><button class="btn l" data-c="real_estate">عقارات</button><button class="btn l" data-a="feat">⭐ المميزة</button></div></div>
+        <div class="grid" id="list"></div>
+      </section>
+      ${adHtml()}
+      ${storesHtml()}
+      <div class="qt"><button type="button" data-a="feat"><i>⭐</i>الإعلانات المميزة</button><button type="button" data-v="services"><i>📍</i>دليل الخدمات</button><button type="button" data-v="add"><i>📣</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank" rel="noopener noreferrer"`:""}><i>🎧</i>الدعم الفني</a></div>
+      <div class="cm"><b>معاً نبني مجتمعاً أفضل في السويداء 🤝</b><button class="gold" data-c="community">انضم إلينا</button></div>
+    </div>
+  </div>`;
+}
 function render(){
   drawHd();drawNav();drawDesktopNav();const news=$("#newsbar");if(news)news.innerHTML=tkHtml();const A=$("#app");
   if(view=="home"){
-    A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>a.img).slice(0,8).map(a=>`<button class="sc" data-c="${a.cat}" aria-label="${esc(a.title)}" style="background-image:url(${a.img})"></button>`).join("")}</div>
-    ${site.banner?`<img class="bnr" src="${site.banner}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
-    ${wxHtml()}<div id="spw">${spHtml()}</div>${storesHtml()}
-    <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
-    <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
-    <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["fuel","محطات الوقود"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
-    <div class="qt"><button data-a="feat"><i>📢</i>إعلانات مميزة</button><button data-c="services"><i>📍</i>دليل الخدمات</button><button data-v="add"><i>⭐</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}><i>🎧</i>دعم فني</a></div>
-    <div class="cm"><b>معاً .. نبني مجتمعاً أفضل في السويداء 👥</b><button class="gold" data-c="community">انضم إلينا</button></div>
-    <button class="cm" style="width:100%;border:0;font:inherit;cursor:pointer;text-align:right" data-v="services"><b>🎨 خدمات التصميم والفيديو والحملات التسويقية</b><span class="gold">اطلب الآن</span></button>
-    <div class="sec"><b>${feat?"الإعلانات المميزة":"أحدث الإعلانات"}</b></div><div class="grid" id="list"></div>${adHtml()}`;pushAds();
-    drawList();
+    A.innerHTML=approvedHomeHtml();
+    pushAds();drawList();
   }else if(view=="add"){
     A.innerHTML=!me?loginBox():`<div class="box"><h3>➕ أضف إعلانك</h3><select id="a-cat">${cats.map(c=>`<option value="${c.id}">${esc(c.name_ar)}</option>`).join("")}</select>${myStores.some(s=>s.status=="approved")?`<select id="a-st"><option value="">إعلان شخصي (بدون متجر)</option>${myStores.filter(s=>s.status=="approved").map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>`:""}
     <input id="a-title" placeholder="عنوان الإعلان"><div class="row"><input id="a-price" type="number" placeholder="السعر"><select id="a-cur"><option>$</option><option>ل.س</option></select></div>
