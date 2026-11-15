@@ -185,3 +185,111 @@ function moderationCallable(collectionName, label) {
 }
 exports.moderateAdvertisement=moderationCallable("ads","إعلانك");
 exports.moderateStore=moderationCallable("stores","متجرك");
+
+
+const requireTrustedAdmin = request => {
+  if (!request.auth || !request.auth.uid || !request.auth.token || request.auth.token.admin !== true) {
+    throw new HttpsError("permission-denied", "Administrator authorization required");
+  }
+};
+const requireDocumentId = (value, name) => {
+  if (typeof value !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(value)) {
+    throw new HttpsError("invalid-argument", "Invalid " + name);
+  }
+  return value;
+};
+const requireMutationId = value => {
+  if (typeof value !== "string" || !/^[a-zA-Z0-9_-]{16,128}$/.test(value)) {
+    throw new HttpsError("invalid-argument", "Invalid mutation ID");
+  }
+  return value;
+};
+
+exports.adjustUserStars = onCall({region:"europe-west1",enforceAppCheck:true},async request => {
+  requireTrustedAdmin(request);
+  const {userId,delta,reason,mutationId} = request.data || {};
+  requireDocumentId(userId,"user ID");
+  requireMutationId(mutationId);
+  if (!Number.isSafeInteger(delta) || delta === 0 || Math.abs(delta) > 100000) {
+    throw new HttpsError("invalid-argument","Star adjustment must be a nonzero integer within 100000");
+  }
+  if (typeof reason !== "string" || reason.trim().length < 3 || reason.trim().length > 200) {
+    throw new HttpsError("invalid-argument","A reason of 3–200 characters is required");
+  }
+  const note = reason.trim();
+  const userRef = db.collection("users").doc(userId);
+  const ledgerRef = db.collection("transactions").doc("manual_" + mutationId);
+  const notificationRef = db.collection("notifs").doc("manual_" + mutationId);
+  return db.runTransaction(async tx => {
+    const previous = await tx.get(ledgerRef);
+    if (previous.exists) {
+      const record = previous.data();
+      if (record.userId !== userId || record.amount !== delta || record.note !== note) {
+        throw new HttpsError("already-exists","Mutation ID has already been used");
+      }
+      return {status:"already_processed",balance:record.balanceAfter};
+    }
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists) throw new HttpsError("not-found","User not found");
+    const balance = userSnap.data().stars;
+    if (!Number.isSafeInteger(balance) || balance < 0 ||
+        !Number.isSafeInteger(balance + delta) || balance + delta < 0) {
+      throw new HttpsError("failed-precondition","Invalid or insufficient star balance");
+    }
+    const updatedBalance = balance + delta;
+    tx.update(userRef,{stars:updatedBalance});
+    tx.create(ledgerRef,{
+      userId,type:delta > 0 ? "credit":"debit",amount:delta,note,
+      mutationId,initiatedBy:request.auth.uid,balanceBefore:balance,balanceAfter:updatedBalance,
+      createdAt:Date.now()
+    });
+    tx.create(notificationRef,{
+      userId,text:(delta > 0 ? "أُضيف ":"خُصم ") + Math.abs(delta) + " نجمة: " + note,
+      read:false,createdAt:Date.now()
+    });
+    return {status:"done",balance:updatedBalance};
+  });
+});
+
+exports.changeUserRole = onCall({region:"europe-west1",enforceAppCheck:true},async request => {
+  requireTrustedAdmin(request);
+  const {userId,role,mutationId} = request.data || {};
+  requireDocumentId(userId,"user ID");
+  requireMutationId(mutationId);
+  if (!["user","moderator","accountant","editor"].includes(role)) {
+    throw new HttpsError("invalid-argument","Unsupported role; admin privileges require trusted Auth claims");
+  }
+  if (request.auth.uid === userId) {
+    throw new HttpsError("failed-precondition","An administrator cannot change their own role");
+  }
+  const userRef = db.collection("users").doc(userId);
+  const auditRef = db.collection("auditLogs").doc("role_" + mutationId);
+  const notificationRef = db.collection("notifs").doc("role_" + mutationId);
+  return db.runTransaction(async tx => {
+    const previous = await tx.get(auditRef);
+    if (previous.exists) {
+      const record = previous.data();
+      if (record.userId !== userId || record.newRole !== role) {
+        throw new HttpsError("already-exists","Mutation ID has already been used");
+      }
+      return {status:"already_processed",role};
+    }
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists) throw new HttpsError("not-found","User not found");
+    const oldRole = userSnap.data().role;
+    if (oldRole === "admin") {
+      throw new HttpsError("failed-precondition","Admin roles must be managed by the trusted owner");
+    }
+    if (oldRole === role) return {status:"unchanged",role};
+    tx.update(userRef,{role});
+    tx.create(auditRef,{
+      type:"role_change",userId,previousRole:oldRole,newRole:role,
+      mutationId,initiatedBy:request.auth.uid,createdAt:Date.now()
+    });
+    tx.create(notificationRef,{
+      userId,text:"تم تحديث صلاحيات حسابك إلى: " + role,
+      read:false,createdAt:Date.now()
+    });
+    return {status:"done",role};
+  });
+});
