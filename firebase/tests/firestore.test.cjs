@@ -104,8 +104,8 @@ test("staff cannot mark an ad as featured directly", async () => {
   });
   await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"ads","moderated-ad"),{featuredUntil:Date.now()+86400000}));
 });
-test("staff can moderate store status without changing paid fields", async () => {
-  await assertSucceeds(updateDoc(doc(dbFor("admin",{admin:true}),"stores","shop"),{status:"rejected"}));
+test("staff cannot bypass store moderation callable", async () => {
+  await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"stores","shop"),{status:"rejected"}));
 });
 
 test("store owner cannot self-approve a pending store", async () => {
@@ -120,8 +120,8 @@ test("advertiser cannot approve their own pending ad", async () => {
   });
   await assertFails(updateDoc(doc(dbFor("alice"),"ads","pending-owner-ad"),{status:"approved"}));
 });
-test("administrator can approve a pending advertisement", async () => {
-  await assertSucceeds(updateDoc(doc(dbFor("admin",{admin:true}),"ads","pending-owner-ad"),{status:"approved"}));
+test("administrator cannot approve an ad directly from browser", async () => {
+  await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"ads","pending-owner-ad"),{status:"approved"}));
 });
 test("administrator cannot modify an advertisement paid feature expiry", async () => {
   await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"ads","pending-owner-ad"),{featuredUntil:Date.now()+86400000}));
