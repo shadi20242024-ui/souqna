@@ -81,6 +81,7 @@ service cloud.firestore {
       allow read: if owner('userId') || staff();
     }
     match /transactions/{id} { allow read: if owner('userId') || staff(); }
+    match /auditLogs/{id} { allow read: if admin(); }
     match /notifs/{id} {
       allow read: if owner('userId');
       allow update: if owner('userId') && onlyChanged(['read'])
