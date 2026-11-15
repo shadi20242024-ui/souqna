@@ -7,6 +7,8 @@ on:
     paths:
       - 'firebase/**'
       - 'functions/**'
+      - 'index.html'
+      - 'scripts/**'
       - '.github/workflows/security-checks.yml'
 permissions:
   contents: read
