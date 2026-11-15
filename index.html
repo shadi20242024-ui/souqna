@@ -124,7 +124,7 @@ const waLink=t=>"https://wa.me/"+wa+(t?"?text="+encodeURIComponent(t):"");
 const q2=(c,f,v)=>getDocs(query(collection(db,c),where(f,"==",v))).then(s=>s.docs.map(d=>({id:d.id,...d.data()})));
 
 const CI={electronics:"i1",jobs:"i2",cars:"i3",real_estate:"i4",misc:"i5",community:"i6",services:"i7",furniture:"i8"};
-const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس"};
+const TY={pharmacy:"صيدلية",fuel:"محطة وقود",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس"};
 const wxTxt=c=>c==0?"صافٍ":c<4?"غائم جزئيًا":c<50?"ضباب":c<70?"أمطار":c<80?"ثلوج":c<90?"زخات مطر":"عاصفة رعدية";
 async function loadWx(){try{const j=await(await fetch("https://api.open-meteo.com/v1/forecast?latitude=32.71&longitude=36.57&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto")).json();wx={t:Math.round(j.current.temperature_2m),c:j.current.weather_code,hi:Math.round(j.daily.temperature_2m_max[0]),lo:Math.round(j.daily.temperature_2m_min[0])};if(view=="home")render()}catch(e){wx=null}}
 const wxHtml=()=>wx&&site.weatherOn!==false?`<div class="wx"><span>${wx.c==0?"☀️":wx.c<4?"⛅":wx.c<50?"🌫️":wx.c<80?"🌧️":"⛈️"}</span><div><b>طقس السويداء الآن</b><div class="mut">${wxTxt(wx.c)} · العظمى ${wx.hi}° · الصغرى ${wx.lo}°</div></div><i>${wx.t}°</i></div>`:"";
@@ -247,7 +247,7 @@ function render(){
     ${wxHtml()}<div id="spw">${spHtml()}</div>${storesHtml()}
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
     <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
-    <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
+    <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["fuel","محطات الوقود"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
     <div class="qt"><button data-a="feat"><i>📢</i>إعلانات مميزة</button><button data-c="services"><i>📍</i>دليل الخدمات</button><button data-v="add"><i>⭐</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}><i>🎧</i>دعم فني</a></div>
     <div class="cm"><b>معاً .. نبني مجتمعاً أفضل في السويداء 👥</b><button class="gold" data-c="community">انضم إلينا</button></div>
     <button class="cm" style="width:100%;border:0;font:inherit;cursor:pointer;text-align:right" data-v="services"><b>🎨 خدمات التصميم والفيديو والحملات التسويقية</b><span class="gold">اطلب الآن</span></button>
@@ -409,13 +409,29 @@ document.addEventListener("click",async e=>{
     else if(a=="cancelst"){editSt=null;render()}
     else if(a=="delst"){if(!confirm("حذف المتجر؟"))return;await deleteDoc(doc(db,"stores",id));await loadPublic();await loadMine();render()}
     else if(a=="stok"||a=="stno"){await moderateSecure("moderateStore",id,a=="stok"?"approved":"rejected");await loadPublic();await loadMine();toast(a=="stok"?"تمت الموافقة على المتجر":"تم رفض المتجر");render()}
-    else if(a=="savesite"){await setDoc(doc(db,"settings","site"),{ticker:val("#s-tk"),tickerOn:$("#s-tkon").checked,weatherOn:$("#s-wxon").checked,adClient:val("#s-adc"),adSlot:val("#s-ads"),maxStores:+val("#s-mx")||3,logo:tmp.logo||site.logo||"",banner:tmp.banner||site.banner||""},{merge:true});tmp.logo=tmp.banner="";await loadPublic();toast("تم الحفظ");render()}
+    else if(a=="savesite"){const speed=Number(val("#s-tkspeed"));if(!Number.isInteger(speed)||speed<14||speed>120)return toast("مدة دورة الأخبار بين 14 و120 ثانية");await setDoc(doc(db,"settings","site"),{ticker:val("#s-tk").slice(0,2500),tickerOn:$("#s-tkon").checked,tickerSpeed:speed,showPharmacies:$("#s-showpharm").checked,showFuel:$("#s-showfuel").checked,showOffers:$("#s-showoffers").checked,weatherOn:$("#s-wxon").checked,adClient:val("#s-adc"),adSlot:val("#s-ads"),maxStores:+val("#s-mx")||3,logo:tmp.logo||site.logo||"",banner:tmp.banner||site.banner||""},{merge:true});tmp.logo=tmp.banner="";await loadPublic();toast("تم حفظ الأخبار وإعدادات الموقع");render()}
     else if(a=="clrimg"){await setDoc(doc(db,"settings","site"),{logo:"",banner:""},{merge:true});await loadPublic();render()}
-    else if(a=="addsp"){const d=+val("#p-days");if(!val("#p-co")||!(d>0))return toast("اكتب اسم الشركة والمدة");await addDoc(collection(db,"sponsors"),{company:val("#p-co"),title:val("#p-ti"),desc:val("#p-de"),phone:val("#p-ph").replace(/\D/g,""),img:tmp.sp||"",from:Date.now(),to:Date.now()+d*864e5,active:true});tmp.sp="";await loadPublic();render()}
-    else if(a=="togsp"){await updateDoc(doc(db,"sponsors",id),{active:!sp.find(x=>x.id==id).active});await loadPublic();render()}
-    else if(a=="delsp"){await deleteDoc(doc(db,"sponsors",id));await loadPublic();render()}
-    else if(a=="adddir"){if(!val("#d-n"))return toast("اكتب الاسم");await addDoc(collection(db,"directory"),{type:$("#d-t").value,name:val("#d-n"),spec:val("#d-s"),area:val("#d-a"),phone:val("#d-p").replace(/[^\d+]/g,""),stars:+$("#d-st").value,onDuty:false,active:true,createdAt:Date.now()});await loadPublic();render()}
+    else if(a=="editsp"){editSp=sp.find(x=>x.id===id)||null;render();scrollTo(0,0)}
+    else if(a=="cancelsp"){editSp=null;tmp.sp="";render()}
+    else if(a=="savesp"){
+      const company=val("#p-co"),title=val("#p-ti"),desc=val("#p-de"),url=val("#p-url"),phone=val("#p-ph").replace(/\D/g,"");
+      const days=Number(val("#p-days")),priority=Number(val("#p-priority")),paymentVerified=$("#p-payment").checked,active=$("#p-active").checked;
+      if(company.length<2||company.length>100||!title||title.length>130||desc.length>250)return toast("أدخل اسم الشركة وعنواناً مختصراً");
+      if(!Number.isInteger(days)||days<1||days>365||!Number.isInteger(priority)||priority<0||priority>10)return toast("مدة الإعلان 1–365 يوماً وأولويته 0–10");
+      if(url&&(!/^https:\/\/[^\s"<>]+$/i.test(url)||url.length>500))return toast("رابط العرض يجب أن يبدأ بـ https://");
+      if(phone&&(phone.length<9||phone.length>15))return toast("رقم واتساب المعلن غير صحيح");
+      const now=Date.now();
+      const details={company,title,desc,url,phone,img:tmp.sp||editSp?.img||"",from:now,to:now+days*86400000,priority,active,paymentVerified,paymentVerifiedBy:paymentVerified?me.uid:null,paymentVerifiedAt:paymentVerified?now:null,updatedAt:now};
+      if(!details.img)return toast("أضف صورة حقيقية للبانر الإعلاني");
+      if(editSp)await updateDoc(doc(db,"sponsors",editSp.id),details);
+      else await addDoc(collection(db,"sponsors"),{...details,createdAt:now});
+      tmp.sp="";editSp=null;spi=0;await loadPublic();toast(paymentVerified?"حُفظ البانر وأصبح قابلاً للعرض خلال المدة":"حُفظ البانر كمسودة غير مدفوعة");render();
+    }
+    else if(a=="togsp"){const item=sp.find(x=>x.id===id);if(!item)return toast("الإعلان غير موجود");if(!item.active&&item.paymentVerified!==true)return toast("يجب توثيق استلام الدفع أولاً من تعديل الإعلان");await updateDoc(doc(db,"sponsors",id),{active:!item.active,updatedAt:Date.now()});await loadPublic();render()}
+    else if(a=="delsp"){if(!confirm("هل تريد حذف البانر الإعلاني؟"))return;await deleteDoc(doc(db,"sponsors",id));editSp=null;await loadPublic();render()}
+    else if(a=="adddir"){if(!val("#d-n"))return toast("اكتب الاسم");const type=$("#d-t").value,fuelStatus=$("#d-fuel").value;if(type==="fuel"&&!["unknown","available","limited","unavailable"].includes(fuelStatus))return toast("حالة الوقود غير صحيحة");await addDoc(collection(db,"directory"),{type,name:val("#d-n"),spec:val("#d-s"),area:val("#d-a"),phone:val("#d-p").replace(/[^\d+]/g,""),stars:+$("#d-st").value,onDuty:false,fuelStatus:type==="fuel"?fuelStatus:"unknown",statusUpdatedAt:Date.now(),active:true,createdAt:Date.now()});await loadPublic();toast("تم تحديث الدليل المحلي");render()}
     else if(a=="duty"){await updateDoc(doc(db,"directory",id),{onDuty:!dr.find(x=>x.id==id).onDuty});await loadPublic();render()}
+    else if(a=="fuelstatus"){const station=dr.find(x=>x.id===id);if(!station||station.type!=="fuel")return toast("محطة الوقود غير موجودة");const status=prompt("حالة الوقود: available (متوفر) / limited (محدود) / unavailable (غير متوفر) / unknown (غير مؤكد)",station.fuelStatus||"unknown");if(status===null)return;const code=status.trim().toLowerCase();if(!["available","limited","unavailable","unknown"].includes(code))return toast("الحالة غير صحيحة");await updateDoc(doc(db,"directory",id),{fuelStatus:code,statusUpdatedAt:Date.now()});await loadPublic();toast("تم تحديث حالة محطة الوقود");render()}
     else if(a=="deldir"){await deleteDoc(doc(db,"directory",id));await loadPublic();render()}
     else if(a=="ordok"){await approveSecure("approveStarOrder",id);await loadMine();toast("تمت معالجة طلب النجوم بأمان");render()}
     else if(a=="ordno"){await approveSecure("rejectStarOrder",id);await loadMine();toast("تم رفض طلب شحن النجوم");render()}
