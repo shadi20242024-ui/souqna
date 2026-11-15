@@ -37,3 +37,16 @@ for(const action of ["ok","stok"]){
   assert(!/\bnotify\s*\(/.test(handler),"Moderation must not create notifications from browser");
 }
 console.log("PASS: store and ad moderation avoid blocked client notification writes");
+
+for (const [action,call] of [
+  ['else if(a=="ok"||a=="no")',"moderateAdvertisement"],
+  ['else if(a=="stok"||a=="stno")',"moderateStore"]
+]){
+  const start=source.indexOf(action);
+  assert(start>=0,"Missing moderation handler "+action);
+  const end=source.indexOf("else if(a==",start+action.length);
+  const handler=source.slice(start,end);
+  assert(handler.includes('moderateSecure("'+call+'",id,'),"Missing server moderation "+call);
+  assert(!/updateDoc\s*\(|\bnotify\s*\(/.test(handler),"Moderation must not write directly to Firestore");
+}
+console.log("PASS: ad/store moderation routes through secure callables");
