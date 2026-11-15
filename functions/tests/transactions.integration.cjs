@@ -12,13 +12,17 @@ if(!process.env.FIRESTORE_EMULATOR_HOST){
 }
 const app=initializeApp({projectId:"demo-souqna"});
 const db=getFirestore(app);
+const transactionDb={
+  collection(name){return db.collection(name);},
+  runTransaction(callback){return db.runTransaction(async transaction=>await callback(transaction));}
+};
 class HttpsError extends Error {
   constructor(code,message){super(message);this.code=code;}
 }
 const dependencies={
   "firebase-functions/v2/https":{onCall:(_config,handler)=>handler,HttpsError},
   "firebase-admin/app":{initializeApp:()=>app},
-  "firebase-admin/firestore":{getFirestore:()=>db,FieldValue}
+  "firebase-admin/firestore":{getFirestore:()=>transactionDb,FieldValue}
 };
 const sandbox={
   module:{exports:{}},
