@@ -91,7 +91,6 @@ service cloud.firestore {
       allow create: if auth() && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'new';
       allow read: if owner('userId') || staff();
-      allow update: if staff();
       allow delete: if admin();
     }
     match /follows/{id} {
