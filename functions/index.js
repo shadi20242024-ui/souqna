@@ -293,3 +293,50 @@ exports.changeUserRole = onCall({region:"europe-west1",enforceAppCheck:true},asy
     return {status:"done",role};
   });
 });
+
+
+const updateServiceOrder = onCall({region:"europe-west1",enforceAppCheck:true},async request=>{
+  if (!request.auth || !request.auth.uid || !request.auth.token) {
+    throw new HttpsError("unauthenticated","Authentication required");
+  }
+  const {orderId,status,reason=""}=request.data || {};
+  requireDocumentId(orderId,"service order ID");
+  if (!["progress","done","rejected"].includes(status)) {
+    throw new HttpsError("invalid-argument","Invalid service order status");
+  }
+  if (typeof reason!=="string" || reason.length>300 ||
+      (status==="rejected" && reason.trim().length<3)) {
+    throw new HttpsError("invalid-argument","A rejection reason of 3–300 characters is required");
+  }
+  const orderRef=db.collection("sorders").doc(orderId);
+  const userRef=db.collection("users").doc(request.auth.uid);
+  const notifRef=db.collection("notifs").doc("service_order_"+orderId+"_"+status);
+  return db.runTransaction(async tx=>{
+    const [orderSnap,staffSnap]=await Promise.all([tx.get(orderRef),tx.get(userRef)]);
+    const trustedAdmin=request.auth.token.admin===true;
+    const staffRole=staffSnap.exists && ["admin","moderator","accountant","editor"].includes(staffSnap.data().role);
+    if (!trustedAdmin && !staffRole) throw new HttpsError("permission-denied","Staff authorization required");
+    if (!orderSnap.exists) throw new HttpsError("not-found","Service order not found");
+    const order=orderSnap.data();
+    if (order.status===status) return {status:"already_processed"};
+    if (!["new","progress"].includes(order.status)) {
+      throw new HttpsError("failed-precondition","Service order is already finalized");
+    }
+    if (typeof order.userId!=="string" || !order.userId ||
+        typeof order.serviceName!=="string") {
+      throw new HttpsError("failed-precondition","Service order data is invalid");
+    }
+    const labels={progress:"قيد التنفيذ",done:"مكتمل",rejected:"مرفوض"};
+    tx.update(orderRef,{
+      status,note:status==="rejected"?reason.trim():"",
+      modifiedAt:FieldValue.serverTimestamp(),modifiedBy:request.auth.uid
+    });
+    tx.create(notifRef,{
+      userId:order.userId,
+      text:"طلبك ("+order.serviceName.slice(0,120)+"): "+labels[status],
+      read:false,createdAt:Date.now()
+    });
+    return {status};
+  });
+});
+exports.updateServiceOrder=updateServiceOrder;
