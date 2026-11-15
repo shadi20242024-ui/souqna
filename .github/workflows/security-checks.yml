@@ -51,6 +51,8 @@ jobs:
           node-version: '22'
       - name: Check application module and secure approval handlers
         run: node --experimental-vm-modules scripts/check-admin-financial-handlers.cjs
+      - name: Test news ticker and verified premium banner
+        run: node --test scripts/check-news-and-premium.cjs
 
   functions-integration:
     runs-on: ubuntu-latest
