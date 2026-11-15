@@ -16,6 +16,7 @@ before(async () => {
     await setDoc(doc(db,"stores","shop"),{ownerId:"alice",status:"approved",name:"Shop"});
     await setDoc(doc(db,"reviews","shop_alice"),{storeId:"shop",userId:"alice",stars:4,text:"Good"});
     await setDoc(doc(db,"starOrders","order1"),{userId:"alice",stars:5,status:"pending"});
+    await setDoc(doc(db,"sorders","service1"),{userId:"alice",status:"new",serviceName:"Design Service"});
   });
 });
 after(async () => {if(env)await env.cleanup();});
@@ -141,4 +142,17 @@ test("trusted admin custom claim can read pending financial requests", async () 
 });
 test("trusted admin custom claim still cannot approve financial requests directly", async () => {
   await assertFails(updateDoc(doc(dbFor("claim-admin",{admin:true}),"starOrders","order1"),{status:"done"}));
+});
+
+test("service order owner cannot change workflow status",async()=>{
+  await assertFails(updateDoc(doc(dbFor("alice"),"sorders","service1"),{status:"done"}));
+});
+test("staff cannot update a service order directly from the browser",async()=>{
+  await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"sorders","service1"),{status:"progress"}));
+});
+test("trusted staff can read service orders",async()=>{
+  await assertSucceeds(getDoc(doc(dbFor("admin",{admin:true}),"sorders","service1")));
+});
+test("other customers cannot access private service orders",async()=>{
+  await assertFails(getDoc(doc(dbFor("bob"),"sorders","service1")));
 });
