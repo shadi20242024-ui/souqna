@@ -156,3 +156,32 @@ function rejectionCallable(collectionName, label) {
 exports.rejectStarOrder = rejectionCallable("starOrders","شحن النجوم");
 exports.rejectPromotion = rejectionCallable("promos","تمييز الإعلان");
 exports.rejectSubscription = rejectionCallable("subs","اشتراك المتجر");
+
+// Trusted moderation with notification creation in one transaction.
+function moderationCallable(collectionName, label) {
+  return onCall({region:"europe-west1",enforceAppCheck:true},async request=>{
+    if (!request.auth || request.auth.token.admin !== true) throw new HttpsError("permission-denied","Administrator authorization required");
+    const {recordId,decision}=request.data || {};
+    if (typeof recordId!=="string" || !/^[A-Za-z0-9_-]{1,128}$/.test(recordId) || !["approved","rejected"].includes(decision)) {
+      throw new HttpsError("invalid-argument","Invalid moderation request");
+    }
+    const ref=db.collection(collectionName).doc(recordId);
+    return db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      if (!snap.exists) throw new HttpsError("not-found","Record not found");
+      const item=snap.data();
+      if (item.status===decision) return {status:"already_processed"};
+      if (item.status!=="pending" || typeof item.ownerId!=="string" || !item.ownerId) {
+        throw new HttpsError("failed-precondition","Record cannot be moderated");
+      }
+      tx.update(ref,{status:decision,moderatedAt:FieldValue.serverTimestamp(),moderatedBy:request.auth.uid});
+      tx.create(db.collection("notifs").doc("moderated_"+collectionName+"_"+recordId),{
+        userId:item.ownerId,text:(decision==="approved"?"تمت الموافقة على ":"تم رفض ")+label,
+        read:false,createdAt:Date.now()
+      });
+      return {status:decision};
+    });
+  });
+}
+exports.moderateAdvertisement=moderationCallable("ads","إعلانك");
+exports.moderateStore=moderationCallable("stores","متجرك");
