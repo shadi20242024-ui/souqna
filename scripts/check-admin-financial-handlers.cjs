@@ -55,3 +55,17 @@ for (const [action,call] of [
   assert(!/updateDoc\s*\(|\bnotify\s*\(/.test(handler),"Moderation must not write directly to Firestore");
 }
 console.log("PASS: ad/store moderation routes through secure callables");
+
+for(const [action,call] of [
+  ["ustars","adjustUserStars"],
+  ["urole","changeUserRole"]
+]){
+  const start=source.indexOf('else if(a=="'+action+'")');
+  assert(start>=0,"Missing secure admin handler: "+action);
+  const end=source.indexOf("else if(a==",start+12);
+  assert(end>start,"Missing admin handler boundary: "+action);
+  const handler=source.slice(start,end);
+  assert(handler.includes('adminSecure("'+call+'",'),"Missing secure callable: "+call);
+  assert(!/updateDoc\s*\(|\bnotify\s*\(|\bledger\s*\(/.test(handler),"Direct privileged write detected: "+action);
+}
+console.log("PASS: staff roles and manual star adjustments use secure callables");
