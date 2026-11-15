@@ -131,3 +131,28 @@ exports.approveSubscription = onCall({region:"europe-west1", enforceAppCheck:tru
     return {status:"done",planUntil:until};
   });
 });
+
+// Rejecting a request never changes the user's star balance.
+// Repeated rejection is idempotent; a completed request cannot be rejected.
+function rejectionCallable(collectionName, label) {
+  return onCall({region:"europe-west1", enforceAppCheck:true}, async request => {
+    const id = requireAdminAndId(request);
+    const ref = db.collection(collectionName).doc(id);
+    return db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new HttpsError("not-found", label + " request not found");
+      const data = snap.data();
+      if (data.status === "rejected") return {status:"already_rejected"};
+      if (data.status !== "pending") throw new HttpsError("failed-precondition", "Request is not pending");
+      if (typeof data.userId !== "string" || !data.userId) throw new HttpsError("failed-precondition", "Invalid request owner");
+      tx.update(ref,{status:"rejected",rejectedAt:FieldValue.serverTimestamp(),rejectedBy:request.auth.uid});
+      tx.create(db.collection("notifs").doc("rejected_"+collectionName+"_"+id),{
+        userId:data.userId,text:"تم رفض طلب "+label,read:false,createdAt:Date.now()
+      });
+      return {status:"rejected"};
+    });
+  });
+}
+exports.rejectStarOrder = rejectionCallable("starOrders","شحن النجوم");
+exports.rejectPromotion = rejectionCallable("promos","تمييز الإعلان");
+exports.rejectSubscription = rejectionCallable("subs","اشتراك المتجر");
