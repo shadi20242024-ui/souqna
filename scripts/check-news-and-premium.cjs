@@ -111,3 +111,14 @@ test("approved design homepage has a sidebar, cards and hero navigation",()=>{
   assert.match(source,/class="souqna-list"/);
   assert.match(source,/id="souqna-topnav"/);
 });
+
+test("Firebase App Check site key is configurable without shipping a secret",()=>{
+  assert(source.includes("initializeAppCheck"),"Firebase client App Check must be initialized");
+  assert(source.includes("ReCaptchaV3Provider"),"Public reCAPTCHA v3 provider must be configured");
+  assert(source.includes('id="s-appcheck"'),"Owner settings must accept the public site key");
+  assert(source.includes("appCheckKey:val"),"Site settings must persist the public site key");
+});
+test("owner dashboard requires trusted Firebase Auth admin claim",()=>{
+  assert(source.includes("getIdTokenResult"),"Admin claim must come from Firebase Auth");
+  assert(source.includes("isAdm=()=>me&&me.adminClaim===true"),"Admin UI must not trust profile role alone");
+});
