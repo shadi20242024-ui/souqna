@@ -39,7 +39,7 @@ service cloud.firestore {
       allow create: if auth() && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.status == 'pending'
         && !('plan' in request.resource.data) && !('planUntil' in request.resource.data);
-      allow update: if staff() || (owner('ownerId')
+      allow update: if (staff() && onlyChanged(['status','name','desc','phone','area','map','logo','cover'])) || (owner('ownerId')
         && onlyChanged(['name','desc','phone','area','map','logo','cover']));
       allow delete: if admin() || owner('ownerId');
     }
@@ -51,7 +51,7 @@ service cloud.firestore {
         && (!('storeId' in request.resource.data)
           || (exists(/databases/$(database)/documents/stores/$(request.resource.data.storeId))
               && get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid));
-      allow update: if staff() || (owner('ownerId')
+      allow update: if (staff() && onlyChanged(['status','title','price','cur','cat','area','desc','phone','img'])) || (owner('ownerId')
         && onlyChanged(['title','price','cur','cat','area','desc','phone','img']));
       allow delete: if admin() || owner('ownerId');
     }
