@@ -8,7 +8,7 @@ const db = getFirestore();
 // Only a trusted operator should set the Firebase Auth custom claim admin=true.
 // This callable is NOT enabled in the current web UI until deployed and tested.
 exports.approveStarOrder = onCall({region:"europe-west1", enforceAppCheck:true}, async request => {
-  if (!request.auth || request.auth.token.admin !== true) {
+  if (!request.auth || !request.auth.token || request.auth.token.admin !== true) {
     throw new HttpsError("permission-denied", "Administrator authorization required");
   }
   const orderId = request.data && request.data.orderId;
@@ -45,7 +45,7 @@ exports.approveStarOrder = onCall({region:"europe-west1", enforceAppCheck:true},
 
 
 const requireAdminAndId = request => {
-  if (!request.auth || request.auth.token.admin !== true) {
+  if (!request.auth || !request.auth.token || request.auth.token.admin !== true) {
     throw new HttpsError("permission-denied", "Administrator authorization required");
   }
   const id = request.data && request.data.requestId;
@@ -160,7 +160,7 @@ exports.rejectSubscription = rejectionCallable("subs","اشتراك المتجر
 // Trusted moderation with notification creation in one transaction.
 function moderationCallable(collectionName, label) {
   return onCall({region:"europe-west1",enforceAppCheck:true},async request=>{
-    if (!request.auth || request.auth.token.admin !== true) throw new HttpsError("permission-denied","Administrator authorization required");
+    if (!request.auth || !request.auth.token || request.auth.token.admin !== true) throw new HttpsError("permission-denied","Administrator authorization required");
     const {recordId,decision}=request.data || {};
     if (typeof recordId!=="string" || !/^[A-Za-z0-9_-]{1,128}$/.test(recordId) || !["approved","rejected"].includes(decision)) {
       throw new HttpsError("invalid-argument","Invalid moderation request");
