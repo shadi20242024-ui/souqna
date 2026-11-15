@@ -66,3 +66,31 @@ test("owners cannot alter approved store ownership", async () => {
 test("user cannot create notification impersonating admin", async () => {
   await assertFails(setDoc(doc(dbFor("alice"),"notifs","fake"),{userId:"bob",text:"Approved",read:false}));
 });
+
+test("new users can register with the actual SOUQNA profile shape", async () => {
+  await assertSucceeds(setDoc(doc(dbFor("new-user",{email:"new@example.com"}),"users","new-user"),{
+    name:"New User",email:"new@example.com",role:"user",stars:0
+  }));
+});
+test("registration cannot start with free credited stars", async () => {
+  await assertFails(setDoc(doc(dbFor("bad-user",{email:"bad@example.com"}),"users","bad-user"),{
+    name:"Bad User",email:"bad@example.com",role:"user",stars:100
+  }));
+});
+test("registration cannot create an administrator", async () => {
+  await assertFails(setDoc(doc(dbFor("bad-admin",{email:"admin2@example.com"}),"users","bad-admin"),{
+    name:"Bad Admin",email:"admin2@example.com",role:"admin",stars:0
+  }));
+});
+test("users cannot update another user's name", async () => {
+  await assertFails(updateDoc(doc(dbFor("bob"),"users","alice"),{name:"Changed"}));
+});
+test("client cannot reject star orders even with an admin claim", async () => {
+  await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"starOrders","order1"),{status:"rejected"}));
+});
+test("client cannot approve subscriptions", async () => {
+  await assertFails(setDoc(doc(dbFor("alice"),"subs","invalid-approval"),{userId:"alice",status:"done",stars:10,days:30}));
+});
+test("client cannot approve promotions", async () => {
+  await assertFails(setDoc(doc(dbFor("alice"),"promos","invalid-approval"),{userId:"alice",status:"done",stars:10,days:30}));
+});
