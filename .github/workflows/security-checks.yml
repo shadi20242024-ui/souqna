@@ -37,6 +37,9 @@ jobs:
           node-version: '22'
       - name: Check callable functions syntax
         run: node --check functions/index.js
+      - name: Test callable authorization and input validation
+        working-directory: functions
+        run: node --test tests/authorization.test.cjs
   admin-frontend:
     runs-on: ubuntu-latest
     steps:
