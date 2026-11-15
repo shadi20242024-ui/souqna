@@ -69,3 +69,12 @@ for(const [action,call] of [
   assert(!/updateDoc\s*\(|\bnotify\s*\(|\bledger\s*\(/.test(handler),"Direct privileged write detected: "+action);
 }
 console.log("PASS: staff roles and manual star adjustments use secure callables");
+
+const serviceHandlerStart=source.indexOf('else if(a=="sost")');
+assert(serviceHandlerStart>=0,"Missing service order handler");
+const serviceHandlerEnd=source.indexOf("else if(a==",serviceHandlerStart+12);
+assert(serviceHandlerEnd>serviceHandlerStart,"Missing service order handler boundary");
+const serviceHandler=source.slice(serviceHandlerStart,serviceHandlerEnd);
+assert(serviceHandler.includes('adminSecure("updateServiceOrder",'),"Service order changes must use a trusted backend");
+assert(!/updateDoc\s*\(|\bnotify\s*\(/.test(serviceHandler),"Service order must not be updated or notified from browser");
+console.log("PASS: service order status updates and notifications are server-side");
