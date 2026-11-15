@@ -126,3 +126,19 @@ test("administrator cannot approve an ad directly from browser", async () => {
 test("administrator cannot modify an advertisement paid feature expiry", async () => {
   await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"ads","pending-owner-ad"),{featuredUntil:Date.now()+86400000}));
 });
+
+test("trusted admin custom claim can read pending store owned by another user", async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(),"stores","admin-claim-store"),{ownerId:"alice",status:"pending",name:"Waiting Store"});
+  });
+  await assertSucceeds(getDoc(doc(dbFor("claim-admin",{admin:true}),"stores","admin-claim-store")));
+});
+test("regular user cannot read another owner's pending store", async () => {
+  await assertFails(getDoc(doc(dbFor("bob"),"stores","admin-claim-store")));
+});
+test("trusted admin custom claim can read pending financial requests", async () => {
+  await assertSucceeds(getDoc(doc(dbFor("claim-admin",{admin:true}),"starOrders","order1")));
+});
+test("trusted admin custom claim still cannot approve financial requests directly", async () => {
+  await assertFails(updateDoc(doc(dbFor("claim-admin",{admin:true}),"starOrders","order1"),{status:"done"}));
+});
