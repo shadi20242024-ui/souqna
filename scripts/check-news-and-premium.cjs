@@ -4,7 +4,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const vm=require("node:vm");
 const source=fs.readFileSync("index.html","utf8");
-const start=source.indexOf("function tkHtml(){");
+const start=source.indexOf("function souqnaShortcutsHtml(){");
 const end=source.indexOf("function dirHtml(){",start);
 assert(start>=0&&end>start,"News and sponsor rendering helpers must exist");
 const helpers=source.slice(start,end);
@@ -90,4 +90,24 @@ test("owner controls exist for payment, news speed and station updates",()=>{
   for(const action of ['a=="savesp"','a=="fuelstatus"','a=="savesite"']){
     assert(source.includes(action),"Missing admin handler "+action);
   }
+});
+
+test("second Sweida information strip is rendered with live category shortcuts",()=>{
+  const u=view({dr:[
+    {type:"pharmacy",name:"Duty Test",onDuty:true,dutyUntil:Date.now()+3600000},
+    {type:"fuel",name:"Fuel Test",fuelStatus:"available",statusUpdatedAt:Date.now()}
+  ]});
+  const html=u.tkHtml();
+  assert.match(html,/souqna-news-shortcuts/);
+  assert.match(html,/الصيدليات المناوبة/);
+  assert.match(html,/محطات الوقود/);
+  assert.match(html,/أفضل العروض/);
+});
+test("approved design homepage has a sidebar, cards and hero navigation",()=>{
+  assert.match(source,/function approvedHomeHtml\(\)/);
+  assert.match(source,/class="souqna-home-layout"/);
+  assert.match(source,/class="souqna-aside"/);
+  assert.match(source,/class="souqna-promo-strip"/);
+  assert.match(source,/class="souqna-list"/);
+  assert.match(source,/id="souqna-topnav"/);
 });
