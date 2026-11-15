@@ -94,3 +94,16 @@ test("client cannot approve subscriptions", async () => {
 test("client cannot approve promotions", async () => {
   await assertFails(setDoc(doc(dbFor("alice"),"promos","invalid-approval"),{userId:"alice",status:"done",stars:10,days:30}));
 });
+
+test("staff cannot assign a paid plan to a store", async () => {
+  await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"stores","shop"),{plan:"gold",planUntil:Date.now()+86400000}));
+});
+test("staff cannot mark an ad as featured directly", async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(),"ads","moderated-ad"),{ownerId:"alice",status:"pending",title:"Test ad"});
+  });
+  await assertFails(updateDoc(doc(dbFor("admin",{admin:true}),"ads","moderated-ad"),{featuredUntil:Date.now()+86400000}));
+});
+test("staff can moderate store status without changing paid fields", async () => {
+  await assertSucceeds(updateDoc(doc(dbFor("admin",{admin:true}),"stores","shop"),{status:"rejected"}));
+});
