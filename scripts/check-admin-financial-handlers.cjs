@@ -26,3 +26,14 @@ for(const [action,call] of [
 }
 assert(source.includes('getFunctions(app,"europe-west1")'),"Cloud Functions region mismatch");
 console.log("PASS: JavaScript module syntax and 6 financial approval/rejection handlers");
+
+for(const action of ["ok","stok"]){
+  const token=action==="ok"?'else if(a=="ok"||a=="no")':'else if(a=="stok"||a=="stno")';
+  const start=source.indexOf(token);
+  assert(start>=0,"Missing moderation handler: "+action);
+  const end=source.indexOf("else if(a==",start+token.length);
+  assert(end>start,"Missing moderation handler boundary: "+action);
+  const handler=source.slice(start,end);
+  assert(!/\bnotify\s*\(/.test(handler),"Moderation must not create notifications from browser");
+}
+console.log("PASS: store and ad moderation avoid blocked client notification writes");
