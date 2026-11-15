@@ -114,7 +114,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
-let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false;
+let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],sq="",plans=[],subs=[],editPl=null,editSp=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
@@ -155,7 +155,26 @@ function tkHtml(){
   const speed=Math.min(120,Math.max(14,Number(site.tickerSpeed)||34));
   return '<div class="tk" role="region" aria-label="شريط أخبار سوقنا"><b>📢 أخبار السويداء</b><div class="tkw"><div class="news-loop" style="--news-speed:'+speed+'s"><div class="news-segment">'+pieces+'</div><div class="news-segment" aria-hidden="true">'+pieces+'</div></div></div></div>';
 }
-function spHtml(){const l=sp.filter(s=>s.active&&s.to>Date.now()),cta=wa?`<a class="cta" target="_blank" href="${waLink("أريد حجز بانر إعلاني في سوقنا")}">هل تريد إعلانك هنا؟ تواصل معنا ‹</a>`:"";if(!l.length)return cta;const s=l[spi%l.length];return `<div class="spn" style="${s.img?`background-image:linear-gradient(90deg,#0a2a72f2,#0a2a7299),url(${s.img})`:""}"><small>إعلان برعاية</small><div class="sco">${esc(s.company)}</div><b>${esc(s.title)}</b><div>${esc(s.desc||"")}</div>${s.phone?`<a class="gold" style="margin-top:8px" target="_blank" href="https://wa.me/${esc(s.phone)}">تواصل مع الشركة</a>`:""}</div>`+cta}
+function spHtml(){
+  const now=Date.now();
+  const valid=sp.filter(s=>s.active===true&&s.paymentVerified===true&&Number(s.to)>now&&Number(s.from||0)<=now)
+    .sort((a,b)=>(Number(b.priority)||0)-(Number(a.priority)||0)||Number(a.from||0)-Number(b.from||0));
+  const book=wa?'<div class="hero-booking"><span>✨ هل تريد عرض إعلانك في هذا المكان المميز؟</span><a class="cta" href="'+esc(waLink("مرحباً، أريد حجز البانر الإعلاني المميز في سوقنا"))+'" target="_blank" rel="noopener noreferrer">احجز البانر عبر واتساب ‹</a></div>':"";
+  if(!valid.length){
+    return '<section class="hero-sponsor" aria-label="مكان الإعلان المميز"><span class="sponsor-mark">⭐ مساحة إعلانية قابلة للحجز</span><div class="hero-copy"><h2>اجعل إعلانك في واجهة سوقنا</h2><p>بانر كبير للمتاجر والشركات والعروض المدفوعة • يُنشر بعد موافقة الإدارة والتحقق من الدفع</p></div></section>'+book;
+  }
+  const selected=valid[((spi%valid.length)+valid.length)%valid.length];
+  const picture=selected.img?'<img src="'+esc(selected.img)+'" alt="'+esc(selected.company||"الصورة الإعلانية")+'" loading="lazy">':"";
+  const phone=String(selected.phone||"").replace(/\D/g,"");
+  const target=typeof selected.url==="string"&&/^https:\/\/[^\s"<>]+$/i.test(selected.url)&&selected.url.length<=500?selected.url:"";
+  const contact=target?'<a class="gold" href="'+esc(target)+'" target="_blank" rel="noopener noreferrer">اكتشف العرض ↗</a>'
+    :phone?'<a class="gold" href="https://wa.me/'+phone+'" target="_blank" rel="noopener noreferrer">تواصل مع المعلن ↗</a>':"";
+  const nav=valid.length>1?'<div class="sponsor-arrows"><button type="button" data-a="spprev" aria-label="الإعلان السابق">‹</button><button type="button" data-a="spnext" aria-label="الإعلان التالي">›</button></div><div class="sponsor-counter">'+(spi%valid.length+1)+' / '+valid.length+'</div>':"";
+  return '<section class="hero-sponsor" aria-label="إعلان مدفوع مميز">'+picture+
+    '<span class="sponsor-mark">⭐ إعلان مميز مدفوع</span><div class="hero-copy">'+
+    '<strong>'+esc(selected.company||"سوقنا")+'</strong><h2>'+esc(selected.title||selected.company||"عرض حصري")+'</h2>'+
+    (selected.desc?'<p>'+esc(selected.desc)+'</p>':"")+contact+'</div>'+nav+'</section>'+book;
+}
 function dirHtml(){const L=dr.filter(x=>x.type==dtype&&x.active!==false&&(dtype!="pharmacy"||x.onDuty)).sort((x,y)=>(y.stars||0)-(x.stars||0));return L.map(x=>`<div class="dr"><div class="av">${esc((x.name||"?")[0])}</div><div style="flex:1"><b>${esc(x.name)}</b> <span class="gs">${"★".repeat(x.stars||0)}</span>${x.onDuty?' <span class="tag">مناوبة اليوم</span>':""}<div class="mut">${esc(x.spec||"")}${x.area?" · "+esc(x.area):""}</div></div>${x.phone?`<a class="btn g" href="tel:${esc(x.phone)}">اتصال</a>`:""}</div>`).join("")||'<p class="mut">لا توجد بيانات بعد.</p>'}
 const adHtml=()=>site.adClient?`<ins class="adsbygoogle" style="display:block;margin:12px 0" data-ad-client="${esc(site.adClient)}" data-ad-slot="${esc(site.adSlot||"")}" data-ad-format="auto" data-full-width-responsive="true"></ins>`:"";
 function initAds(){if(site.adClient&&!document.getElementById("ads-js")){const e=document.createElement("script");e.id="ads-js";e.async=true;e.crossOrigin="anonymous";e.src="https://pagead2.googleapis.com/pagead/js/adsbygoogle.js?client="+encodeURIComponent(site.adClient);document.head.append(e)}}
@@ -305,6 +324,7 @@ document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   try{
     if(a=="more"){more=!more;render()}
+    else if(a=="spnext"||a=="spprev"){const items=sp.filter(s=>s.active===true&&s.paymentVerified===true&&Number(s.to)>Date.now()&&Number(s.from||0)<=Date.now());if(items.length){spi=(spi+(a=="spnext"?1:items.length-1))%items.length;const e=$("#spw");if(e)e.innerHTML=spHtml()}}
     else if(a=="feat"){feat=!feat;cur="all";render()}
     else if(a=="swap"){mode=mode=="reg"?"login":"reg";render()}
     else if(a=="auth"){
