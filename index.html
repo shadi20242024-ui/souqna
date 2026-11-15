@@ -377,7 +377,7 @@ function approvedHomeHtml(){
   const fuel=dr.filter(x=>x.type==="fuel"&&x.active!==false&&Number(x.statusUpdatedAt)>Date.now()-86400000);
   return `<div class="souqna-home-layout">
     <aside class="souqna-aside" aria-label="خدمات السويداء">
-      ${wxHtml()||'<div class="wx"><span>⛅</span><div><b>طقس السويداء</b><div class="mut">جاري تحميل بيانات الطقس...</div></div><i>—</i></div>'}
+      ${site.weatherOn!==false?(wxHtml()||'<div class="wx"><span>⛅</span><div><b>طقس السويداء</b><div class="mut">جاري تحميل بيانات الطقس...</div></div><i>—</i></div>'):""}
       <section class="souqna-service">
         <b>💊 الصيدليات المناوبة</b><small>${duties.length?duties.length+" مناوبة مؤكدة من الإدارة":"لا توجد مناوبة مؤكدة حالياً"}</small>
         <button type="button" data-dt="pharmacy">عرض الصيدليات</button>
