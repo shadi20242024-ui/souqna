@@ -130,6 +130,8 @@ test("Chromium: account registration → approved ad → detail/favorite → own
       await page.locator(".ad-details-sidebar h1").waitFor();
       assert.match(await page.locator(".ad-details-sidebar h1").innerText(),/سيارة مستعملة/);
       await page.locator('.ad-details-sidebar [data-a="favorite"]').click();
+      // Wait for Firestore setDoc and card refresh; a click is not an async save completion.
+      await page.locator('.ad-details-sidebar [data-a="favorite"]').getByText("إزالة من المفضلة").waitFor({timeout:15000});
       const authUser=await adminAuth.getUserByEmail("seller-browser@example.test");
       const saved=await adminDb.doc("favorites/"+authUser.uid+"_"+adId).get();
       assert.equal(saved.exists,true);
