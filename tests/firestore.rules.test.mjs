@@ -80,7 +80,8 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
     await assertFails(updateDoc(ref,{adId:"private"}));
     await assertFails(deleteDoc(doc(bob,"favorites","alice_public")));
     await assertSucceeds(deleteDoc(ref));
-    assert.equal((await getDoc(ref)).exists(),false);
+    const remaining=await assertSucceeds(getDocs(query(collection(alice,"favorites"),where("userId","==","alice"))));
+    assert.equal(remaining.docs.length,0);
   });
 
   await t.test("Store owner may edit details but cannot upgrade plan", async () => {
