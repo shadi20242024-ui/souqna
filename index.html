@@ -394,8 +394,25 @@ document.addEventListener("click",async e=>{
     else if(a=="rate"){if(!need())return;await setDoc(doc(db,"reviews",id+"_"+me.uid),{storeId:id,userId:me.uid,userName:me.name,stars:+$("#rv-s").value,text:val("#rv-t"),createdAt:Date.now()});await loadStoreX(id);toast("شكرًا لتقييمك");render()}
     else if(a=="sorder"){if(!need())return;const sv=services.find(x=>x.id==$("#o-s").value);if(!sv||!val("#o-d"))return toast("اختر الخدمة واكتب التفاصيل");const pt=partners.find(x=>x.id==$("#o-p").value);await addDoc(collection(db,"sorders"),{userId:me.uid,userName:me.name,serviceId:sv.id,serviceName:sv.name,partnerName:pt?pt.name:"",details:val("#o-d"),status:"new",createdAt:Date.now()});toast("أُرسل طلبك، ستتواصل معك الإدارة");if(wa)open(waLink("طلب خدمة: "+sv.name+(pt?" · شريك: "+pt.name:"")+"\n"+val("#o-d")+"\nالاسم: "+me.name),"_blank");await loadMine();view="orders";render()}
     else if(a=="sost"){const o=sorders.find(x=>x.id==id),st=b.dataset.s;await updateDoc(doc(db,"sorders",id),{status:st,note:st=="rejected"?(prompt("سبب الرفض:")||""):""});await notify(o.userId,"طلبك ("+o.serviceName+"): "+SL[st]);await loadMine();render()}
-    else if(a=="ustars"){const n=+prompt("عدد النجوم (سالب للخصم):");if(!n)return;const nt=prompt("السبب:")||"تعديل من الإدارة";await updateDoc(doc(db,"users",id),{stars:increment(n)});await ledger(id,n>0?"credit":"debit",n,nt);await notify(id,(n>0?"أُضيف ":"خُصم ")+Math.abs(n)+" نجمة: "+nt);await loadMine();render()}
-    else if(a=="urole"){const r=prompt("الدور: user / moderator / accountant / editor / admin");if(!["user","moderator","accountant","editor","admin"].includes(r))return toast("دور غير صحيح");await updateDoc(doc(db,"users",id),{role:r});await loadMine();render()}
+    else if(a=="ustars"){
+       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
+       const n=Number(prompt("عدد النجوم (سالب للخصم):"));
+       if(!Number.isSafeInteger(n)||n===0||Math.abs(n)>100000)return toast("العدد غير صحيح (الحد 100,000 نجمة)");
+       const note=prompt("السبب:")||"تعديل من الإدارة";
+       if(!confirm("تأكيد تعديل رصيد المستخدم بـ "+n+" نجمة؟"))return;
+       const now=Date.now(),userRef=doc(db,"users",id),ledgerRef=doc(collection(db,"transactions"));
+       await runTransaction(db,async tx=>{
+         const u=await tx.get(userRef);
+         if(!u.exists())throw Error("المستخدم غير موجود");
+         const next=Number(u.data().stars||0)+n;
+         if(!Number.isSafeInteger(next)||next<0)throw Error("لا يمكن أن يصبح الرصيد سالباً");
+         tx.update(userRef,{stars:increment(n)});
+         tx.set(ledgerRef,{userId:id,type:n>0?"credit":"debit",amount:n,note,createdAt:now});
+       });
+       await notify(id,(n>0?"أُضيف ":"خُصم ")+Math.abs(n)+" نجمة: "+note).catch(()=>{});
+       await loadMine();toast("حُفظ تعديل الرصيد");render()
+     }
+     else if(a=="urole"){const r=prompt("الدور: user / moderator / accountant / editor / admin");if(!["user","moderator","accountant","editor","admin"].includes(r))return toast("دور غير صحيح");await updateDoc(doc(db,"users",id),{role:r});await loadMine();render()}
     else if(a=="svadd"){if(!val("#sv-n"))return toast("اكتب اسم الخدمة");await addDoc(collection(db,"services"),{name:val("#sv-n"),desc:val("#sv-d"),price:+val("#sv-p")||0,active:true});await loadPublic();render()}
     else if(a=="svseed"){for(const n of ["تصميم إعلان","تصميم شعار وهوية","فيديو إعلاني","مونتاج فيديو","حملة تسويقية"])await addDoc(collection(db,"services"),{name:n,desc:"",price:0,active:true});await loadPublic();render()}
     else if(a=="svprice"){const p=prompt("السعر بالدولار (0 = حسب الاتفاق):");if(p===null)return;await updateDoc(doc(db,"services",id),{price:+p||0});await loadPublic();render()}
@@ -405,8 +422,31 @@ document.addEventListener("click",async e=>{
     else if(a=="pttog"){await updateDoc(doc(db,"partners",id),{active:partners.find(x=>x.id==id).active===false});await loadPublic();render()}
     else if(a=="ptdel"){await deleteDoc(doc(db,"partners",id));await loadPublic();render()}
     else if(a=="subreq"){const p=plans.find(x=>x.id==$("#pl-"+id).value),st=myStores.find(x=>x.id==id);if((me.stars||0)<p.stars)return toast("رصيدك لا يكفي، اشترِ نجومًا أولًا");await addDoc(collection(db,"subs"),{userId:me.uid,userName:me.name,storeId:id,storeName:st.name,planId:p.id,planName:p.name,stars:p.stars,days:p.days,status:"pending",createdAt:Date.now()});toast("أُرسل طلب الاشتراك وسيُفعّل بعد موافقة الإدارة")}
-    else if(a=="subok"){const r=subs.find(x=>x.id==id),u=await getDoc(doc(db,"users",r.userId));if((u.data().stars||0)<r.stars)return toast("رصيد المستخدم لا يكفي");const b=(await getDoc(doc(db,"stores",r.storeId))).data(),base=b.plan==r.planId?Math.max(Date.now(),b.planUntil||0):Date.now();await updateDoc(doc(db,"users",r.userId),{stars:increment(-r.stars)});await updateDoc(doc(db,"stores",r.storeId),{plan:r.planId,planUntil:base+r.days*864e5});await ledger(r.userId,"debit",-r.stars,"اشتراك "+r.planName+" - "+r.storeName);await notify(r.userId,"تم تفعيل اشتراك "+r.planName+" لمتجر "+r.storeName);await updateDoc(doc(db,"subs",id),{status:"done"});await loadPublic();await loadMine();toast("فُعّل الاشتراك");render()}
-    else if(a=="subno"){await updateDoc(doc(db,"subs",id),{status:"rejected"});await loadMine();render()}
+    else if(a=="subok"){
+       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
+       const r=subs.find(x=>x.id===id);if(!r)return toast("الطلب غير موجود");
+       if(!confirm("تأكيد تفعيل اشتراك "+r.storeName+"؟ سيتم خصم نجوم الباقة الحالية من حساب العميل."))return;
+       const time=Date.now(),subRef=doc(db,"subs",id),userRef=doc(db,"users",r.userId),storeRef=doc(db,"stores",r.storeId),planRef=doc(db,"plans",r.planId),ledgerRef=doc(db,"transactions","sub_"+id);
+       const result=await runTransaction(db,async tx=>{
+         const [subSnap,userSnap,storeSnap,planSnap]=await Promise.all([tx.get(subRef),tx.get(userRef),tx.get(storeRef),tx.get(planRef)]);
+         if(!subSnap.exists()||subSnap.data().status!=="pending")throw Error("تمت معالجة طلب الاشتراك مسبقاً");
+         if(!userSnap.exists()||!storeSnap.exists()||!planSnap.exists())throw Error("حساب العميل أو المتجر أو الباقة غير موجود");
+         const sub=subSnap.data(),user=userSnap.data(),store=storeSnap.data(),plan=planSnap.data();
+         if(store.ownerId!==sub.userId||store.status!=="approved")throw Error("المتجر لا يتبع لهذا العميل أو غير منشور");
+         const cost=Number(plan.stars),days=Number(plan.days),balance=Number(user.stars||0);
+         if(plan.active===false||!Number.isSafeInteger(cost)||cost<0||!Number.isSafeInteger(days)||days<=0)throw Error("الباقة غير صالحة");
+         if(balance<cost)throw Error("رصيد النجوم لا يكفي");
+         const base=store.plan===sub.planId?Math.max(time,Number(store.planUntil||0)):time;
+         tx.update(userRef,{stars:increment(-cost)});
+         tx.update(storeRef,{plan:sub.planId,planUntil:base+days*864e5});
+         tx.set(ledgerRef,{userId:sub.userId,type:"debit",amount:-cost,note:"اشتراك "+plan.name+" - "+store.name,requestId:id,createdAt:time});
+         tx.update(subRef,{status:"done",approvedAt:time,chargedStars:cost,actualDays:days});
+         return {uid:sub.userId,planName:plan.name,storeName:store.name};
+       });
+       await notify(result.uid,"تم تفعيل اشتراك "+result.planName+" لمتجر "+result.storeName).catch(()=>{});
+       await loadPublic();await loadMine();toast("فُعّل الاشتراك مرة واحدة");render()
+     }
+     else if(a=="subno"){await updateDoc(doc(db,"subs",id),{status:"rejected"});await loadMine();render()}
     else if(a=="seedpl"){for(const [i,n,st,d,m,bd,o] of [["free","مجانية",0,0,5,"",0],["silver","فضية",10,30,30,"فضي",1],["gold","ذهبية",25,30,100,"ذهبي",2],["vip","VIP",50,30,0,"VIP",3]])await setDoc(doc(db,"plans",i),{name:n,stars:st,days:d,maxAds:m,badge:bd,order:o,active:true,features:""});await loadPublic();render()}
     else if(a=="savepl"){const k=editPl?editPl.id:val("#pl-id").toLowerCase().replace(/[^a-z0-9_]/g,"");if(!k||!val("#pl-n"))return toast("اكتب المعرّف (إنجليزي) والاسم");await setDoc(doc(db,"plans",k),{name:val("#pl-n"),stars:+val("#pl-s")||0,days:+val("#pl-d")||0,maxAds:+val("#pl-m")||0,badge:val("#pl-b"),order:+val("#pl-o")||0,features:val("#pl-f"),active:editPl?editPl.active!==false:true});editPl=null;await loadPublic();render()}
     else if(a=="edpl"){editPl=plans.find(x=>x.id==id);render()}
@@ -429,15 +469,50 @@ document.addEventListener("click",async e=>{
     else if(a=="adddir"){if(!val("#d-n"))return toast("اكتب الاسم");await addDoc(collection(db,"directory"),{type:$("#d-t").value,name:val("#d-n"),spec:val("#d-s"),area:val("#d-a"),phone:val("#d-p").replace(/[^\d+]/g,""),stars:+$("#d-st").value,onDuty:false,active:true,createdAt:Date.now()});await loadPublic();render()}
     else if(a=="duty"){await updateDoc(doc(db,"directory",id),{onDuty:!dr.find(x=>x.id==id).onDuty});await loadPublic();render()}
     else if(a=="deldir"){await deleteDoc(doc(db,"directory",id));await loadPublic();render()}
-    else if(a=="ordok"){const o=orders.find(x=>x.id==id);await updateDoc(doc(db,"users",o.userId),{stars:increment(o.stars)});await ledger(o.userId,"credit",o.stars,"شحن نجوم");await notify(o.userId,"أُضيف "+o.stars+" نجمة إلى رصيدك");await updateDoc(doc(db,"starOrders",id),{status:"done"});toast("أُضيفت النجوم");await loadMine();render()}
-    else if(a=="ordno"){await updateDoc(doc(db,"starOrders",id),{status:"rejected"});await loadMine();render()}
-    else if(a=="prok"){const p=promos.find(x=>x.id==id),u=await getDoc(doc(db,"users",p.userId));
-      if((u.data().stars||0)<p.stars)return toast("رصيد المستخدم لا يكفي");
-      const ad=await getDoc(doc(db,"ads",p.adId)),base=Math.max(Date.now(),ad.data().featuredUntil||0);
-      await updateDoc(doc(db,"users",p.userId),{stars:increment(-p.stars)});await ledger(p.userId,"debit",-p.stars,"تمييز إعلان: "+p.adTitle);await notify(p.userId,"تم تمييز إعلانك: "+p.adTitle);
-      await updateDoc(doc(db,"ads",p.adId),{featuredUntil:base+p.days*864e5});
-      await updateDoc(doc(db,"promos",id),{status:"done"});await loadPublic();await loadMine();toast("فُعّل التمييز");render()}
-    else if(a=="prno"){await updateDoc(doc(db,"promos",id),{status:"rejected"});await loadMine();render()}
+    else if(a=="ordok"){
+       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
+       const o=orders.find(x=>x.id===id);if(!o)return toast("الطلب غير موجود");
+       if(!confirm("هل استلمت دفعة "+o.stars+" دولار فعلياً من "+o.userName+"؟ لا تُضاف النجوم قبل التحقق من الدفع."))return;
+       const now=Date.now(),orderRef=doc(db,"starOrders",id),userRef=doc(db,"users",o.userId),ledgerRef=doc(db,"transactions","topup_"+id);
+       const result=await runTransaction(db,async tx=>{
+         const [orderSnap,userSnap]=await Promise.all([tx.get(orderRef),tx.get(userRef)]);
+         if(!orderSnap.exists()||orderSnap.data().status!=="pending")throw Error("تمت معالجة طلب الشحن مسبقاً");
+         if(!userSnap.exists())throw Error("حساب العميل غير موجود");
+         const order=orderSnap.data(),amount=Number(order.stars);
+         if(!Number.isSafeInteger(amount)||amount<=0||amount>100000)throw Error("عدد النجوم غير صالح");
+         tx.update(userRef,{stars:increment(amount)});
+         tx.set(ledgerRef,{userId:order.userId,type:"credit",amount,note:"شحن نجوم بعد تأكيد الدفع",requestId:id,createdAt:now});
+         tx.update(orderRef,{status:"done",approvedAt:now,creditedStars:amount});
+         return {uid:order.userId,amount};
+       });
+       await notify(result.uid,"أُضيف "+result.amount+" نجمة إلى رصيدك").catch(()=>{});
+       toast("أُضيفت النجوم مرة واحدة");await loadMine();render()
+     }
+     else if(a=="ordno"){await updateDoc(doc(db,"starOrders",id),{status:"rejected"});await loadMine();render()}
+    else if(a=="prok"){
+       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
+       const p=promos.find(x=>x.id===id);if(!p)return toast("طلب التمييز غير موجود");
+       const now=Date.now(),promoRef=doc(db,"promos",id),userRef=doc(db,"users",p.userId),adRef=doc(db,"ads",p.adId),pkgRef=doc(db,"packages",p.pkgId),ledgerRef=doc(db,"transactions","promo_"+id);
+       const result=await runTransaction(db,async tx=>{
+         const [promoSnap,userSnap,adSnap,pkgSnap]=await Promise.all([tx.get(promoRef),tx.get(userRef),tx.get(adRef),tx.get(pkgRef)]);
+         if(!promoSnap.exists()||promoSnap.data().status!=="pending")throw Error("تمت معالجة طلب التمييز مسبقاً");
+         if(!userSnap.exists()||!adSnap.exists()||!pkgSnap.exists())throw Error("بيانات طلب التمييز غير مكتملة");
+         const promo=promoSnap.data(),user=userSnap.data(),ad=adSnap.data(),pkg=pkgSnap.data();
+         const cost=Number(pkg.stars),days=Number(pkg.days),balance=Number(user.stars||0);
+         if(ad.ownerId!==promo.userId||ad.status!=="approved")throw Error("الإعلان غير تابع للعميل أو غير منشور");
+         if(pkg.active===false||!Number.isSafeInteger(cost)||cost<=0||!Number.isSafeInteger(days)||days<=0)throw Error("باقة التمييز غير صالحة");
+         if(balance<cost)throw Error("رصيد النجوم لا يكفي");
+         const base=Math.max(now,Number(ad.featuredUntil||0));
+         tx.update(userRef,{stars:increment(-cost)});
+         tx.update(adRef,{featuredUntil:base+days*864e5});
+         tx.set(ledgerRef,{userId:promo.userId,type:"debit",amount:-cost,note:"تمييز إعلان: "+ad.title,requestId:id,createdAt:now});
+         tx.update(promoRef,{status:"done",approvedAt:now,chargedStars:cost,actualDays:days});
+         return {uid:promo.userId,adTitle:ad.title};
+       });
+       await notify(result.uid,"تم تمييز إعلانك: "+result.adTitle).catch(()=>{});
+       await loadPublic();await loadMine();toast("فُعّل التمييز مرة واحدة");render()
+     }
+     else if(a=="prno"){await updateDoc(doc(db,"promos",id),{status:"rejected"});await loadMine();render()}
   }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":"تعذر تنفيذ العملية")}
 });
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
