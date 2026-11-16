@@ -88,29 +88,8 @@ service cloud.firestore {
         || (signedIn() && resource.data.ownerId == request.auth.uid)
         || isStaff();
 
-      allow create: if safeDocumentId(id) && signedIn()
-        && request.resource.data.ownerId == request.auth.uid
-        && request.resource.data.status == "pending"
-        && safeText(request.resource.data.title, 3, 150)
-        && safeText(request.resource.data.ownerName, 1, 100)
-        && request.resource.data.price is number
-        && request.resource.data.price >= 0
-        && request.resource.data.price <= 1000000000000
-        && request.resource.data.cur in ["$", "ل.س"]
-        && safeText(request.resource.data.cat, 2, 60)
-        && safeText(request.resource.data.area, 1, 100)
-        && safeText(request.resource.data.desc, 0, 5000)
-        && safePhone(request.resource.data.phone)
-        && safeImageData(request.resource.data.img)
-        && (!("imgHash" in request.resource.data)
-          || (request.resource.data.imgHash is string && request.resource.data.imgHash.matches('^[0-9a-f]{64}$')))
-        && request.resource.data.createdAt is int
-        && request.resource.data.createdAt > 0
-        && (!('storeId' in request.resource.data) || ownsApprovedStore(request.resource.data.storeId))
-        && request.resource.data.keys().hasOnly([
-          "title", "price", "cur", "cat", "area", "desc", "phone",
-          "img", "imgHash", "storeId", "ownerId", "ownerName", "status", "createdAt"
-        ]);
+      // Trusted souqnaMarketplace callable enforces quotas and submission validation.
+      allow create: if false;
       allow update: if (isAdmin()
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["featuredUntil"]))
         || (isStaff() && changedOnly(["status"]));
@@ -122,23 +101,8 @@ service cloud.firestore {
       allow read: if resource.data.status == "approved"
         || (signedIn() && resource.data.ownerId == request.auth.uid)
         || isStaff();
-      allow create: if safeDocumentId(id) && signedIn()
-        && request.resource.data.ownerId == request.auth.uid
-        && request.resource.data.status == "pending"
-        && safeText(request.resource.data.name, 2, 120)
-        && safeText(request.resource.data.ownerName, 1, 100)
-        && safeText(request.resource.data.desc, 0, 3000)
-        && safePhone(request.resource.data.phone)
-        && safeText(request.resource.data.area, 1, 100)
-        && safeText(request.resource.data.map, 0, 1200)
-        && safeImageData(request.resource.data.logo)
-        && safeImageData(request.resource.data.cover)
-        && request.resource.data.createdAt is int
-        && request.resource.data.createdAt > 0
-        && request.resource.data.keys().hasOnly([
-          "name", "desc", "phone", "area", "map", "logo", "cover",
-          "ownerId", "ownerName", "status", "createdAt"
-        ]);
+      // Trusted souqnaMarketplace callable enforces quotas and submission validation.
+      allow create: if false;
       allow update: if (isAdmin()
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["plan", "planUntil"]))
         || (isStaff() && changedOnly(["status"]))
