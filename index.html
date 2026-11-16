@@ -194,6 +194,25 @@ main:has(.souqna-home-layout){padding:8px 8px 90px}.souqna-home-layout{grid-temp
 .favorites-page{max-width:1380px;margin:auto}
 .favorites-page .grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 @media(max-width:850px){.souqna-heart{font-size:18px;padding:7px 9px}.souqna-heart .heart-count{font-size:9px}}
+/* Classified details retain approved blue/gold Souqna visual language */
+.ad-image-open{position:absolute;inset:0;width:100%;height:100%;background:transparent;border:0;cursor:pointer;z-index:1}
+.favorite-toggle{z-index:3}
+.ad-title-open{border:0;background:transparent;color:inherit;font:inherit;font-weight:900;text-align:right;width:100%;padding:0;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-title-open:hover{color:var(--b);text-decoration:underline}
+.ad-details-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(270px,.7fr);gap:18px;align-items:start;max-width:1300px;margin:10px auto 20px}
+.ad-details-media{min-height:420px;border:1px solid var(--bd);border-radius:20px;overflow:hidden;background:linear-gradient(135deg,#eaf2ff,#f7faff);display:grid;place-items:center}
+.ad-details-media img{display:block;width:100%;height:auto;max-height:650px;object-fit:contain}
+.ad-details-media .ad-placeholder{font-size:100px}
+.ad-details-sidebar .price{font-weight:900;font-size:clamp(23px,2.6vw,32px);color:#093c91}
+.ad-details-sidebar h1{font-size:clamp(20px,2.5vw,28px);margin:4px 0 14px;line-height:1.4}
+.ad-details-sidebar .row-info{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #e6edf8;padding:9px 0}
+.ad-details-sidebar .row-info span{color:var(--m)}
+.ad-details-sidebar .contact-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:20px}
+.ad-details-sidebar .contact-actions .btn{display:block;text-align:center;font-size:14px}
+.ad-details-description{max-width:1300px;margin:0 auto 20px}
+.ad-details-description p{white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:850px){.ad-details-layout{grid-template-columns:1fr;gap:9px}.ad-details-media{min-height:220px}.ad-details-media img{max-height:390px}.ad-details-sidebar .contact-actions{grid-template-columns:1fr 1fr}}
+
 </style>
 </head>
 <body>
@@ -221,6 +240,7 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
 let savedAdIds=new Set();
+let selectedAdId=null;
 let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],sq="",plans=[],subs=[],editPl=null,editSp=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
@@ -330,9 +350,9 @@ async function loadMine(){
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
   const msg="مرحبًا، بخصوص إعلانك في سوقنا: "+a.title;
-  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${a.img?`background-image:url(${a.img})`:""}">${a.img?"":IC[a.cat]||"🛍️"}${!m?`<button type="button" class="favorite-toggle ${savedAdIds.has(a.id)?"saved":""}" data-a="favorite" data-id="${esc(a.id)}" aria-pressed="${savedAdIds.has(a.id)}" aria-label="${savedAdIds.has(a.id)?"حذف من المفضلة":"حفظ في المفضلة"}">${savedAdIds.has(a.id)?"♥":"♡"}</button>`:""}</div><div class="bd">
+  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${a.img?`background-image:url(${a.img})`:""}">${a.img?"":IC[a.cat]||"🛍️"}${!m?`<button type="button" class="ad-image-open" data-ad="${esc(a.id)}" aria-label="عرض تفاصيل ${esc(a.title)}"></button>`:""}${!m?`<button type="button" class="favorite-toggle ${savedAdIds.has(a.id)?"saved":""}" data-a="favorite" data-id="${esc(a.id)}" aria-pressed="${savedAdIds.has(a.id)}" aria-label="${savedAdIds.has(a.id)?"حذف من المفضلة":"حفظ في المفضلة"}">${savedAdIds.has(a.id)?"♥":"♡"}</button>`:""}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
-  <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
+  <div>${m?`<b>${esc(a.title)}</b>`:`<button type="button" class="ad-title-open" data-ad="${esc(a.id)}" aria-label="عرض تفاصيل الإعلان">${esc(a.title)}</button>`}</div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
   :m=="mine"?`<button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
   :`<a class="btn wa" target="_blank" href="https://wa.me/${esc(a.phone)}?text=${encodeURIComponent(msg)}">واتساب</a>`}</div></div></div>`}
@@ -383,6 +403,29 @@ function loginBox(){
   <button class="btn" style="width:100%" data-a="auth">${r?"إنشاء الحساب":"دخول"}</button>
   <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
 
+function approvedAdDetailsHtml(){
+  const a=ads.find(x=>x.id===selectedAdId);
+  if(!a)return '<div class="box"><h2>الإعلان غير متاح</h2><p class="mut">ربما تم حذف الإعلان أو إيقافه.</p><button class="btn g" data-v="home">العودة للرئيسية</button></div>';
+  const phone=String(a.phone||"").replace(/\D/g,"");
+  const whatsapp=phone.length>=9&&phone.length<=15?'https://wa.me/'+phone+'?text='+encodeURIComponent("مرحباً، أريد الاستفسار عن إعلان سوقنا: "+a.title):"";
+  const image=typeof a.img==="string"&&(/^(https:\/\/|data:image\/(?:jpeg|png|webp);base64,)/i.test(a.img))?a.img:"";
+  const saved=savedAdIds.has(a.id);
+  return `<div class="ad-details-layout">
+    <div class="ad-details-media">${image?`<img src="${esc(image)}" alt="${esc(a.title)}" loading="lazy">`:`<span class="ad-placeholder">${IC[a.cat]||"🛍️"}</span>`}</div>
+    <section class="box ad-details-sidebar">
+      <span class="tag">${esc(catName(a.cat))}</span> ${isF(a)?'<span class="tag g">⭐ إعلان مميز</span>':""}
+      <h1>${esc(a.title)}</h1><div class="price">${esc(a.price)} ${esc(a.cur)}</div>
+      <div class="row-info"><span>📍 الموقع</span><b>${esc(a.area||"السويداء")}</b></div>
+      <div class="row-info"><span>👤 المعلن</span><b>${esc(a.ownerName||"مستخدم سوقنا")}</b></div>
+      ${Number(a.createdAt)?`<div class="row-info"><span>📅 تاريخ النشر</span><b>${new Date(a.createdAt).toLocaleDateString("ar")}</b></div>`:""}
+      <div class="contact-actions">
+        ${whatsapp?`<a class="btn wa" href="${whatsapp}" target="_blank" rel="noopener noreferrer">تواصل عبر واتساب</a>`:'<span class="mut">رقم التواصل غير متاح</span>'}
+        <button class="btn l" data-a="favorite" data-id="${esc(a.id)}">${saved?"♥ إزالة من المفضلة":"♡ حفظ في المفضلة"}</button>
+      </div>
+      <div class="acts" style="margin-top:12px"><button class="btn l" data-v="home">‹ العودة للإعلانات</button></div>
+    </section>
+  </div><section class="box ad-details-description"><h3>تفاصيل الإعلان</h3><p>${esc(a.desc||"لم يضف المعلن تفاصيل أخرى.")}</p></section>`;
+}
 function approvedHomeHtml(){
   const vehicle=ads.find(x=>x.cat==="cars"||x.cat==="vehicles")||null;
   const store=stores[0]||null;
@@ -462,6 +505,8 @@ function render(){
     A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><div class="sec"><b>🎨 خدمات سوقنا</b></div>${services.filter(x=>x.active!==false).map(x=>`<div class="box"><b>${esc(x.name)}</b> <span class="tag g">${x.price?esc(x.price)+" $":"حسب الاتفاق"}</span><div class="mut">${esc(x.desc||"")}</div></div>`).join("")||'<p class="mut">لا خدمات متاحة حاليًا.</p>'}
     <div class="sec"><b>📣 شبكة شركاء النشر</b></div>${partners.filter(x=>x.active!==false).map(x=>`<div class="dr"><div class="av">${esc((x.platform||"?")[0].toUpperCase())}</div><div style="flex:1"><b>${esc(x.name)}</b><div class="mut">${esc(x.platform||"")} · ${esc(x.region||"")} · ${esc(x.audience||"")}</div></div><span class="tag g">${x.price?esc(x.price)+" $":"حسب الاتفاق"}</span></div>`).join("")||'<p class="mut">قريبًا.</p>'}
     <div class="box"><h3>طلب خدمة أو حملة</h3>${me?`<select id="o-s">${services.filter(x=>x.active!==false).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select><select id="o-p"><option value="">بدون شريك نشر</option>${partners.filter(x=>x.active!==false).map(x=>`<option value="${x.id}">${esc(x.name)} (${esc(x.platform||"")})</option>`).join("")}</select><textarea id="o-d" rows="3" placeholder="تفاصيل الطلب: النص، المقاس، الجمهور المستهدف..."></textarea><button class="btn g" style="width:100%" data-a="sorder">إرسال الطلب</button>`:"<p class='mut'>سجّل الدخول لإرسال طلب.</p>"}</div>`;
+  }else if(view=="adDetail"){
+    A.innerHTML=approvedAdDetailsHtml();
   }else if(view=="favorites"){
     const favAds=ads.filter(a=>savedAdIds.has(a.id));
     A.innerHTML=!me?loginBox():`<section class="favorites-page"><div class="sec"><b>♥ إعلاناتي المفضلة</b><span class="mut">${favAds.length} إعلان محفوظ</span></div>
@@ -534,6 +579,7 @@ document.addEventListener("click",async e=>{
   const ss=e.target.closest("[data-st]");if(ss){curStore=ss.dataset.st;view="store";stx={f:[],r:[]};await loadStoreX(curStore);render();return scrollTo(0,0)}
   const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;if(view!=="home"){view="home";render()}else{const directory=$("#dir");if(directory)directory.innerHTML=dirHtml()}document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt===dtype));return}
   const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view="home";feat=false;render();return scrollTo(0,0)}
+  const detail=e.target.closest("[data-ad]");if(detail){selectedAdId=detail.dataset.ad;view="adDetail";render();window.scrollTo(0,0);return}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   try{
     if(a=="more"){more=!more;render()}
