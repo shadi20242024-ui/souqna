@@ -41,6 +41,15 @@ The approved screenshot was packaged with two deployable images in a separate us
 5. If the trusted admin claim was recently granted, use the owner-account **🔐 تحديث صلاحيات حسابي** control to refresh the ID token, and re-test the authorized dashboard.
 6. Confirm backend callable operations in staging. Release to production only after all remaining items below are checked.
 
+## Marketplace browsing improvements — November 16, 2026
+
+- The approved categories now include the All Categories tile and an expandable More button without changing the navy/gold design.
+- The real public approved-ad listing supports Arabic letter-form normalization (alef/hamza, ya, Arabic diacritics), text and city/area filtering, and sort by newest, oldest, featured or price.
+- Minimum and maximum price filters become active only after a currency is selected. Unlike a currency converter, price sorting groups different currencies rather than silently treating their numbers as equivalent.
+- Large result sets display twelve ads at a time with previous/next pagination, result count and clear-filter action.
+- Ad thumbnails use HTML image tags with URL and HTML escaping rather than interpolating an untrusted URL inside an inline CSS declaration. Shop background image URLs also use an encoded, restricted URL path. This preserves the same visual cards.
+- CI added automated checks covering Arabic normalization, price sorting and filtering, pagination controls, trusted image protocols, and injection safety.
+
 ## Production release checklist
 
 - [x] Firestore rules and permissions tests on emulator
