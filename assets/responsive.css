@@ -568,3 +568,101 @@ nav button.desktop-only { display: none; }
   .premium-banner-content p { font-size: 13px; }
   .sponsor-switcher { left: 12px; bottom: 10px; }
 }
+
+/* SOUQNA administrative analytics, derived from loaded Firestore documents. */
+.admin-dashboard { margin: 0 0 25px; }
+.admin-dashboard-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 26px;
+  border-radius: 22px;
+  background: linear-gradient(110deg,#081f55,#1849a8);
+  color: #fff;
+  box-shadow: 0 12px 26px #0a2a7220;
+}
+.admin-dashboard-head h2 {
+  color: #ffdf89;
+  margin: 4px 0 5px;
+  font-size: clamp(22px,3vw,30px);
+}
+.admin-dashboard-head p { margin: 0; color: #e3ebfc; font-size: 13px; }
+.admin-eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #c7d7f6;
+  font-weight: 900;
+}
+.admin-dashboard-head .btn { flex: none; min-height: 44px; }
+.admin-refresh-time {
+  font-size: 12px;
+  color: #5d6e87;
+  margin: 9px 2px 16px;
+}
+.admin-dashboard > h3 {
+  margin: 22px 2px 11px;
+  color: #132d6a;
+  font-size: 19px;
+}
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(170px,1fr));
+  gap: 12px;
+}
+.admin-stat {
+  position: relative;
+  border: 1px solid #dbe4f4;
+  border-radius: 17px;
+  background: linear-gradient(155deg,#fff,#f6f9ff);
+  box-shadow: 0 7px 20px rgba(9,36,89,.06);
+  padding: 16px 15px 15px;
+  min-height: 155px;
+}
+.admin-stat-icon {
+  display: inline-flex;
+  font-size: 24px;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: #eaf0ff;
+  border: 1px solid #dce7fa;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+.admin-stat-name {
+  font-size: 13px;
+  color: #53658c;
+  font-weight: 800;
+}
+.admin-stat-value {
+  display: block;
+  font-size: 28px;
+  line-height: 1.2;
+  color: #143e96;
+  text-align: right;
+  margin: 6px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.admin-stat small { display: block; color: #6c7890; font-size: 11px; }
+.admin-finance-disclaimer {
+  border-right: 3px solid #e8b449;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #664d18;
+  line-height: 1.8;
+  font-size: 13px;
+  margin-top: 12px;
+}
+@media (max-width: 600px) {
+  .admin-dashboard-head { flex-direction: column; align-items: stretch; padding: 19px; }
+  .admin-dashboard-head .btn { width: 100%; }
+  .admin-stat-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .admin-stat { padding: 12px 10px; min-height: 150px; }
+  .admin-stat-value { font-size: 25px; }
+}
+@media (max-width: 360px) {
+  .admin-stat-grid { grid-template-columns: 1fr; }
+}
