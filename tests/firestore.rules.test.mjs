@@ -19,6 +19,8 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
       setDoc(doc(db,"users","owner"),{name:"مالك",email:"owner@example.test",role:"admin",stars:100}),
       setDoc(doc(db,"users","alice"),{name:"أليس",email:"alice@example.test",role:"user",stars:3}),
       setDoc(doc(db,"users","bob"),{name:"بوب",email:"bob@example.test",role:"user",stars:0}),
+      setDoc(doc(db,"users","moderator"),{name:"مشرف",email:"moderator@example.test",role:"moderator",stars:0}),
+      setDoc(doc(db,"notifs","private-note"),{userId:"alice",text:"إشعار مالي خاص",read:false,createdAt:Date.now()}),
       setDoc(doc(db,"ads","public"),{title:"سيارة",ownerId:"alice",status:"approved",createdAt:1}),
       setDoc(doc(db,"ads","private"),{title:"إعلان خاص",ownerId:"alice",status:"pending",createdAt:2}),
       setDoc(doc(db,"stores","open"),{name:"متجر",ownerId:"alice",status:"approved",createdAt:1}),
@@ -32,6 +34,7 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
   const alice = env.authenticatedContext("alice").firestore();
   const bob = env.authenticatedContext("bob").firestore();
   const admin = env.authenticatedContext("owner").firestore();
+  const moderator = env.authenticatedContext("moderator").firestore();
 
   await t.test("Anonymous users can query published ads and stores", async () => {
     await assertSucceeds(getDocs(query(collection(anon,"ads"),where("status","==","approved"))));
@@ -63,6 +66,51 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
       img:"",createdAt:Date.now()
     }));
   });
+  await t.test("Listing content cannot bypass length, price, image and phone validation", async () => {
+    const valid={
+      ownerId:"alice",ownerName:"أليس",status:"pending",title:"سيارة للبيع",
+      price:150,cur:"$",cat:"cars",area:"السويداء",desc:"وصف مختصر",
+      phone:"963999999999",img:"",createdAt:Date.now()
+    };
+    await assertFails(setDoc(doc(alice,"ads","bad-negative"),{...valid,price:-50}));
+    await assertFails(setDoc(doc(alice,"ads","bad-nan"),{...valid,price:"غير معروف"}));
+    await assertFails(setDoc(doc(alice,"ads","bad-title"),{...valid,title:"X".repeat(151)}));
+    await assertFails(setDoc(doc(alice,"ads","bad-phone"),{...valid,phone:"abc123"}));
+    await assertFails(setDoc(doc(alice,"ads","bad-image"),{...valid,img:"data:text/html;base64,PHNjcmlwdD4="}));
+    await assertFails(setDoc(doc(alice,"ads","bad-big-image"),{...valid,img:"data:image/png;base64,"+"A".repeat(700001)}));
+    await assertFails(setDoc(doc(alice,"ads","bad-hash"),{...valid,imgHash:"forged"}));
+    await assertFails(setDoc(doc(alice,"ads","bad-extra"),{...valid,adminApproved:true}));
+    await assertSucceeds(setDoc(doc(alice,"ads","valid-listing"),valid));
+  });
+
+  await t.test("Stores and financial requests reject oversized and forged fields", async () => {
+    const store={
+      name:"متجر للاختبار",desc:"وصف",phone:"963999999999",area:"السويداء",map:"",
+      logo:"",cover:"",ownerId:"alice",ownerName:"أليس",status:"pending",createdAt:Date.now()
+    };
+    await assertFails(setDoc(doc(alice,"stores","bad-cover"),{...store,cover:"X".repeat(700002)}));
+    await assertFails(setDoc(doc(alice,"stores","bad-name"),{...store,name:"X".repeat(121)}));
+    await assertSucceeds(setDoc(doc(alice,"stores","valid-store"),store));
+    const topup={userId:"alice",userName:"أليس",stars:5,status:"pending",createdAt:Date.now()};
+    await assertFails(setDoc(doc(alice,"starOrders","fake-topup"),{...topup,paymentReceiptId:"pretend-paid"}));
+    await assertFails(setDoc(doc(alice,"starOrders","bad-stars"),{...topup,stars:5.3}));
+    await assertSucceeds(setDoc(doc(alice,"starOrders","valid-topup"),topup));
+    const sponsor={
+      userId:"alice",userName:"أليس",company:"شركة اختبار",title:"بنر اختبار",
+      desc:"",phone:"963999999999",days:7,img:"",status:"pending",createdAt:Date.now()
+    };
+    await assertFails(setDoc(doc(alice,"sponsorRequests","fake-sponsor"),{...sponsor,approvedBy:"admin"}));
+    await assertFails(setDoc(doc(alice,"sponsorRequests","bad-sponsor-days"),{...sponsor,days:7.5}));
+    await assertSucceeds(setDoc(doc(alice,"sponsorRequests","valid-sponsor"),sponsor));
+  });
+
+  await t.test("Private notifications cannot be read by unrelated staff", async () => {
+    await assertSucceeds(getDoc(doc(alice,"notifs","private-note")));
+    await assertSucceeds(getDoc(doc(admin,"notifs","private-note")));
+    await assertFails(getDoc(doc(bob,"notifs","private-note")));
+    await assertFails(getDoc(doc(moderator,"notifs","private-note")));
+  });
+
   await t.test("Favorites are private per account and only for published ads", async () => {
     const ref = doc(alice,"favorites","alice_public");
     await assertSucceeds(setDoc(ref,{userId:"alice",adId:"public",createdAt:Date.now()}));
