@@ -71,8 +71,8 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
   await t.test("Client cannot credit stars or write ledgers", async () => {
     await assertFails(updateDoc(doc(alice,"users","alice"),{stars:100}));
     await assertFails(setDoc(doc(alice,"transactions","fraud"),{userId:"alice",amount:100,type:"credit"}));
-    await assertSucceeds(updateDoc(doc(admin,"users","alice"),{stars:5}));
-    await assertSucceeds(setDoc(doc(admin,"transactions","legit"),{
+    await assertFails(updateDoc(doc(admin,"users","alice"),{stars:5}));
+    await assertFails(setDoc(doc(admin,"transactions","legit"),{
       userId:"alice",amount:2,type:"credit",note:"إدارة",createdAt:Date.now()
     }));
   });
@@ -90,33 +90,33 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
   await t.test("Only administrator may activate sponsor banners", async () => {
     await assertFails(setDoc(doc(alice,"sponsors","fake"),{title:"إعلان وهمي",active:true}));
     await assertSucceeds(setDoc(doc(admin,"sponsors","real"),{title:"إعلان حقيقي",active:true}));
-    await assertSucceeds(updateDoc(doc(admin,"sponsorRequests","pending"),{status:"approved"}));
+    await assertFails(updateDoc(doc(admin,"sponsorRequests","pending"),{status:"approved"}));
+    await assertFails(setDoc(doc(admin,"sponsors","forged-paid"),{title:"مدفوع",active:true,requestId:"pending"}));
   });
   await t.test("New account may have only default customer role and zero stars", async () => {
     await assertSucceeds(setDoc(doc(bob,"users","bob"),{name:"تغيير الاسم",email:"bob@example.test",role:"user",stars:0}));
     await assertFails(setDoc(doc(bob,"users","bob"),{role:"admin",stars:500},{merge:true}));
   });
-  await t.test("Concurrent admin approvals credit stars exactly once", async () => {
+  await t.test("All client-side billing transactions are forbidden even to admins", async () => {
     await env.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(),"starOrders","topup-1"),{
         userId:"alice",userName:"أليس",stars:7,status:"pending",createdAt:Date.now()
       });
     });
-    const orderRef=doc(admin,"starOrders","topup-1");
-    const userRef=doc(admin,"users","alice");
-    const ledgerRef=doc(admin,"transactions","topup_topup-1");
-    const approve=() => runTransaction(admin,async tx => {
-      const [r,u]=await Promise.all([tx.get(orderRef),tx.get(userRef)]);
-      if(!r.exists()||r.data().status!=="pending")throw Error("already processed");
+    await assertFails(runTransaction(admin,async tx=>{
+      const userRef=doc(admin,"users","alice");
+      const snap=await tx.get(userRef);
+      if(!snap.exists())throw Error("User missing");
       tx.update(userRef,{stars:increment(7)});
-      tx.set(ledgerRef,{userId:"alice",type:"credit",amount:7,note:"Test top-up",createdAt:Date.now()});
-      tx.update(orderRef,{status:"done"});
-    });
-    const results=await Promise.allSettled([approve(),approve()]);
-    assert.equal(results.filter(x=>x.status==="fulfilled").length,1,"Only one transaction should succeed");
-    assert.equal((await getDoc(userRef)).data().stars,12,"Account should receive exactly seven stars");
-    assert.equal((await getDoc(ledgerRef)).data().amount,7);
-    assert.equal((await getDoc(orderRef)).data().status,"done");
+      tx.set(doc(admin,"transactions","topup_topup-1"),{
+        userId:"alice",type:"credit",amount:7,createdAt:Date.now()
+      });
+      tx.update(doc(admin,"starOrders","topup-1"),{status:"done"});
+    }));
+    assert.equal((await getDoc(doc(admin,"users","alice"))).data().stars,3);
+    assert.equal((await getDoc(doc(admin,"starOrders","topup-1"))).data().status,"pending");
+    await assertFails(updateDoc(doc(admin,"stores","open"),{plan:"vip",planUntil:Date.now()+864e5}));
+    await assertFails(updateDoc(doc(admin,"ads","public"),{featuredUntil:Date.now()+864e5}));
   });
 
   await t.test("Ordinary user cannot execute admin billing transaction", async () => {
