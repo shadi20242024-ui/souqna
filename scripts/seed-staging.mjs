@@ -47,6 +47,7 @@ for(const [collection,id,data] of docs){
 }
 console.log("SOUQNA STAGING INITIAL DATA — project:",project);
 console.log("Items by collection:",Object.entries(docs.reduce((o,[c])=>(o[c]=(o[c]||0)+1,o),{})));
+console.log("Total initial documents:",docs.length);
 console.log("No users, admins, passwords, credit balances, receipts or real contact numbers will be seeded.");
 if(!execute){
   console.log("DRY RUN ONLY. No Firebase connection and no writes.");
