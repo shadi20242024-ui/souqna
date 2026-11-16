@@ -130,7 +130,28 @@ function tkHtml(secondary=false){
   const items=entries.map(t=>String(t||"").trim()).filter(Boolean);
   return items.length?`<div class="tk ${secondary?"alt":""}" role="region" aria-label="${secondary?"تنبيهات الخدمات والوقود":"أخبار سوقنا"}"><b>${secondary?"⛽ الخدمات":"📰 الأخبار"}</b><div class="tkw" title="${esc(items.join(" • "))}"><span>${items.map(esc).join(" • ")}</span></div></div>`:"";
 }
-function spHtml(){const l=sp.filter(s=>s.active&&s.to>Date.now()),cta=`<button class="cta" style="border:0;background:transparent;font:inherit;cursor:pointer" data-v="sponsor">📢 احجز بنرك الإعلاني المميز في سوقنا ‹</button>`;if(!l.length)return cta;const s=l[spi%l.length];return `<div class="spn" style="${safeImage(s.img)?`background-image:linear-gradient(90deg,#0a2a72f2,#0a2a7299),url(&quot;${esc(safeImage(s.img))}&quot;)`:""}"><small>إعلان برعاية</small><div class="sco">${esc(s.company)}</div><b>${esc(s.title)}</b><div>${esc(s.desc||"")}</div>${s.phone?`<a class="gold" style="margin-top:8px" target="_blank" href="https://wa.me/${esc(s.phone)}">تواصل مع الشركة</a>`:""}</div>`+cta}
+function spHtml(){
+  const now=Date.now();
+  const current=sp.filter(s=>s.active===true&&Number(s.from||0)<=now&&Number(s.to||0)>now);
+  const cta=`<button class="cta" style="border:0;background:transparent;font:inherit;cursor:pointer" data-v="sponsor">📢 احجز بنرك الإعلاني المميز في سوقنا ‹</button>`;
+  if(!current.length)return `<div class="premium-banner premium-banner-empty"><div class="premium-banner-content"><small>✦ مساحة إعلانية متاحة</small><h3>أعلن عن متجرك في سوقنا</h3><p>بانر مميز أمام زوار سوق السويداء</p><button class="gold" data-v="sponsor">احجز مساحتك الإعلانية</button></div></div>`+cta;
+  const index=((spi%current.length)+current.length)%current.length,s=current[index];
+  const phone=String(s.phone||"").replace(/\D/g,"");
+  const background=safeImage(s.img)?`background-image:linear-gradient(90deg,rgba(7,25,59,.96),rgba(7,25,59,.43)),url(&quot;${esc(safeImage(s.img))}&quot;)`:"";
+  return `<section class="premium-banner" style="${background}" aria-label="إعلان برعاية ${esc(s.company||"شركة")}">
+      <div class="premium-banner-content"><small>✦ إعلان برعاية</small>
+        <div class="premium-banner-company">${esc(s.company||"")}</div>
+        <h3>${esc(s.title||"")}</h3>
+        <p>${esc(s.desc||"")}</p>
+        ${phone?`<a class="gold" target="_blank" rel="noopener noreferrer" href="https://wa.me/${phone}">تواصل مع المعلن</a>`:""}
+      </div>
+      ${current.length>1?`<div class="sponsor-switcher" aria-label="الانتقال بين البنرات">
+        <button data-a="spprev" aria-label="الإعلان السابق">❮</button>
+        <span dir="ltr">${index+1} / ${current.length}</span>
+        <button data-a="spnext" aria-label="الإعلان التالي">❯</button>
+      </div>`:""}
+    </section>`+cta;
+}
 function dirHtml(){const L=dr.filter(x=>x.type==dtype&&x.active!==false&&(dtype!="pharmacy"||x.onDuty)).sort((x,y)=>(y.stars||0)-(x.stars||0));return L.map(x=>`<div class="dr"><div class="av">${esc((x.name||"?")[0])}</div><div style="flex:1"><b>${esc(x.name)}</b> <span class="gs">${"★".repeat(x.stars||0)}</span>${x.onDuty?' <span class="tag">مناوبة اليوم</span>':""}<div class="mut">${esc(x.spec||"")}${x.area?" · "+esc(x.area):""}</div></div>${x.phone?`<a class="btn g" href="tel:${esc(x.phone)}">اتصال</a>`:""}</div>`).join("")||'<p class="mut">لا توجد بيانات بعد.</p>'}
 const adHtml=()=>site.adClient?`<ins class="adsbygoogle" style="display:block;margin:12px 0" data-ad-client="${esc(site.adClient)}" data-ad-slot="${esc(site.adSlot||"")}" data-ad-format="auto" data-full-width-responsive="true"></ins>`:"";
 function initAds(){if(site.adClient&&!document.getElementById("ads-js")){const e=document.createElement("script");e.id="ads-js";e.async=true;e.crossOrigin="anonymous";e.src="https://pagead2.googleapis.com/pagead/js/adsbygoogle.js?client="+encodeURIComponent(site.adClient);document.head.append(e)}}
@@ -401,7 +422,13 @@ document.addEventListener("click",async e=>{
       render();
     }
     else if(a=="clearphoto"){photoSeq++;photo="";photoHash="";photoError="";photoReady=Promise.resolve();const f=$("#a-img"),p=$("#a-preview");if(f)f.value="";if(p){p.hidden=true;p.removeAttribute("src")}toast("أُزيلت صورة الإعلان")}
-     else if(a=="more"){more=!more;render()}
+     else if(a=="spnext"||a=="spprev"){
+      const count=sp.filter(x=>x.active===true&&Number(x.from||0)<=Date.now()&&Number(x.to||0)>Date.now()).length;
+      if(!count)return;
+      spi=(spi+(a==="spnext"?1:count-1))%count;
+      const target=$("#spw");if(target)target.innerHTML=spHtml();
+    }
+    else if(a=="more"){more=!more;render()}
     else if(a=="feat"){feat=!feat;cur="all";render()}
     else if(a=="swap"){mode=mode=="reg"?"login":"reg";render()}
     else if(a=="auth"){
