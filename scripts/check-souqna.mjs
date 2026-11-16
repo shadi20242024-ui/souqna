@@ -17,7 +17,8 @@ for (const [label, marker] of [
   ["Image duplicate detection", "imgHash===photoHash"],
   ["Sponsor booking route", 'view=="sponsor"'],
   ["Manual payment approval", "هل تحققت بالفعل من استلام الدفع"],
-  ["Atomic sponsor approval", "runTransaction(db"],
+  ["Trusted finance callable", 'await finance("approveSponsor",id)'],
+  ["Trusted subscription callable", 'await finance("approveSubscription",id)'],
 ]) {
   assert.ok(html.includes(marker), label + " is missing");
 }
@@ -36,9 +37,14 @@ for(const filename of JSON.parse(assets)){
   if(filename==="./")continue;
   assert.ok(existsSync(new URL("../"+filename,import.meta.url)), "Missing PWA precache asset: "+filename);
 }
-for(const marker of ['"sub_"+id','"topup_"+id','"promo_"+id']){
-  assert.ok(html.includes(marker), "Idempotent ledger key missing: "+marker);
+const backend = readFileSync(new URL("../functions/index.js",import.meta.url), "utf8");
+new Function("require", backend);
+for(const marker of ['"sub_" + id','"topup_" + id','"promo_" + id']){
+  assert.ok(backend.includes(marker), "Server idempotent ledger key missing: "+marker);
 }
+const rules = readFileSync(new URL("../firestore.rules",import.meta.url), "utf8");
+assert.ok(rules.includes("Financial ledger is write-once"), "Ledger protection missing");
+assert.ok(rules.includes("allow create, update, delete: if false;"), "Direct financial writes must be denied");
 
 console.log("SOUQNA source checks passed (syntax and feature markers).");
 console.log("Important: these checks do not test Firebase security rules or live user flows.");
