@@ -1,0 +1,22 @@
+# Build outputs and local test artifacts
+dist/
+artifacts/
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+ui-debug.log
+
+# Never commit real staging configuration or local credentials
+firebase.staging.json
+firebase.staging.*.json
+*.private.json
+*.secret.json
+.env
+.env.*
+!.env.example
+
+# Installed dependencies and OS files
+node_modules/
+functions/node_modules/
+.DS_Store
+Thumbs.db
