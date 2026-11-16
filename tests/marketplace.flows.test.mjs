@@ -131,12 +131,12 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
       userId: uid, userName: "زبون تجريبي", stars: 30, status: "pending", createdAt: Date.now()
     });
     await assertFails(updateDoc(doc(db, "starOrders", topupRef.id), { status: "done" }));
-    await assert.rejects(() => finance({action:"approveTopup",id:topupRef.id}),
+    await assert.rejects(() => finance({action:"approveTopup",id:topupRef.id,payment:{method:"bank_transfer",reference:"FLOW-TOPUP-0001",amount:30,currency:"USD"}}),
       "Non-admin may not credit their own stars");
     await signOut(auth);
     await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
-    assert.equal((await finance({action:"approveTopup",id:topupRef.id})).data.ok, true);
-    await assert.rejects(() => finance({action:"approveTopup",id:topupRef.id}),
+    assert.equal((await finance({action:"approveTopup",id:topupRef.id,payment:{method:"bank_transfer",reference:"FLOW-TOPUP-0001",amount:30,currency:"USD"}})).data.ok, true);
+    await assert.rejects(() => finance({action:"approveTopup",id:topupRef.id,payment:{method:"bank_transfer",reference:"FLOW-TOPUP-0001",amount:30,currency:"USD"}}),
       "Top-up must be idempotent");
     await signOut(auth);
     await signInWithEmailAndPassword(auth, email, password);
