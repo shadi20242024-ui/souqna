@@ -26,6 +26,8 @@ for (const [label, marker] of [
 const css = readFileSync(new URL("../assets/responsive.css",import.meta.url), "utf8");
 assert.match(css, /@media\s*\(min-width:\s*1024px\)/);
 assert.ok(html.includes('href="assets/responsive.css"'), "Desktop stylesheet must be linked");
+assert.ok(html.includes('class="lgi mobile-logo"'), "Mobile logo artwork must exist");
+assert.ok(css.includes(".top > img.mobile-logo"), "Responsive mobile logo style must exist");
 const sw = readFileSync(new URL("../sw.js",import.meta.url), "utf8");
 new Function(sw);
 const assets = sw.match(/,F=(\[[^;]+\]);/)?.[1];
