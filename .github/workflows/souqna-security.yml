@@ -42,6 +42,12 @@ jobs:
           test -f dist/assets/responsive.css
           test ! -e dist/functions
           test ! -e dist/firestore.rules
+          grep -q '"projectId":"souqna-preview-disabled"' dist/index.html
+          if grep -q 'projectId:"souqna-sweida"' dist/index.html; then
+            echo 'Refusing build with production Firebase project'
+            exit 1
+          fi
+          test ! -e dist/paymentReceipts
       - name: Save preview-only Hosting bundle
         uses: actions/upload-artifact@v4
         with:
