@@ -38,7 +38,7 @@ assert.ok(html.includes('class="lgi mobile-logo"'), "Mobile logo artwork must ex
 assert.ok(css.includes(".top > img.mobile-logo"), "Responsive mobile logo style must exist");
 const sw = readFileSync(new URL("../sw.js",import.meta.url), "utf8");
 new Function(sw);
-const assets = sw.match(/,F=(\[[^;]+\]);/)?.[1];
+const assets = sw.match(/const STATIC=(\[[^;]+\]);/)?.[1];
 assert.ok(assets, "Precache manifest not found");
 for(const filename of JSON.parse(assets)){
   if(filename==="./")continue;
