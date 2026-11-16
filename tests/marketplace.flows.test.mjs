@@ -8,6 +8,7 @@ import {
   setDoc, updateDoc, query, where, runTransaction, increment
 } from "firebase/firestore";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
+import { getFunctions, connectFunctionsEmulator, httpsCallable } from "firebase/functions";
 
 const PROJECT_ID = "demo-souqna-rules";
 
@@ -25,6 +26,9 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
   const db = getFirestore(app);
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  const functions = getFunctions(app, "us-central1");
+  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+  const finance = httpsCallable(functions, "souqnaFinance");
 
   t.after(async () => {
     await signOut(auth).catch(() => {});
@@ -45,6 +49,21 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
 
   const admin = env.authenticatedContext("flow-admin").firestore();
   const visitor = env.unauthenticatedContext().firestore();
+
+  const adminEmail = "flow-owner-" + Date.now() + "@example.test";
+  const adminPassword = "FlowAdmin2026!";
+  const newAdmin = await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=local-emulator", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: adminEmail, password: adminPassword, returnSecureToken: true })
+  });
+  const adminInfo = await newAdmin.json();
+  assert.ok(newAdmin.ok && adminInfo.localId, "Admin test identity creation failed");
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "users", adminInfo.localId), {
+      name: "مدير سوقنا للاختبار", email: adminEmail, role: "admin", stars: 0
+    });
+  });
+
   const email = "flow-" + Date.now() + "@example.test";
   const password = "FlowTest2026!";
 
@@ -105,22 +124,22 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
   });
 
   let subscriptionRef;
-  await t.test("Customer purchases stars via manual approval, then requests a plan for one store", async () => {
-    const topupRef = await addDoc(collection(db, "starOrders"), {
+
+  let subscriptionRef, topupRef;
+  await t.test("Customer requests stars and subscription; admin finance callable handles billing", async () => {
+    topupRef = await addDoc(collection(db, "starOrders"), {
       userId: uid, userName: "زبون تجريبي", stars: 30, status: "pending", createdAt: Date.now()
     });
-    const userRef = doc(admin, "users", uid);
     await assertFails(updateDoc(doc(db, "starOrders", topupRef.id), { status: "done" }));
-    await assertSucceeds(runTransaction(admin, async tx => {
-      const [order, account] = await Promise.all([tx.get(doc(admin,"starOrders",topupRef.id)),tx.get(userRef)]);
-      assert.equal(order.data().status,"pending");
-      assert.equal(account.data().stars,0);
-      tx.update(userRef,{stars:increment(30)});
-      tx.set(doc(admin,"transactions","topup_"+topupRef.id),{
-        userId:uid,type:"credit",amount:30,note:"اختبار دفع يدوي",createdAt:Date.now()
-      });
-      tx.update(doc(admin,"starOrders",topupRef.id),{status:"done"});
-    }));
+    await assert.rejects(() => finance({action:"approveTopup",id:topupRef.id}),
+      "Non-admin may not credit their own stars");
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+    assert.equal((await finance({action:"approveTopup",id:topupRef.id})).data.ok, true);
+    await assert.rejects(() => finance({action:"approveTopup",id:topupRef.id}),
+      "Top-up must be idempotent");
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, email, password);
     assert.equal((await getDoc(doc(db,"users",uid))).data().stars,30);
     subscriptionRef = await addDoc(collection(db, "subs"), {
       userId: uid, userName: "زبون تجريبي", storeId: firstStoreRef.id,
@@ -134,34 +153,19 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
     await assertFails(updateDoc(doc(db,"subs",subscriptionRef.id), { status:"done" }));
   });
 
-  await t.test("Admin activates the requested plan atomically, and repeated approvals fail", async () => {
-    const now=Date.now();
-    const approval=() => runTransaction(admin,async tx=>{
-      const subRef=doc(admin,"subs",subscriptionRef.id);
-      const userRef=doc(admin,"users",uid);
-      const storeRef=doc(admin,"stores",firstStoreRef.id);
-      const planRef=doc(admin,"plans","flow-gold");
-      const [sub,user,store,plan]=await Promise.all([
-        tx.get(subRef),tx.get(userRef),tx.get(storeRef),tx.get(planRef)
-      ]);
-      if(sub.data().status!=="pending")throw Error("Already processed");
-      if(store.data().ownerId!==sub.data().userId)throw Error("Ownership mismatch");
-      if(user.data().stars<plan.data().stars)throw Error("Insufficient balance");
-      const days=plan.data().days;
-      tx.update(userRef,{stars:increment(-plan.data().stars)});
-      tx.update(storeRef,{plan:"flow-gold",planUntil:now+days*86400000});
-      tx.set(doc(admin,"transactions","sub_"+subscriptionRef.id),{
-        userId:uid,type:"debit",amount:-plan.data().stars,note:"اشتراك المتجر",createdAt:now
-      });
-      tx.update(subRef,{status:"done",approvedAt:now,chargedStars:plan.data().stars});
-    });
+  await t.test("Server subscription charges only the selected store once", async () => {
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+    const approval=()=>finance({action:"approveSubscription",id:subscriptionRef.id});
     const results=await Promise.allSettled([approval(),approval()]);
     assert.equal(results.filter(r=>r.status==="fulfilled").length,1);
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, email, password);
     assert.equal((await getDoc(doc(db,"users",uid))).data().stars,10);
     const first=(await getDoc(firstStoreRef)).data(),second=(await getDoc(secondStoreRef)).data();
     assert.equal(first.plan,"flow-gold");
     assert.ok(first.planUntil>Date.now());
-    assert.ok(!second.plan, "Second store must have its own independent subscription");
+    assert.ok(!second.plan,"Second store subscription must be independent");
     assert.equal((await getDoc(doc(admin,"subs",subscriptionRef.id))).data().status,"done");
     assert.equal((await getDoc(doc(admin,"transactions","sub_"+subscriptionRef.id))).data().amount,-20);
   });
