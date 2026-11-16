@@ -19,7 +19,7 @@ for(const icon of manifest.icons||[]){
   assert.ok(publicFiles.includes(icon.src),"Unbundled PWA icon: "+icon.src);
 }
 const serviceWorker=readFileSync(join(root,"sw.js"),"utf8");
-const precache=serviceWorker.match(/,F=(\[[^;]+);/)?.[1];
+const precache=serviceWorker.match(/const STATIC=(\[[^;]+);/)?.[1];
 assert.ok(precache,"PWA precache list is missing");
 for(const url of JSON.parse(precache)){
   assert.ok(url==="./"||publicFiles.includes(url),"Unbundled PWA asset: "+url);
