@@ -73,6 +73,18 @@ try {
         phone:"963999999999",logo:"",cover:"",
         ownerId:"visual-owner",status:"approved",createdAt:Date.now()
       }),
+      setDoc(doc(db,"sponsors","visual-one"),{
+        company:"شركة تجريبية أولى",title:"البنر الأول للاختبار",desc:"بانر فعّال للاختبار فقط",
+        phone:"963999999999",img:"",active:true,from:Date.now()-1000,to:Date.now()+86400000
+      }),
+      setDoc(doc(db,"sponsors","visual-two"),{
+        company:"شركة تجريبية ثانية",title:"البنر الثاني للاختبار",desc:"بانر فعّال ثانٍ للاختبار فقط",
+        phone:"963999999999",img:"",active:true,from:Date.now()-1000,to:Date.now()+86400000
+      }),
+      setDoc(doc(db,"sponsors","expired-test"),{
+        company:"منتهي",title:"البنر المنتهي",desc:"لا يجب أن يظهر",
+        phone:"963999999999",img:"",active:true,from:Date.now()-86400000,to:Date.now()-1000
+      }),
       setDoc(doc(db,"settings","site"),{
         ticker:"أهلاً بكم في سوقنا\nإعلانات جديدة للسويداء",
         tickerOn:true,tickerSecondary:"خدمات محلية في سوقنا",
@@ -113,6 +125,14 @@ try {
       else assert.ok(nav.x>item.viewport.width/2,"Desktop navigation should be on the side");
       await page.screenshot({path:"artifacts/souqna-"+item.name+".png",fullPage:true,animations:"disabled"});
       await page.locator("#newsHost .tk").first().waitFor({timeout:5000});
+      const sponsorTitle=page.locator("#spw .premium-banner h3");
+      await sponsorTitle.waitFor({timeout:7000});
+      const beforeSponsor=await sponsorTitle.innerText();
+      await page.locator('#spw [data-a="spnext"]').click();
+      assert.notEqual(await sponsorTitle.innerText(),beforeSponsor,"Next sponsored banner must change the slide");
+      assert.ok(!(await page.locator("#spw").innerText()).includes("البنر المنتهي"),"Expired sponsored banner must be hidden");
+      console.log("SPONSOR CAROUSEL OK",item.name);
+
       if(item.mobile){
         assert.equal(await page.locator("#desktopBar").isVisible(),false);
         assert.equal(await page.locator('#nav [data-v="ads"]').isVisible(),false);
@@ -154,6 +174,20 @@ try {
     await page.locator('#app [data-v="mystores"]').waitFor({timeout:20000});
     assert.ok((await page.locator("#app").innerText()).includes("مستخدم فحص سوقنا"),
       "Registered user's name should be shown in profile");
+    await page.locator('#nav [data-v="home"]').click();
+    await page.locator('#list .item [data-a="toggleFav"]').first().waitFor({timeout:15000});
+    await page.locator('#list .item [data-a="toggleFav"]').first().click();
+    await page.locator('#list .item [data-a="toggleFav"][aria-pressed="true"]').first().waitFor({timeout:12000});
+    await page.locator('#nav [data-v="favorites"]').click();
+    await page.locator('#app .item').filter({hasText:"سيارة مستعملة للبيع"}).waitFor({timeout:15000});
+    await page.screenshot({path:"artifacts/souqna-favorites.png",fullPage:true,animations:"disabled"});
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.locator('#list .item [data-a="toggleFav"][aria-pressed="true"]').first().waitFor({timeout:20000});
+    await page.locator('#nav [data-v="favorites"]').click();
+    await page.locator('#app .item [data-a="toggleFav"]').first().click();
+    await page.locator('#app .favorite-empty').waitFor({timeout:12000});
+    console.log("UI PRIVATE FAVORITES OK","favorite saved, persisted after reload and removed");
+
 
     await page.locator('#nav [data-v="add"]').click();
     await page.locator("#a-title").waitFor({timeout:15000});
