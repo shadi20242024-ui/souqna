@@ -442,7 +442,7 @@ document.addEventListener("click",async e=>{
        if(note===null)return;
        if(note.trim().length<5)return toast("أدخل سبب تعديل واضحاً");
        if(!confirm("تأكيد تعديل رصيد المستخدم بـ "+n+" نجمة؟"))return;
-       await finance("adjustBalance",null,{userId:id,delta:n,note:note.trim()});
+       await finance("adjustBalance",null,{userId:id,delta:n,note:note.trim(),operationId:doc(collection(db,"transactions")).id});
        await loadMine();toast("حُفظ تعديل الرصيد");render();
      }
     else if(a=="urole"){const r=prompt("الدور: user / moderator / accountant / editor / admin");if(!["user","moderator","accountant","editor","admin"].includes(r))return toast("دور غير صحيح");await updateDoc(doc(db,"users",id),{role:r});await loadMine();render()}
