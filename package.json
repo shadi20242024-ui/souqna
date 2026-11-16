@@ -7,7 +7,9 @@
   "scripts": {
     "test:source": "node scripts/check-souqna.mjs",
     "test:rules": "firebase emulators:exec --project demo-souqna-rules --only auth,firestore,functions \"node --test tests/*.test.mjs\"",
-    "test": "npm run test:source && npm run test:rules"
+    "test": "npm run test:source && npm run test:rules",
+    "build:hosting": "node scripts/build-hosting.mjs",
+    "test:release": "npm run test:source && npm run build:hosting"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
