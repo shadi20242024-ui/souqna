@@ -18,6 +18,7 @@ for (const [label, marker] of [
   ["Sponsor booking route", 'view=="sponsor"'],
   ["Manual payment review dialog", "توثيق الدفع اليدوي"],
   ["Trusted finance callable", 'await finance(action,id,{payment:{method,reference,amount,currency}})'],
+  ["Trusted Marketplace callable", 'httpsCallable(functions,"souqnaMarketplace")'],
   ["Trusted subscription callable", 'await finance("approveSubscription",id)'],
   ["Payment receipt confirmation", 'id="pay-attest"'],
   ["Live administration dashboard", 'id="adminDashboard"'],
