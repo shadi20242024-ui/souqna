@@ -39,3 +39,11 @@ Run `npm install`, `npm --prefix functions install`, then `npm test` (Node 22+, 
 - Current owner queries enumerate users and transaction records. This becomes costly and slow with growth; migrate to trusted server-side materialized aggregates / paginated views, and cross-check ledger balances before scale.
 - Final browser tests must verify: owner-only cards, customer restrictions, accurate values from test Firebase data, manual refresh, and desktop/mobile layout.
 - Do not publish the analytics module without adding `assets/admin-metrics.js` to Hosting dist and PWA caches (now configured in the development branch).
+
+## مستندات الدفعات اليدوية (تطوير 16 تشرين الثاني 2026)
+
+- أضيفت شاشة خاصة بمدير سوقنا قبل قبول **شحن النجوم** أو **حجز بنر مدفوع**. تطلب وسيلة الدفع، مرجع تحويل فريداً، قيمة المبلغ الذي تم استلامه، العملة (USD/SYP/IQD/AED)، وتأكيداً أن المدير راجع وصول المبلغ فعلياً خارج المنصة.
+- تحقّق الخادم من المدخلات، وسجّل بيانات المراجعة في `paymentReceipts` باستخدام معرّف مشتق من تجزئة SHA-256 للطريقة والمرجع، ضمن معاملة Firestore ذرّية. يمنع تكرار مرجع الدفع ذاته لتفعيل طلب آخر.
+- `paymentReceipts` قابلة للقراءة للمدير فقط، ولا يستطيع المتصفح كتابة إيصال أو تعديله أو حذفه. يحتفظ دفتر النجوم بمعرّف الإيصال المجزّأ لا رقم الإيصال المكشوف.
+- هذه إجراءات **توثيق داخلي** وليست تحققاً من البنك ولا إثباتاً مستقلاً لصحة تحويل الأموال. إذا استخدم مزود دفع مرجعاً واحداً لعدة حركات، يجب الحصول على معرّف فريد لكل حركة قبل اعتمادها.
+- لا تُسمح الموافقة المالية دون مراجعة بشرية وتحقيق سجل إيصال صحيح. يظل مشروع الإنتاج غير منشور، والاختبارات تستخدم محاكيات Firebase فقط.
