@@ -121,6 +121,22 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.userId == request.auth.uid;
     }
 
+    match /favorites/{id} {
+      // Private favorites, one record per authenticated user and approved listing.
+      allow get, list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.adId is string
+        && safeDocumentId(request.resource.data.adId)
+        && id == request.auth.uid + "_" + request.resource.data.adId
+        && request.resource.data.createdAt is int
+        && request.resource.data.keys().hasOnly(["userId", "adId", "createdAt"])
+        && exists(/databases/$(database)/documents/ads/$(request.resource.data.adId))
+        && get(/databases/$(database)/documents/ads/$(request.resource.data.adId)).data.status == "approved";
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
     match /reviews/{id} {
       allow read: if true;
       allow create, update: if safeDocumentId(id) && signedIn()
