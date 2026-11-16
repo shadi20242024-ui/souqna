@@ -130,4 +130,12 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
     }));
   });
 
+  await t.test("Reject unsafe document IDs in user-created ads", async () => {
+    await assertFails(setDoc(doc(alice,"ads",'bad"onmouseover="alert(1)'),{
+      ownerId:"alice",ownerName:"أليس",status:"pending",title:"اختبار",price:1,
+      cur:"$",cat:"cars",area:"السويداء",desc:"",phone:"963999999999",
+      img:"",createdAt:Date.now()
+    }));
+  });
+
 });
