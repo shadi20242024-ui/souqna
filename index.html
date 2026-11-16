@@ -729,10 +729,22 @@ document.addEventListener("click",async e=>{
 
     else if(a=="swap"){mode=mode=="reg"?"login":"reg";render()}
     else if(a=="auth"){
-      if(mode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");
+      if(mode=="reg"){
+        const n=val("#l-name");if(!n||n.length>120)return toast("أدخل اسماً صحيحاً لا يتجاوز 120 حرفاً");
         const u=await createUserWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
-        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0})}
-      else await signInWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
+        const profile={name:n,email:u.user.email,role:"user",stars:0};
+        await setDoc(doc(db,"users",u.user.uid),profile);
+        // Auth can notify its observer before the first profile write completes.
+        // Explicitly synchronize the new account after the profile exists.
+        if(auth.currentUser?.uid===u.user.uid){
+          me={uid:u.user.uid,...profile,adminClaim:false};
+          await loadMine();
+          view="acc";mode="login";render();
+          toast("تم إنشاء حسابك بنجاح، يمكنك الآن نشر إعلانك");
+        }
+      }else{
+        await signInWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
+      }
     }
     else if(a=="reset"){await sendPasswordResetEmail(auth,val("#l-mail"));toast("أُرسل رابط استعادة كلمة المرور إلى بريدك")}
     else if(a=="out"){await signOut(auth)}
