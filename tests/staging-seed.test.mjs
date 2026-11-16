@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 
 const script=resolve("scripts/seed-staging.mjs");
 const run=(...args)=>spawnSync(process.execPath,[script,...args],{
-  encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:""}
+  encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",FIRESTORE_EMULATOR_HOST:""}
 });
 
 test("Staging bootstrap defaults to dry run and never allows production",()=>{
