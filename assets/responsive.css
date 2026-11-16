@@ -233,3 +233,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
     transform: none;
   }
 }
+
+/* Keep the original desktop brand artwork; render the full square logo on phones. */
+.top .mobile-logo { display: none; }
+.top .lgi { max-width: 178px; object-fit: contain; flex: 0 1 auto; }
+@media (max-width: 700px) {
+  .top > .desktop-logo { display: none; }
+  .top > img.mobile-logo {
+    display: block;
+    width: 94px;
+    height: 94px;
+    flex: 0 0 94px;
+    object-fit: cover;
+    object-position: center;
+    border: 1px solid #ffdc69;
+    border-radius: 16px;
+    box-shadow: 0 3px 14px rgba(0,0,0,.17);
+  }
+  .top > .lgi:not(.mobile-logo) { max-width: 130px; height: 90px; }
+  .top > div:not(.desktop-logo) { min-width: 0; }
+}
