@@ -79,6 +79,8 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 <link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
+<div id="desktopBar" class="desktop-bar" aria-label="شريط البحث والتنقل"></div>
+<div id="newsHost" class="news-host"></div>
 <div id="hd" class="hd"></div>
 <main id="app"></main>
 <nav id="nav"></nav>
@@ -195,12 +197,37 @@ function drawHd(){
   }else{H.className="hd";H.innerHTML='<img class="s" src="logo.png" alt=""><h2>سوقنا | Souqna</h2>'}
 }
 function drawNav(){
-  const b=[["home","🏠","الرئيسية"],["mine","📋","إعلاناتي"],["add","<i>＋</i>","أضف إعلان","pl"],["stars","⭐","النجوم"],["acc","👤"+(notifs.some(n=>!n.read)?'<b style="color:#c0392b">●</b>':""),"حسابي"]];
-  $("#nav").innerHTML=b.map(x=>`<button data-v="${x[0]}" class="${x[3]||""} ${view==x[0]?"on":""}">${x[1]}<br>${x[2]}</button>`).join("");
+  const b=[
+    ["home","🏠","الرئيسية"],
+    ["mine","📋","إعلاناتي"],
+    ["add","<i>＋</i>","أضف إعلان","pl"],
+    ["stars","⭐","النجوم"],
+    ["acc","👤"+(notifs.some(n=>!n.read)?'<b style="color:#c0392b">●</b>':""),"حسابي"],
+    ["ads","🚘","كل الإعلانات","desktop-only"],
+    ["stores","🏬","المتاجر","desktop-only"],
+    ["orders","🧾","طلبات الخدمات","desktop-only"],
+    ...(isStaff()?[["admin","⚙️","لوحة الإدارة","desktop-only"]]:[])
+  ];
+  $("#nav").innerHTML=b.map(x=>`<button data-v="${x[0]}" class="${x[3]||""} ${view==x[0]?"on":""}" aria-label="${x[2]}">${x[1]}<br>${x[2]}</button>`).join("");
+}
+function drawDesktopBar(){
+  const bar=$("#desktopBar");
+  bar.innerHTML=`<div class="desktop-bar-brand"><span>✦</span> سوقنا <small>SOUQNA</small></div>
+    <label class="desktop-search" for="globalSearch"><span>⌕</span><input id="globalSearch" type="search" placeholder="ابحث عن سيارات، عقارات، ومتاجر..." aria-label="ابحث في الإعلانات" value="${esc(q)}"></label>
+    <button class="desktop-add" data-v="add">＋ أضف إعلانك</button>
+    <button class="desktop-account" data-v="acc" aria-label="الذهاب إلى حسابي">${me?"👤 "+esc(me.name):"👤 تسجيل الدخول"}</button>`;
+  $("#globalSearch").oninput=e=>{
+    q=e.target.value;
+    if(view!=="ads"){
+      view="ads";feat=false;cur="all";render();
+      const input=$("#globalSearch");input?.focus();input?.setSelectionRange(q.length,q.length);
+    }else drawList();
+  };
 }
 function drawList(){
   const l=ads.filter(a=>(cur=="all"||a.cat==cur)&&(!feat||isF(a))&&(!q||(a.title+a.desc+a.area).includes(q))).sort((x,y)=>isF(y)-isF(x)||y.createdAt-x.createdAt);
-  $("#list").innerHTML=l.map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات.</p>';
+  const target=$("#list");
+  if(target)target.innerHTML=l.map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات مطابقة للبحث.</p>';
 }
 function loginBox(){
   const r=mode=="reg";
@@ -210,10 +237,10 @@ function loginBox(){
   <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
 
 function render(){
-  drawHd();drawNav();const A=$("#app");
+  drawHd();drawNav();drawDesktopBar();$("#newsHost").innerHTML=tkHtml();const A=$("#app");
   if(view=="home"){
     A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>safeImage(a.img)).slice(0,8).map(a=>`<button class="sc" data-c="${esc(a.cat)}" aria-label="${esc(a.title)}" style="${bgImage(a.img)}"></button>`).join("")}</div>
-    ${tkHtml()}${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
+    ${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
     ${wxHtml()}<div id="spw">${spHtml()}</div>${tkHtml(true)}${storesHtml()}
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
     <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
@@ -222,6 +249,12 @@ function render(){
     <div class="cm"><b>معاً .. نبني مجتمعاً أفضل في السويداء 👥</b><button class="gold" data-c="community">انضم إلينا</button></div>
     <button class="cm" style="width:100%;border:0;font:inherit;cursor:pointer;text-align:right" data-v="services"><b>🎨 خدمات التصميم والفيديو والحملات التسويقية</b><span class="gold">اطلب الآن</span></button>
     <div class="sec"><b>${feat?"الإعلانات المميزة":"أحدث الإعلانات"}</b></div><div class="grid" id="list"></div>${adHtml()}`;pushAds();
+    drawList();
+  }else if(view=="ads"){
+    A.innerHTML=`<div class="desktop-page-title"><h2>🚘 سوق الإعلانات</h2><p>اكتشف العروض الجديدة في السويداء ومناطقها</p></div>
+      <div class="filter-chips"><button class="${cur==="all"?"on":""}" data-c="all">جميع الأقسام</button>${cats.map(c=>`<button class="${cur===c.id?"on":""}" data-c="${esc(c.id)}">${esc(c.name_ar)}</button>`).join("")}</div>
+      <div class="sec"><b>${feat?"الإعلانات المميزة":"الإعلانات المتاحة"}</b><button class="btn l" data-a="feat">⭐ ${feat?"عرض الكل":"المميزة فقط"}</button></div>
+      <div id="list" class="grid"></div>`;
     drawList();
   }else if(view=="add"){
     A.innerHTML=!me?loginBox():`<div class="box"><h3>➕ أضف إعلانك</h3><select id="a-cat">${cats.map(c=>`<option value="${c.id}">${esc(c.name_ar)}</option>`).join("")}</select>${myStores.some(s=>s.status=="approved")?`<select id="a-st"><option value="">إعلان شخصي (بدون متجر)</option>${myStores.filter(s=>s.status=="approved").map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>`:""}
