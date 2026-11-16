@@ -268,7 +268,7 @@ function adminDashboardHtml(){
     transactions:isAdm()?allTx:[],
     isOwner:isAdm()
   });
-  const card=(icon,label,value,description)=>`<div class="admin-stat" role="group" aria-label="${esc(label)}">
+  const card=(icon,label,value,description)=>`<div class="admin-stat" data-value="${Number(value)}" role="group" aria-label="${esc(label)}">
     <span class="admin-stat-icon" aria-hidden="true">${icon}</span>
     <div class="admin-stat-name">${esc(label)}</div>
     <strong class="admin-stat-value" dir="ltr">${Number(value).toLocaleString("ar-SY")}</strong>
