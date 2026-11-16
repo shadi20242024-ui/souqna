@@ -19,7 +19,6 @@ const MIME = {
 };
 const authImport='import{connectAuthEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";';
 const storeImport='import{connectFirestoreEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";';
-const functionImport='import{connectFunctionsEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";';
 const anchor='const auth=getAuth(app),db=getFirestore(app),functions=getFunctions(app,"us-central1");';
 
 async function startServer() {
@@ -37,7 +36,7 @@ async function startServer() {
         assert.ok(html.includes('projectId:"souqna-sweida"'),"Original project id not found");
         html=html.replace('projectId:"souqna-sweida"','projectId:"demo-souqna-rules"');
         html=html.replace(anchor,()=>
-          authImport+"\n"+storeImport+"\n"+functionImport+"\n"+anchor+"\n"+
+          authImport+"\n"+storeImport+"\n"+anchor+"\n"+
           'connectAuthEmulator(auth,"http://127.0.0.1:9099",{disableWarnings:true});\n'+
           'connectFirestoreEmulator(db,"127.0.0.1",8080);\n'+
           'connectFunctionsEmulator(functions,"127.0.0.1",5001);\n'
