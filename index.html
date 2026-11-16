@@ -119,6 +119,8 @@ const adHtml=()=>site.adClient?`<ins class="adsbygoogle" style="display:block;ma
 function initAds(){if(site.adClient&&!document.getElementById("ads-js")){const e=document.createElement("script");e.id="ads-js";e.async=true;e.crossOrigin="anonymous";e.src="https://pagead2.googleapis.com/pagead/js/adsbygoogle.js?client="+encodeURIComponent(site.adClient);document.head.append(e)}}
 const pushAds=()=>document.querySelectorAll("ins.adsbygoogle").forEach(()=>{try{(window.adsbygoogle=window.adsbygoogle||[]).push({})}catch(e){}});
 async function pick(f,k,w){
+  tmp[k]="";
+  if(k==="sb"){const p=$("#sb-preview");if(p){p.hidden=true;p.removeAttribute("src")}}
   if(!f)return;
   if(!["image/jpeg","image/png","image/webp","image/avif"].includes(f.type)||f.size>12*1024*1024){toast("اختر صورة JPG/PNG/WebP حتى 12 ميغابايت");return}
   const url=URL.createObjectURL(f);
@@ -197,7 +199,7 @@ function render(){
   if(view=="home"){
     A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>a.img).slice(0,8).map(a=>`<button class="sc" data-c="${a.cat}" aria-label="${esc(a.title)}" style="background-image:url(${a.img})"></button>`).join("")}</div>
     ${tkHtml()}${site.banner?`<img class="bnr" src="${site.banner}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
-    ${tkHtml(true)}${wxHtml()}<div id="spw">${spHtml()}</div>${storesHtml()}
+    ${wxHtml()}<div id="spw">${spHtml()}</div>${tkHtml(true)}${storesHtml()}
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
     <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
     <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"],["fuel","محطات الوقود"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
