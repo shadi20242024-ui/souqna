@@ -112,6 +112,11 @@ test("Chromium: account registration → approved ad → detail/favorite → own
       await page.locator("#a-area").fill("السويداء");
       await page.locator("#a-desc").fill("تفاصيل الإعلان التجريبي");
       await page.locator("#a-phone").fill("963912345678");
+      await page.locator("#a-img").setInputFiles({
+        name:"customer-car.png",mimeType:"image/png",buffer:bannerPNG
+      });
+      await page.locator("#ad-photo-status").getByText("الصورة جاهزة للإرسال").waitFor({timeout:10000});
+      assert.match(await page.locator("#ad-photo-preview").getAttribute("src"),/^data:image\/webp;base64,/);
       await page.locator('[data-a="post"]').click();
       // Click returns before Firebase's asynchronous addDoc and the UI refresh finish.
       // Wait for the submitted ad on the customer's "my listings" page first.
@@ -120,6 +125,8 @@ test("Chromium: account registration → approved ad → detail/favorite → own
       assert.equal(results.size,1);
       adId=results.docs[0].id;
       assert.equal(results.docs[0].data().status,"pending");
+      assert.match(results.docs[0].data().img,/^data:image\/webp;base64,/);
+      assert.ok(results.docs[0].data().img.length<=180000);
       await adminDb.doc("ads/"+adId).update({status:"approved",reviewedAt:Date.now()});
     });
 
