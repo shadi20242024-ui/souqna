@@ -253,3 +253,157 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .top > .lgi:not(.mobile-logo) { max-width: 130px; height: 90px; }
   .top > div:not(.desktop-logo) { min-width: 0; }
 }
+
+/* Premium layout matching the approved SOUQNA desktop navigation concept. */
+nav button.desktop-only { display: none; }
+.news-host {
+  max-width: 920px;
+  margin: 10px auto 0;
+  padding: 0 12px;
+}
+.news-host:empty { display: none; }
+.news-host .tk { margin: 0; }
+.desktop-bar { display: none; }
+.desktop-page-title h2 { margin: 0 0 4px; font-size: 22px; }
+.desktop-page-title p { color: var(--m); margin: 0 0 12px; }
+.filter-chips {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin: 12px 0 16px;
+}
+.filter-chips button {
+  padding: 8px 14px;
+  background: white;
+  border: 1px solid var(--bd);
+  border-radius: 20px;
+  color: #153d94;
+  font-weight: bold;
+  font: inherit;
+}
+.filter-chips button.on {
+  background: #112d70;
+  color: #fff;
+  border-color: #efbd5e;
+}
+@media (min-width: 1024px) {
+  .hd { display: none !important; }
+  body { padding-bottom: 20px; }
+  .desktop-bar {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-height: 76px;
+    padding: 14px 30px;
+    background: white;
+    border-bottom: 1px solid #e2e9f4;
+    box-shadow: 0 4px 18px rgba(10,42,114,.06);
+    position: sticky;
+    top: 0;
+    z-index: 48;
+  }
+  .desktop-bar-brand {
+    font-size: 19px;
+    font-weight: 900;
+    color: #0a2a72;
+    white-space: nowrap;
+  }
+  .desktop-bar-brand > span { color: #d99c18; }
+  .desktop-bar-brand small {
+    display: block;
+    color: #697c9c;
+    font-size: 10px;
+    line-height: 1;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+  .desktop-search {
+    flex: 1;
+    min-width: 160px;
+    max-width: 550px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f3f6fc;
+    border: 1px solid #dee6f3;
+    border-radius: 14px;
+    padding: 1px 12px;
+  }
+  .desktop-search span {
+    font-size: 25px;
+    line-height: 1;
+    color: #1747b8;
+  }
+  .desktop-search input {
+    margin: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    min-width: 0;
+    height: 40px;
+  }
+  .desktop-search:focus-within {
+    border-color: #e4b04e;
+    box-shadow: 0 0 0 3px rgba(238,188,87,.2);
+  }
+  .desktop-add {
+    background: linear-gradient(145deg,#f6d27b,#e7ab37);
+    color: #102349;
+    border: 1px solid #d99e27;
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-weight: 900;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(221,165,49,.15);
+  }
+  .desktop-account {
+    background: #f4f7fc;
+    color: #102349;
+    border: 1px solid #dee5f0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    white-space: nowrap;
+    max-width: 220px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  .news-host {
+    max-width: 1310px;
+    padding: 0 32px;
+    margin-top: 16px;
+  }
+  .news-host .tk {
+    border: 1px solid #e7ddbf;
+    box-shadow: 0 4px 13px rgba(10,42,114,.07);
+  }
+  nav button.desktop-only { display: block; }
+  nav button[data-v="home"] { order: 1; }
+  nav button[data-v="ads"] { order: 2; }
+  nav button[data-v="stores"] { order: 3; }
+  nav button[data-v="add"] { order: 4; }
+  nav button[data-v="mine"] { order: 5; }
+  nav button[data-v="stars"] { order: 6; }
+  nav button[data-v="orders"] { order: 7; }
+  nav button[data-v="acc"] { order: 8; }
+  nav button[data-v="admin"] { order: 9; }
+  .desktop-page-title {
+    background: linear-gradient(120deg,#0c2a67,#1d4cb1);
+    color: white;
+    border-radius: 18px;
+    padding: 18px 24px;
+    margin-bottom: 18px;
+  }
+  .desktop-page-title h2 { color: #ffdd83; }
+  .desktop-page-title p { color: #e5edff; margin: 0; }
+  main { max-width: 1310px; }
+  .bn, .spn { border-radius: 22px; }
+  .spn { min-height: 170px; }
+}
+@media (min-width: 1024px) and (max-width: 1200px) {
+  .desktop-bar { padding: 12px 19px; gap: 10px; }
+  .desktop-account { max-width: 130px; }
+}
+@media (max-width: 1023px) {
+  .news-host { padding: 0 12px; }
+  .desktop-page-title { padding: 5px 0; }
+}
