@@ -63,6 +63,26 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
       img:"",createdAt:Date.now()
     }));
   });
+  await t.test("Favorites are private per account and only for published ads", async () => {
+    const ref = doc(alice,"favorites","alice_public");
+    await assertSucceeds(setDoc(ref,{userId:"alice",adId:"public",createdAt:Date.now()}));
+    await assertSucceeds(getDoc(ref));
+    const own=await assertSucceeds(getDocs(query(collection(alice,"favorites"),where("userId","==","alice"))));
+    assert.equal(own.docs.length,1);
+    await assertFails(getDoc(doc(bob,"favorites","alice_public")));
+    await assertFails(getDoc(doc(anon,"favorites","alice_public")));
+    await assertFails(getDocs(collection(alice,"favorites")));
+    await assertFails(getDocs(query(collection(bob,"favorites"),where("userId","==","alice"))));
+    await assertFails(setDoc(doc(bob,"favorites","alice_public"),{userId:"alice",adId:"public",createdAt:Date.now()}));
+    await assertFails(setDoc(doc(alice,"favorites","alice_private"),{userId:"alice",adId:"private",createdAt:Date.now()}));
+    await assertFails(setDoc(doc(alice,"favorites","alice_missing"),{userId:"alice",adId:"missing",createdAt:Date.now()}));
+    await assertFails(setDoc(doc(alice,"favorites","wrong_public"),{userId:"alice",adId:"public",createdAt:Date.now()}));
+    await assertFails(updateDoc(ref,{adId:"private"}));
+    await assertFails(deleteDoc(doc(bob,"favorites","alice_public")));
+    await assertSucceeds(deleteDoc(ref));
+    assert.equal((await getDoc(ref)).exists(),false);
+  });
+
   await t.test("Store owner may edit details but cannot upgrade plan", async () => {
     await assertSucceeds(updateDoc(doc(alice,"stores","open"),{desc:"تعديل وصف"}));
     await assertFails(updateDoc(doc(alice,"stores","open"),{plan:"vip",planUntil:Date.now()+30*86400000}));
