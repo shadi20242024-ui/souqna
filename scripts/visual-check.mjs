@@ -168,6 +168,59 @@ try {
     }
     throw error;
   } finally { await customerContext.close(); }
+
+  // Admin moderation workflow: new customer records stay private until approved.
+  const adminEmail="souqna-admin-flow-"+Date.now()+"@example.test";
+  const adminPassword="SouqnaAdminTest2026!";
+  const authResponse=await fetch(
+    "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=local-emulator",
+    {method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email:adminEmail,password:adminPassword,returnSecureToken:true})}
+  );
+  const authData=await authResponse.json();
+  assert.ok(authResponse.ok && authData.localId,
+    "Could not register test admin identity: "+JSON.stringify(authData));
+  await env.withSecurityRulesDisabled(async ctx=>{
+    await setDoc(doc(ctx.firestore(),"users",authData.localId),{
+      name:"مدير اختبار",email:adminEmail,role:"admin",stars:0
+    });
+  });
+
+  const adminContext=await browser.newContext({viewport:{width:1280,height:900},locale:"ar"});
+  try {
+    const page=await adminContext.newPage();
+    const errors=[];
+    page.on("pageerror",e=>errors.push(e.message));
+    await page.goto("http://127.0.0.1:4173/",{waitUntil:"domcontentloaded"});
+    await page.locator("#list .item").first().waitFor({timeout:20000});
+    await page.locator('#nav [data-v="acc"]').click();
+    await page.locator("#l-mail").fill(adminEmail);
+    await page.locator("#l-pass").fill(adminPassword);
+    await page.locator('#app [data-a="auth"]').click();
+    await page.locator('#app [data-v="admin"]').waitFor({timeout:20000});
+    await page.locator('#app [data-v="admin"]').click();
+    const pendingAd=page.locator("#app .item").filter({hasText:"إعلان فحص واجهة سوقنا"});
+    await pendingAd.locator('[data-a="ok"]').waitFor({timeout:20000});
+    await pendingAd.locator('[data-a="ok"]').click();
+    const pendingStore=page.locator("#app .box").filter({hasText:"متجر فحص سوقنا"});
+    await pendingStore.locator('[data-a="stok"]').waitFor({timeout:20000});
+    await pendingStore.locator('[data-a="stok"]').click();
+    await page.locator('#nav [data-v="home"]').click();
+    await page.locator("#list .item").filter({hasText:"إعلان فحص واجهة سوقنا"}).waitFor({timeout:20000});
+    await page.locator("#app .stc").filter({hasText:"متجر فحص سوقنا"}).waitFor({timeout:20000});
+    await page.screenshot({path:"artifacts/souqna-admin-approved.png",fullPage:true,animations:"disabled"});
+    assert.deepEqual(errors,[],"Admin moderation flow should not throw script errors");
+    console.log("UI ADMIN MODERATION OK","ad approved, store approved, both visible on homepage");
+  } catch(error) {
+    const page=adminContext.pages()[0];
+    if(page) {
+      await page.screenshot({path:"artifacts/souqna-admin-debug.png",fullPage:true}).catch(()=>{});
+      console.error("UI ADMIN DEBUG",(await page.locator("#app").innerText().catch(()=>"")).slice(0,2000));
+    }
+    throw error;
+  } finally {
+    await adminContext.close();
+  }
 } finally {
   if(browser)await browser.close();
   if(server)await new Promise(resolve=>server.close(resolve));
