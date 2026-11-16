@@ -19,6 +19,10 @@ assert.equal(config.projectId,target,"Hosting Firebase project differs from prop
 assert.notEqual(config.projectId,"souqna-preview-disabled","Preview builds are not deployable as working staging.");
 assert.notEqual(config.authDomain,"souqna-sweida.firebaseapp.com","Production Firebase Auth domain detected.");
 assert.equal(config.authDomain,config.projectId+".firebaseapp.com");
+assert.ok(html.includes('name="robots" content="noindex,nofollow,noarchive"'),"Staging must be noindexed.");
+assert.ok(html.includes('id="souqna-environment-banner"'),"Staging environment ribbon is missing.");
+assert.ok(html.includes("بيئة اختبار سوقنا"),"Staging bundle must be clearly labeled.");
+assert.ok(!html.includes("نسخة معاينة معزولة"),"Disconnected preview is not a working staging build.");
 assert.ok(!html.includes('projectId:"souqna-sweida"'),"Production Firebase project still present.");
 const firebase=JSON.parse(readFileSync(join(root,"firebase.json"),"utf8"));
 assert.equal(firebase.hosting.public,"dist","Firebase Hosting must publish the audited dist folder.");
