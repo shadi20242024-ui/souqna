@@ -30,6 +30,17 @@ Pharmacy duty changes must be admin-confirmed, expire after 24 hours and be disp
 
 A sponsor placement is not automatically activated because a user submitted a request. Ads appear only if `active===true`, `paymentVerified===true`, the start date is reached and end date has not passed. Payment verification is **manual** at this stage; there is no payment gateway.
 
+## Owner branding and Firebase setup (development branch)
+
+The approved screenshot was packaged with two deployable images in a separate user-facing archive: `logo_bag.webp` and `sweida_approved_hero_clean.webp`. The application admin screen now previews and compresses both images before saving them. This improves the existing Firebase site-settings workflow; it does **not** deploy assets into Firebase automatically.
+
+1. In an isolated staging Firebase environment, provision a trustworthy admin custom claim from a secured server-side tool, not browser code.
+2. In the admin dashboard open **🎨 المظهر والإعدادات**, choose `logo_bag.webp` as logo and `sweida_approved_hero_clean.webp` as hero banner, verify previews and save.
+3. The hero image is a cropped design reference; verify no remnant UI or duplicate search field is visible when applied to the responsive home page. This image is **not** a verified standalone licensed city photograph.
+4. Set up reCAPTCHA v3 App Check in Firebase Console, register authorized domains and enter only the **public site key**. The frontend now clearly rejects privileged callable actions if App Check is not initialized. SDK initialized does **not** prove server token acceptance.
+5. If the trusted admin claim was recently granted, use the owner-account **🔐 تحديث صلاحيات حسابي** control to refresh the ID token, and re-test the authorized dashboard.
+6. Confirm backend callable operations in staging. Release to production only after all remaining items below are checked.
+
 ## Production release checklist
 
 - [x] Firestore rules and permissions tests on emulator
