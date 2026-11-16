@@ -33,6 +33,8 @@ async function startServer() {
       if(filename.endsWith("index.html")) {
         let html=bytes.toString("utf8");
         assert.ok(html.includes(anchor),"Firebase startup anchor not found");
+        assert.ok(html.includes('projectId:"souqna-sweida"'),"Original project id not found");
+        html=html.replace('projectId:"souqna-sweida"','projectId:"demo-souqna-rules"');
         html=html.replace(anchor,()=>
           authImport+"\n"+storeImport+"\n"+anchor+"\n"+
           'connectAuthEmulator(auth,"http://127.0.0.1:9099",{disableWarnings:true});\n'+
@@ -89,10 +91,19 @@ try {
     try {
       const page=await context.newPage();
       const errors=[];
-      page.on("pageerror",err=>errors.push(err.message));
+      page.on("pageerror",err=>errors.push("PAGE: "+err.message));
+      page.on("console",msg=>{if(msg.type()==="error")errors.push("CONSOLE: "+msg.text());});
+      page.on("requestfailed",req=>errors.push("REQUEST: "+req.url()+" "+req.failure()?.errorText));
       const response=await page.goto("http://127.0.0.1:4173/",{waitUntil:"domcontentloaded",timeout:45000});
       assert.equal(response.status(),200);
-      await page.locator("#list .item").first().waitFor({timeout:45000});
+      try {
+        await page.locator("#list .item").first().waitFor({timeout:20000});
+      } catch(error) {
+        await page.screenshot({path:"artifacts/souqna-"+item.name+"-debug.png",fullPage:true});
+        console.error("VISUAL ERROR",item.name,JSON.stringify(errors).slice(0,3500));
+        console.error("VISIBLE CONTENT",(await page.locator("#app").innerText().catch(()=>"")).slice(0,1500));
+        throw error;
+      }
       assert.equal(await page.locator("#list .item").count(),1);
       assert.ok(await page.locator("text=السيارات").count()>=1);
       const nav=await page.locator("#nav").boundingBox();
