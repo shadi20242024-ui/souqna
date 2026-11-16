@@ -34,9 +34,11 @@ npm run build:hosting
 
 **تنبيه مهم:** `build:hosting` ينتج الآن حزمة معاينة **معزولة وغير متصلة بـ Firebase**، وليست نسخة تشغيل للزبائن. لا ترفعها على أنها تطبيق Staging جاهز.
 
-التحقق المطلوب: جميع اختبارات الصلاحيات وCloud Functions تنجح؛ اختبارات Chromium للكمبيوتر والهاتف تنجح؛ مجلد dist يحتوي فقط على index.html وsw.js وmanifest.webmanifest وlogo.png وأيقونات PWA وassets/responsive.css. **لا يحتوي على ملفات functions أو firestore.rules أو الشيفرة الاختبارية أو ملفات المشروع الخاصة.**
+التحقق المطلوب: جميع اختبارات الصلاحيات وCloud Functions تنجح؛ اختبارات Chromium للكمبيوتر والهاتف تنجح؛ مجلد dist يحتوي فقط على index.html وsw.js وmanifest.webmanifest وlogo.png وأيقونات PWA وassets/responsive.css وassets/admin-metrics.js. **لا يحتوي على ملفات functions أو firestore.rules أو الشيفرة الاختبارية أو ملفات المشروع الخاصة.**
 
 ملف firebase.json يحصر استضافة الويب في مجلد dist، لكنه لا ينفّذ النشر تلقائياً.
+
+دليل الإنشاء الفعلي على Windows 11 وخطوات Firebase CLI موجود في [STAGING_SETUP_AR.md](STAGING_SETUP_AR.md). يتضمن تعليمات التحقق من الحساب والتطبيق التجريبي وطريقة البناء دون نشر.
 
 ## فصل مشروع الاختبار عن مشروع العملاء (إلزامي)
 
