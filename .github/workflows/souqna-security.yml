@@ -33,6 +33,22 @@ jobs:
         run: npm --prefix functions install --no-audit --no-fund
       - name: Check client source and Firestore security rules
         run: npm test
+      - name: Build audited Hosting package
+        run: npm run build:hosting
+      - name: Inspect build manifest
+        run: |
+          test -f dist/index.html
+          test -f dist/sw.js
+          test -f dist/assets/responsive.css
+          test ! -e dist/functions
+          test ! -e dist/firestore.rules
+      - name: Save preview-only Hosting bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: souqna-hosting-preview
+          path: dist/
+          retention-days: 14
+
 
   visual-browser-smoke:
     runs-on: ubuntu-24.04
