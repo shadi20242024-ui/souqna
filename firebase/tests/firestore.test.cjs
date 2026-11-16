@@ -205,3 +205,38 @@ test("user cannot delete another account's favorite",async()=>{
 test("owner can remove a saved advertisement",async()=>{
   await assertSucceeds(deleteDoc(doc(dbFor("alice"),"favorites","alice_favoriteAd")));
 });
+
+test("users can submit a small WebP image with a pending advertisement",async()=>{
+  await assertSucceeds(setDoc(doc(dbFor("alice"),"ads","secure-photo-webp"),{
+    ownerId:"alice",status:"pending",title:"Photo upload",
+    img:"data:image/webp;base64,"+"A".repeat(128)
+  }));
+});
+test("users can submit an HTTPS-hosted advertisement image",async()=>{
+  await assertSucceeds(setDoc(doc(dbFor("alice"),"ads","secure-photo-https"),{
+    ownerId:"alice",status:"pending",title:"Photo URL",
+    img:"https://images.example.com/car.webp"
+  }));
+});
+test("clients cannot inject JavaScript or inline SVG as advertisement images",async()=>{
+  for(const [id,img] of [
+    ["photo-script","javascript:alert(1)"],
+    ["photo-svg","data:image/svg+xml,<svg onload=alert(1)>"],
+    ["photo-html","data:text/html,<img src=x>"]
+  ]){
+    await assertFails(setDoc(doc(dbFor("alice"),"ads",id),{
+      ownerId:"alice",status:"pending",title:"Untrusted content",img
+    }));
+  }
+});
+test("large advertisement images are rejected before they reach Firestore",async()=>{
+  await assertFails(setDoc(doc(dbFor("alice"),"ads","too-large-photo"),{
+    ownerId:"alice",status:"pending",title:"Oversized image",
+    img:"data:image/webp;base64,"+"A".repeat(180001)
+  }));
+});
+test("approved advertisement cannot be updated to bypass image restrictions",async()=>{
+  await assertFails(updateDoc(doc(dbFor("alice"),"ads","favoriteAd"),{
+    img:"javascript:alert(1)"
+  }));
+});
