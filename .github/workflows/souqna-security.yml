@@ -79,6 +79,14 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Render SOUQNA at desktop and mobile sizes
         run: npx firebase emulators:exec --project demo-souqna-rules --only auth,firestore,functions "node scripts/visual-check.mjs"
+      - name: Build isolated QA staging bundle
+        run: |
+          npm run build:staging -- ./tests/fixtures/firebase.staging.emulator.json
+          npm run preflight:staging -- demo-souqna-rules
+      - name: Browser-test the actual staging Hosting bundle
+        env:
+          SOUQNA_VISUAL_STAGING: '1'
+        run: npx firebase emulators:exec --project demo-souqna-rules --only auth,firestore,functions "node scripts/visual-check.mjs"
       - name: Attach desktop and mobile screenshots
         uses: actions/upload-artifact@v4
         if: always()
