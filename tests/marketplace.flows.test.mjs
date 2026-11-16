@@ -105,6 +105,18 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
     secondStoreRef=await createStore({...fields,name:"المتجر الثاني"});
     await assert.rejects(()=>createStore({...fields,name:"متجر ثالث"}),"Third store must exceed server quota");
     await assert.rejects(()=>market({action:"createStore",id:doc(collection(db,"stores")).id,fields:{...fields,role:"admin"}}));
+    await env.withSecurityRulesDisabled(async ctx=>
+      setDoc(doc(ctx.firestore(),"settings","site"),{maxStores:3})
+    );
+    const competing=await Promise.allSettled([
+      createStore({...fields,name:"متجر متزامن أول"}),
+      createStore({...fields,name:"متجر متزامن ثان"})
+    ]);
+    assert.equal(competing.filter(x=>x.status==="fulfilled").length,1,
+      "Concurrent attempts to fill one store slot must create exactly one store");
+    await env.withSecurityRulesDisabled(async ctx=>
+      setDoc(doc(ctx.firestore(),"settings","site"),{maxStores:2})
+    );
     await assertFails(updateDoc(firstStoreRef, { status: "approved" }));
     await assertFails(getDoc(doc(visitor, "stores", firstStoreRef.id)));
     const queue = await assertSucceeds(getDocs(query(collection(admin, "stores"), where("status", "==", "pending"))));
@@ -138,7 +150,13 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
     await assert.rejects(()=>createAd({...fields,storeId:"flow-other-store"}));
     await assert.rejects(()=>createAd({...fields,price:-100}));
     await assert.rejects(()=>createAd({...fields,ownerId:uid}));
-    for(let index=0;index<4;index++)await createAd({...fields,title:"إعلان باقة مجاني رقم "+index});
+    for(let index=0;index<3;index++)await createAd({...fields,title:"إعلان باقة مجاني رقم "+index});
+    const concurrentAds=await Promise.allSettled([
+      createAd({...fields,title:"الإعلان الخامس أ"}),
+      createAd({...fields,title:"الإعلان الخامس ب"})
+    ]);
+    assert.equal(concurrentAds.filter(x=>x.status==="fulfilled").length,1,
+      "Concurrent ad submissions cannot bypass the five-ad store limit");
     await assert.rejects(()=>createAd({...fields,title:"تجاوز حصة المتجر"}),"Free store plan should limit to five ads");
     const {storeId,...personal}=fields;
     await createAd({...personal,title:"إعلان شخصي مستقل"});
