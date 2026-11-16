@@ -22,6 +22,14 @@ const MIME = {
 const authImport='import{connectAuthEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";';
 const storeImport='import{connectFirestoreEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";';
 const anchor='const auth=getAuth(app),db=getFirestore(app),functions=getFunctions(app,"us-central1");';
+const stableWeather={
+  current:{temperature_2m:21,weather_code:1},
+  daily:{temperature_2m_max:[26],temperature_2m_min:[14]}
+};
+const stubWeather=context=>context.route("https://api.open-meteo.com/**",route=>
+  route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(stableWeather)})
+);
+
 
 async function startServer() {
   const server=createServer(async (req,res)=>{
@@ -111,6 +119,7 @@ try {
   for(const item of cases) {
     const context=await browser.newContext({viewport:item.viewport,deviceScaleFactor:1,locale:"ar",reducedMotion:"reduce"});
     try {
+      await stubWeather(context);
       const page=await context.newPage();
       const errors=[];
       page.on("pageerror",err=>errors.push("PAGE: "+err.message));
@@ -172,6 +181,7 @@ try {
     viewport:{width:1280,height:900},locale:"ar",reducedMotion:"reduce"
   });
   try {
+    await stubWeather(customerContext);
     const page=await customerContext.newPage();
     const failures=[];
     page.on("pageerror",e=>failures.push(e.message));
@@ -270,6 +280,7 @@ try {
 
   const adminContext=await browser.newContext({viewport:{width:1280,height:900},locale:"ar"});
   try {
+    await stubWeather(adminContext);
     const page=await adminContext.newPage();
     const errors=[];
     page.on("pageerror",e=>errors.push(e.message));
