@@ -46,6 +46,24 @@ npx firebase apps:sdkconfig WEB YOUR_STAGING_FIREBASE_WEB_APP_ID --project YOUR_
 
 انسخ قيم Web SDK الست إلى ملف محلي باسم `firebase.staging.json` بجذر المستودع. احرص على استعمال بيانات المشروع التجريبي فقط: `apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`. إذا لم يُنشأ Storage bucket في مشروع الاختبار، فراجع إعدادات Firebase Console ولا تنسخ بيانات الإنتاج للتعويض.
 
+## تأسيس البيانات التجريبية الأساسية
+
+أُضيف سكربت آمن باسم `scripts/seed-staging.mjs` لتجهيز 24 مستنداً أساسياً تشمل: 8 أقسام للإعلانات، 4 باقات للمتاجر، 5 باقات تمييز، إعدادات الموقع والتواصل، و5 خدمات رقمية. لا ينشئ حسابات أشخاص أو أرصدة أو إيصالات دفع أو معلومات تماس حقيقية.
+
+للاستعراض فقط (لا يتصل بـ Firebase ولا ينشئ شيئاً):
+
+~~~powershell
+npm run seed:staging -- --project YOUR_UNIQUE_STAGING_PROJECT_ID
+~~~
+
+بعد تأكيد إعداد مشروع تجريبي منفصل ووجود صلاحيات Google Application Default Credentials لمشروع الاختبار، يمكن تشغيل الكتابة **بإذن المالك الصريح فقط**:
+
+~~~powershell
+npm run seed:staging -- --project YOUR_UNIQUE_STAGING_PROJECT_ID --execute --confirm SEED:YOUR_UNIQUE_STAGING_PROJECT_ID
+~~~
+
+لن يسمح السكربت باستخدام المشروع الحقيقي `souqna-sweida`، ولا ينفذ أي كتابة افتراضياً، ولا يغيّر المستندات الموجودة مسبقاً. عند التنفيذ يُنشئ الناقص فقط. **لم يُشغّل أمر التنفيذ على مشروع Firebase حقيقي.**
+
 ## إعداد المنتجات على Spark إن أمكن
 
 من Firebase Console لمشروع التجربة وحده:
