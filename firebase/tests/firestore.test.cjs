@@ -1,7 +1,7 @@
 const {test, before, after} = require("node:test");
 const fs = require("node:fs");
 const {initializeTestEnvironment, assertFails, assertSucceeds} = require("@firebase/rules-unit-testing");
-const {doc, setDoc, updateDoc, getDoc, deleteDoc} = require("firebase/firestore");
+const {doc, setDoc, updateDoc, getDoc, deleteDoc, getDocs, collection, query, where} = require("firebase/firestore");
 let env;
 before(async () => {
   env = await initializeTestEnvironment({
@@ -172,6 +172,12 @@ test("anonymous cannot save an advertisement",async()=>{
   await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(),"favorites","anon_favoriteAd"),{
     userId:"anon",adId:"favoriteAd",createdAt:Date.now()
   }));
+});
+test("owner-only favorites query is allowed",async()=>{
+  await assertSucceeds(getDocs(query(collection(dbFor("alice"),"favorites"),where("userId","==","alice"))));
+});
+test("unfiltered favorites listing cannot expose other users",async()=>{
+  await assertFails(getDocs(collection(dbFor("alice"),"favorites")));
 });
 test("user cannot create another account's favorites",async()=>{
   await assertFails(setDoc(doc(dbFor("bob"),"favorites","alice_other"),{
