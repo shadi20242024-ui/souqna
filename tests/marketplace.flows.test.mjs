@@ -29,6 +29,7 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
   const functions = getFunctions(app, "us-central1");
   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
   const finance = httpsCallable(functions, "souqnaFinance");
+  const market = httpsCallable(functions, "souqnaMarketplace");
 
   t.after(async () => {
     await signOut(auth).catch(() => {});
@@ -43,6 +44,7 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
       setDoc(doc(seed, "users", "flow-other"), { name: "مستخدم آخر", email: "other@example.test", role: "user", stars: 0 }),
       setDoc(doc(seed, "stores", "flow-other-store"), { ownerId: "flow-other", name: "متجر مستخدم آخر", status: "approved" }),
       setDoc(doc(seed, "plans", "flow-gold"), { name: "ذهبية", stars: 20, days: 30, maxAds: 50, active: true, order: 2 }),
+      setDoc(doc(seed, "settings", "site"), { maxStores: 2 }),
       setDoc(doc(seed, "plans", "free"), { name: "مجانية", stars: 0, days: 0, maxAds: 5, active: true, order: 0 })
     ]);
   });
@@ -91,8 +93,18 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
     const store = { name: "متجرنا الأول", desc: "مستلزمات", area: "السويداء", map: "",
       logo: "", cover: "", phone: "963999999999", ownerId: uid,
       ownerName: "زبون تجريبي", status: "pending", createdAt: Date.now() };
-    firstStoreRef = await addDoc(collection(db, "stores"), store);
-    secondStoreRef = await addDoc(collection(db, "stores"), { ...store, name: "المتجر الثاني" });
+    await assertFails(addDoc(collection(db, "stores"),store));
+    const {ownerId,ownerName,status,createdAt,...fields}=store;
+    const createStore=async data=>{
+      const id=doc(collection(db,"stores")).id;
+      const response=await market({action:"createStore",id,fields:data});
+      assert.equal(response.data.ok,true);
+      return doc(db,"stores",response.data.id);
+    };
+    firstStoreRef=await createStore(fields);
+    secondStoreRef=await createStore({...fields,name:"المتجر الثاني"});
+    await assert.rejects(()=>createStore({...fields,name:"متجر ثالث"}),"Third store must exceed server quota");
+    await assert.rejects(()=>market({action:"createStore",id:doc(collection(db,"stores")).id,fields:{...fields,role:"admin"}}));
     await assertFails(updateDoc(firstStoreRef, { status: "approved" }));
     await assertFails(getDoc(doc(visitor, "stores", firstStoreRef.id)));
     const queue = await assertSucceeds(getDocs(query(collection(admin, "stores"), where("status", "==", "pending"))));
@@ -112,10 +124,24 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
       phone: "963999999999", img: "", status: "pending", createdAt: Date.now(),
       storeId: firstStoreRef.id
     };
-    userAdRef = await addDoc(collection(db, "ads"), ad);
+    await assertFails(addDoc(collection(db, "ads"),ad));
+    const {ownerId,ownerName,status,createdAt,...fields}=ad;
+    const createAd=async data=>{
+      const id=doc(collection(db,"ads")).id;
+      const response=await market({action:"createAd",id,fields:data});
+      assert.equal(response.data.ok,true);
+      return doc(db,"ads",response.data.id);
+    };
+    userAdRef=await createAd(fields);
     await assertFails(updateDoc(userAdRef, { status: "approved" }));
     await assertFails(getDoc(doc(visitor, "ads", userAdRef.id)));
-    await assertFails(addDoc(collection(db, "ads"), { ...ad, storeId: "flow-other-store" }));
+    await assert.rejects(()=>createAd({...fields,storeId:"flow-other-store"}));
+    await assert.rejects(()=>createAd({...fields,price:-100}));
+    await assert.rejects(()=>createAd({...fields,ownerId:uid}));
+    for(let index=0;index<4;index++)await createAd({...fields,title:"إعلان باقة مجاني رقم "+index});
+    await assert.rejects(()=>createAd({...fields,title:"تجاوز حصة المتجر"}),"Free store plan should limit to five ads");
+    const {storeId,...personal}=fields;
+    await createAd({...personal,title:"إعلان شخصي مستقل"});
     const awaiting = await assertSucceeds(getDocs(query(collection(admin, "ads"), where("status", "==", "pending"))));
     assert.ok(awaiting.docs.some(x => x.id === userAdRef.id));
     await assertSucceeds(updateDoc(doc(admin, "ads", userAdRef.id), { status: "approved" }));
