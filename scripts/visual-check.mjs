@@ -4,7 +4,7 @@ import { resolve, sep, extname } from "node:path";
 import { createServer } from "node:http";
 import { chromium } from "playwright";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 const ROOT = process.cwd();
 const PROJECT_ID = "demo-souqna-rules";
@@ -237,9 +237,22 @@ try {
   assert.ok(authResponse.ok && authData.localId,
     "Could not register test admin identity: "+JSON.stringify(authData));
   await env.withSecurityRulesDisabled(async ctx=>{
-    await setDoc(doc(ctx.firestore(),"users",authData.localId),{
-      name:"مدير اختبار",email:adminEmail,role:"admin",stars:0
-    });
+    const db=ctx.firestore();
+    await Promise.all([
+      setDoc(doc(db,"users",authData.localId),{
+        name:"مدير اختبار",email:adminEmail,role:"admin",stars:0
+      }),
+      setDoc(doc(db,"starOrders","flow-pay-one"),{
+        userId:authData.localId,userName:"مدير اختبار",stars:9,status:"pending",createdAt:Date.now()
+      }),
+      setDoc(doc(db,"starOrders","flow-pay-two"),{
+        userId:authData.localId,userName:"مدير اختبار",stars:7,status:"pending",createdAt:Date.now()
+      }),
+      setDoc(doc(db,"sponsorRequests","flow-banner-pay"),{
+        userId:authData.localId,userName:"مدير اختبار",company:"شركة تجريبية للإيصالات",
+        title:"إعلان مرجعي",days:7,img:"",status:"pending",createdAt:Date.now()
+      })
+    ]);
   });
 
   const adminContext=await browser.newContext({viewport:{width:1280,height:900},locale:"ar"});
@@ -268,6 +281,37 @@ try {
     assert.ok(reportCsv.includes("الحسابات المسجلة"),"Admin export must include account totals");
     assert.ok(!reportCsv.includes(adminEmail),"Export must not expose customer email addresses");
     console.log("UI ADMIN CSV OK",report.suggestedFilename(),"bytes",reportCsv.length);
+
+    await page.locator('#app [data-a="ordok"][data-id="flow-pay-one"]').click();
+    await page.locator("#paymentDialog[open]").waitFor({timeout:8000});
+    assert.ok((await page.locator("#paymentDialog").innerText()).includes("توثيق الدفع اليدوي"));
+    await page.locator("#pay-reference").fill("PAY-FLOW-2026-0001");
+    await page.locator('#paymentDialog [data-a="payconfirm"]').click();
+    await page.locator(".toast").filter({hasText:"يجب التأكيد أن الدفعة وصلت"}).waitFor({timeout:6000});
+    await page.locator("#pay-attest").check();
+    await page.locator('#paymentDialog [data-a="payconfirm"]').click();
+    await page.locator("#paymentDialog[open]").waitFor({state:"hidden",timeout:15000});
+    await env.withSecurityRulesDisabled(async ctx=>{
+      assert.equal((await getDoc(doc(ctx.firestore(),"starOrders","flow-pay-one"))).data().status,"done");
+      assert.equal((await getDoc(doc(ctx.firestore(),"users",authData.localId))).data().stars,9);
+    });
+
+    await page.locator('#app [data-a="ordok"][data-id="flow-pay-two"]').click();
+    await page.locator("#pay-reference").fill("PAY-FLOW-2026-0001");
+    await page.locator("#pay-attest").check();
+    await page.locator('#paymentDialog [data-a="payconfirm"]').click();
+    await page.locator(".toast").filter({hasText:"رقم إيصال الدفع مستخدم"}).waitFor({timeout:15000});
+    await env.withSecurityRulesDisabled(async ctx=>{
+      assert.equal((await getDoc(doc(ctx.firestore(),"starOrders","flow-pay-two"))).data().status,"pending");
+    });
+    await page.locator("#pay-reference").fill("PAY-FLOW-2026-0002");
+    await page.locator('#paymentDialog [data-a="payconfirm"]').click();
+    await page.locator("#paymentDialog[open]").waitFor({state:"hidden",timeout:15000});
+    await env.withSecurityRulesDisabled(async ctx=>{
+      assert.equal((await getDoc(doc(ctx.firestore(),"users",authData.localId))).data().stars,16);
+    });
+    console.log("UI RECEIPT VERIFICATION OK","manual attestation required and duplicates rejected");
+    await page.screenshot({path:"artifacts/souqna-admin-receipts.png",fullPage:true,animations:"disabled"});
 
     const pendingAd=page.locator("#app .item").filter({hasText:"إعلان فحص واجهة سوقنا"});
     await pendingAd.locator('[data-a="ok"]').waitFor({timeout:20000});
