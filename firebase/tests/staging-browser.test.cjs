@@ -113,6 +113,9 @@ test("Chromium: account registration → approved ad → detail/favorite → own
       await page.locator("#a-desc").fill("تفاصيل الإعلان التجريبي");
       await page.locator("#a-phone").fill("963912345678");
       await page.locator('[data-a="post"]').click();
+      // Click returns before Firebase's asynchronous addDoc and the UI refresh finish.
+      // Wait for the submitted ad on the customer's "my listings" page first.
+      await page.locator('#app .item').first().waitFor({timeout:20000});
       const results=await adminDb.collection("ads").where("title","==","سيارة مستعملة — تجربة المتصفح").get();
       assert.equal(results.size,1);
       adId=results.docs[0].id;
