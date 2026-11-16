@@ -407,3 +407,57 @@ nav button.desktop-only { display: none; }
   .news-host { padding: 0 12px; }
   .desktop-page-title { padding: 5px 0; }
 }
+
+/* Private favorites cards and accessible heart controls. */
+.favorite-button {
+  appearance: none;
+  border: 1px solid #cad9f4;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: linear-gradient(160deg,#fff,#f1f6ff);
+  color: #234986;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 39px;
+  transition: background .18s,transform .18s;
+}
+.favorite-button:first-letter { font-size: 19px; }
+.favorite-button.saved {
+  color: #a52f54;
+  border-color: #f1a7bd;
+  background: #fff0f4;
+}
+.favorite-button:hover { transform: translateY(-2px); }
+.favorite-button:focus-visible { outline: 3px solid #f4b400;outline-offset: 2px; }
+.favorite-empty {
+  text-align: center;
+  padding: 36px 20px;
+  max-width: 620px;
+  margin: 30px auto;
+  border: 1px dashed #b8cbed;
+  background: #f9fbff;
+}
+.favorite-empty > div {
+  font-size: 60px;
+  font-weight: 300;
+  color: #b3c5e4;
+}
+.favorite-empty h3 { margin: 6px 0; }
+.favorite-empty p { color: #697d9e; }
+@media(max-width:480px) {
+  .favorite-button { flex: 1; padding: 9px 7px; font-size: 13px; }
+}
+@media(min-width:1024px) {
+  nav button[data-v="favorites"] { order: 4; }
+  nav button[data-v="add"] { order: 5; }
+  nav button[data-v="mine"] { order: 6; }
+  nav button[data-v="stars"] { order: 7; }
+  nav button[data-v="orders"] { order: 8; }
+  nav button[data-v="acc"] { order: 9; }
+  nav button[data-v="admin"] { order: 10; }
+}
