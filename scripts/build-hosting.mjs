@@ -8,6 +8,7 @@ const target = join(root, "dist");
 const publicFiles = Object.freeze([
   "index.html",
   "assets/responsive.css",
+  "assets/admin-metrics.js",
   "sw.js",
   "manifest.webmanifest",
   "logo.png",
