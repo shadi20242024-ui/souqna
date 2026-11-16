@@ -172,6 +172,8 @@ try {
     await page.locator("#l-pass").fill("SouqnaTest2026!");
     await page.locator('#app [data-a="auth"]').click();
     await page.locator('#app [data-v="mystores"]').waitFor({timeout:20000});
+    assert.equal(await page.locator('#nav [data-v="admin"]').count(),0,
+      "Ordinary customers must not have the admin navigation");
     assert.ok((await page.locator("#app").innerText()).includes("مستخدم فحص سوقنا"),
       "Registered user's name should be shown in profile");
     await page.locator('#nav [data-v="home"]').click();
@@ -263,6 +265,20 @@ try {
     await page.locator("#list .item").filter({hasText:"إعلان فحص واجهة سوقنا"}).waitFor({timeout:20000});
     await page.locator("#app .stc").filter({hasText:"متجر فحص سوقنا"}).waitFor({timeout:20000});
     await page.screenshot({path:"artifacts/souqna-admin-approved.png",fullPage:true,animations:"disabled"});
+    await page.locator('#nav [data-v="admin"]').click();
+    await page.locator("#adminDashboard .admin-stat").first().waitFor({timeout:15000});
+    const metric=name=>page.locator("#adminDashboard .admin-stat").filter({hasText:name}).first();
+    assert.equal(await metric("الإعلانات المنشورة").getAttribute("data-value"),"2");
+    assert.equal(await metric("المتاجر المنشورة").getAttribute("data-value"),"2");
+    assert.equal(await metric("الحسابات المسجلة").getAttribute("data-value"),"2");
+    assert.equal(await metric("إعلانات للمراجعة").getAttribute("data-value"),"0");
+    assert.ok((await page.locator("#adminDashboard").innerText()).includes("حركة النجوم ليست إجمالي مبيعات"),
+      "Owner dashboard must not claim that stars are cash revenue");
+    await page.locator("#refreshAdmin").click();
+    await page.locator("#adminDashboard .admin-stat").first().waitFor({timeout:15000});
+    assert.equal(await metric("الإعلانات المنشورة").getAttribute("data-value"),"2");
+    await page.screenshot({path:"artifacts/souqna-admin-metrics.png",fullPage:true,animations:"disabled"});
+    console.log("UI ADMIN DASHBOARD OK","Firestore-backed metrics, owner-only ledger and manual refresh");
     assert.deepEqual(errors,[],"Admin moderation flow should not throw script errors");
     console.log("UI ADMIN MODERATION OK","ad approved, store approved, both visible on homepage");
   } catch(error) {
