@@ -341,7 +341,9 @@ document.addEventListener("click",async e=>{
     else if(a=="auth"){
       if(mode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");
         const u=await createUserWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
-        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0})}
+        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0});
+        me={uid:u.user.uid,name:n,email:u.user.email,role:"user",stars:0};
+        await loadMine();render()}
       else await signInWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
     }
     else if(a=="reset"){await sendPasswordResetEmail(auth,val("#l-mail"));toast("أُرسل رابط استعادة كلمة المرور إلى بريدك")}
