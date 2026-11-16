@@ -273,3 +273,6 @@ exports.souqnaFinance = onCall(OPTIONS, async request => {
   logger.info("SOUQNA finance operation", { action, requestId: id, adminUid: actor });
   return { ok: true, message: result.message };
 });
+
+// All user listing/store creation is enforced by server-side quotas and ownership checks.
+exports.souqnaMarketplace=require("./marketplace")(db,OPTIONS);
