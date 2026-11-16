@@ -179,11 +179,13 @@ try {
     await page.locator('#list .item [data-a="toggleFav"]').first().click();
     await page.locator('#list .item [data-a="toggleFav"][aria-pressed="true"]').first().waitFor({timeout:12000});
     await page.locator('#nav [data-v="favorites"]').click();
+    await page.locator('#app .desktop-page-title h2').filter({hasText:"إعلاناتي المفضلة"}).waitFor({timeout:15000});
     await page.locator('#app .item').filter({hasText:"سيارة مستعملة للبيع"}).waitFor({timeout:15000});
     await page.screenshot({path:"artifacts/souqna-favorites.png",fullPage:true,animations:"disabled"});
     await page.reload({waitUntil:"domcontentloaded"});
     await page.locator('#list .item [data-a="toggleFav"][aria-pressed="true"]').first().waitFor({timeout:20000});
     await page.locator('#nav [data-v="favorites"]').click();
+    await page.locator('#app .desktop-page-title h2').filter({hasText:"إعلاناتي المفضلة"}).waitFor({timeout:15000});
     await page.locator('#app .item [data-a="toggleFav"]').first().click();
     await page.locator('#app .favorite-empty').waitFor({timeout:12000});
     console.log("UI PRIVATE FAVORITES OK","favorite saved, persisted after reload and removed");
