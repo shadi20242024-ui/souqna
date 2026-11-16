@@ -165,7 +165,8 @@ test("public ad detail safely escapes untrusted description",()=>{
     title:'<img src=x onerror="alert(1)">',price:0,cur:"ل.س",
     desc:"<script>bad()</script>",phone:"none"
   });
-  assert.doesNotMatch(html,/<script>|onerror=|src="javascript:/);
+  assert.doesNotMatch(html,/<script>|<img|src="javascript:/);
+  assert.match(html,/&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
   assert.match(html,/&lt;script&gt;/);
   assert.match(html,/ad-placeholder/);
   assert.match(html,/رقم التواصل غير متاح/);
