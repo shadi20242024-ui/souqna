@@ -11,6 +11,7 @@ import {
 import { initializeTestEnvironment, assertFails } from "@firebase/rules-unit-testing";
 
 const PROJECT = "demo-souqna-rules";
+const paid=(reference,amount,method="bank_transfer",currency="USD")=>({method,reference,amount,currency});
 
 test("SOUQNA server finance: permission, cost integrity, idempotence and ledgers", async t => {
   const env=await initializeTestEnvironment({
@@ -52,17 +53,31 @@ test("SOUQNA server finance: permission, cost integrity, idempotence and ledgers
     orderRef=await addDoc(collection(customer.db,"starOrders"),{
       userId:customer.uid,userName:"مشتري",stars:100,status:"pending",createdAt:Date.now()
     });
-    await assert.rejects(()=>customer.call({action:"approveTopup",id:orderRef.id}));
+    await assert.rejects(()=>customer.call({action:"approveTopup",id:orderRef.id,payment:paid("TXN-TEST-0001",100)}));
+    await assert.rejects(()=>owner.call({action:"approveTopup",id:orderRef.id}));
+    await assert.rejects(()=>owner.call({action:"approveTopup",id:orderRef.id,payment:paid("BAD",100)}));
+    await assert.rejects(()=>owner.call({action:"approveTopup",id:orderRef.id,payment:paid("TXN-TEST-0001",0)}));
     await assertFails(updateDoc(doc(owner.db,"users",customer.uid),{stars:99999}));
-    const outcomes=await Promise.allSettled([
-      owner.call({action:"approveTopup",id:orderRef.id}),
-      owner.call({action:"approveTopup",id:orderRef.id})
-    ]);
+    const attempt=()=>owner.call({action:"approveTopup",id:orderRef.id,payment:paid("TXN-TEST-0001",100)});
+    const outcomes=await Promise.allSettled([attempt(),attempt()]);
     assert.equal(outcomes.filter(r=>r.status==="fulfilled").length,1);
     assert.equal((await getDoc(doc(owner.db,"users",customer.uid))).data().stars,100);
-    assert.equal((await getDoc(doc(owner.db,"transactions","topup_"+orderRef.id))).data().amount,100);
+    const entry=(await getDoc(doc(owner.db,"transactions","topup_"+orderRef.id))).data();
+    assert.equal(entry.amount,100);
+    assert.ok(entry.paymentReceiptId,"Ledger must contain a receipt hash link");
+    const receipt=await getDoc(doc(owner.db,"paymentReceipts",entry.paymentReceiptId));
+    assert.equal(receipt.data().reference,"TXN-TEST-0001");
+    assert.equal(receipt.data().verifiedBy,owner.uid);
+    await assertFails(getDoc(doc(customer.db,"paymentReceipts",entry.paymentReceiptId)));
+    await assertFails(setDoc(doc(owner.db,"paymentReceipts","fake-proof"),{method:"bank_transfer",reference:"FAKE-001"}));
     assert.equal((await getDoc(orderRef)).data().status,"done");
-    await assert.rejects(()=>owner.call({action:"approveTopup",id:orderRef.id}));
+    await assert.rejects(attempt);
+    const duplicate=await addDoc(collection(customer.db,"starOrders"),{
+      userId:customer.uid,userName:"مشتري",stars:7,status:"pending",createdAt:Date.now()
+    });
+    await assert.rejects(()=>owner.call({action:"approveTopup",id:duplicate.id,payment:paid("txn-test-0001",7)}));
+    assert.equal((await getDoc(duplicate)).data().status,"pending");
+    assert.equal((await getDoc(doc(owner.db,"users",customer.uid))).data().stars,100);
   });
 
   await t.test("Store subscription charges actual server-side plan price",async()=>{
@@ -100,13 +115,15 @@ test("SOUQNA server finance: permission, cost integrity, idempotence and ledgers
     await assertFails(setDoc(doc(owner.db,"sponsors","forged"),{
       company:"مزيف",title:"مخالف",requestId:request.id,active:true
     }));
-    await assert.rejects(()=>customer.call({action:"approveSponsor",id:request.id}));
-    await owner.call({action:"approveSponsor",id:request.id});
+    await assert.rejects(()=>customer.call({action:"approveSponsor",id:request.id,payment:paid("BANNER-2026-A",15)}));
+    await assert.rejects(()=>owner.call({action:"approveSponsor",id:request.id,payment:paid("TXN-TEST-0001",15)}));
+    await owner.call({action:"approveSponsor",id:request.id,payment:paid("BANNER-2026-A",15)});
     const banner=await getDoc(doc(owner.db,"sponsors","booking_"+request.id));
     assert.equal(banner.data().active,true);
     assert.ok(banner.data().to>Date.now());
     assert.equal((await getDoc(request)).data().status,"approved");
-    await assert.rejects(()=>owner.call({action:"approveSponsor",id:request.id}));
+    assert.ok((await getDoc(request)).data().paymentReceiptId,"Sponsor must record a payment receipt");
+    await assert.rejects(()=>owner.call({action:"approveSponsor",id:request.id,payment:paid("BANNER-2026-A",15)}));
   });
 
   await t.test("Manual corrections require a reason and never make balance negative",async()=>{
