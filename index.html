@@ -256,6 +256,8 @@ const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furnitur
 const STAFF=["admin","moderator","accountant","editor"];
 let savedAdIds=new Set();
 let selectedAdId=null;
+let adSort="latest",adCurrency="all",adArea="",adMinPrice="",adMaxPrice="",adPage=1;
+const adsPerPage=12;
 let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],sq="",plans=[],subs=[],editPl=null,editSp=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
@@ -423,7 +425,7 @@ function drawHd(){
       '<div><h1>سوقنا - السويداء</h1><small>سوق إلكتروني للإعلانات والمتاجر والخدمات في السويداء</small></div></div>'+
       '<div class="sr"><span>🔍</span><input id="q" aria-label="ابحث في إعلانات سوقنا" placeholder="ابحث عن سيارة، عقار، هاتف أو أي منتج..." value="'+esc(q)+'">'+
       '<button type="button" class="souqna-searchbtn" data-a="search">بحث</button></div>';
-    $("#q").oninput=e=>{q=e.target.value;drawList()};
+    $("#q").oninput=e=>{q=e.target.value;adPage=1;drawList()};
   }else{
     H.className="hd";
     H.innerHTML='<img class="s" src="logo.png" alt="شعار سوقنا"><h2>سوقنا | Souqna</h2>';
@@ -433,9 +435,67 @@ function drawNav(){
   const b=[["home","⌂","الرئيسية"],["mine","▤","إعلاناتي"],["add","<i>＋</i>","أضف إعلان","pl"],["stars","⭐","النجوم"],["acc","👤"+(notifs.some(n=>!n.read)?'<b style="color:#c0392b">●</b>':""),"حسابي"],["stores","🏪","المتاجر"],["services","⚒️","الخدمات"]];
   $("#nav").innerHTML=b.map((x,i)=>'<button type="button" data-v="'+x[0]+'" class="'+(x[3]||"")+' '+(view===x[0]?"on":"")+' '+(i>=5?"desktop-extra":"")+'">'+x[1]+'<br>'+x[2]+'</button>').join("");
 }
+
+const arabicSearch=value=>String(value??"").toLowerCase().normalize("NFKC")
+  .replace(/[\u064B-\u065F\u0670\u0640]/g,"")
+  .replace(/[أإآٱ]/g,"ا").replace(/ى/g,"ي").replace(/ؤ/g,"و").replace(/ئ/g,"ي")
+  .replace(/\s+/g," ").trim();
+function filteredMarketAds(items,filters={}){
+  const target=arabicSearch(filters.search||"");
+  const area=arabicSearch(filters.area||"");
+  const low=filters.minPrice===""||filters.minPrice==null?null:Number(filters.minPrice);
+  const high=filters.maxPrice===""||filters.maxPrice==null?null:Number(filters.maxPrice);
+  const currency=filters.currency||"all";
+  const result=items.filter(a=>{
+    if(filters.category&&filters.category!=="all"&&a.cat!==filters.category)return false;
+    if(filters.featured&&!isF(a))return false;
+    if(currency!=="all"&&a.cur!==currency)return false;
+    if(area&&!arabicSearch(a.area||"").includes(area))return false;
+    if(target&&!arabicSearch([a.title,a.desc,a.area,a.ownerName,catName(a.cat)].join(" ")).includes(target))return false;
+    const price=Number(a.price);
+    if((low!==null||high!==null)&&currency!=="all"){
+      if(!Number.isFinite(price)||price<0)return false;
+      if(low!==null&&Number.isFinite(low)&&price<low)return false;
+      if(high!==null&&Number.isFinite(high)&&price>high)return false;
+    }
+    return true;
+  });
+  const order=filters.sort||"latest";
+  return result.sort((a,b)=>{
+    if(order==="priceAsc"||order==="priceDesc"){
+      const groups=String(a.cur||"").localeCompare(String(b.cur||""),"ar");
+      if(groups)return groups;
+      const pa=Number(a.price),pb=Number(b.price);
+      const d=(order==="priceAsc"?1:-1)*(Number.isFinite(pa)?pa:Infinity)-(order==="priceAsc"?1:-1)*(Number.isFinite(pb)?pb:Infinity);
+      if(Number.isFinite(d)&&d)return d;
+    }
+    if(order==="oldest")return Number(a.createdAt||0)-Number(b.createdAt||0);
+    if(order==="latest"||order==="featured"){
+      const score=Number(isF(b))-Number(isF(a));
+      if(score)return score;
+    }
+    return Number(b.createdAt||0)-Number(a.createdAt||0);
+  });
+}
 function drawList(){
-  const l=ads.filter(a=>(cur=="all"||a.cat==cur)&&(!feat||isF(a))&&(!q||(a.title+a.desc+a.area).includes(q))).sort((x,y)=>isF(y)-isF(x)||y.createdAt-x.createdAt);
-  $("#list").innerHTML=l.map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات.</p>';
+  const list=$("#list");if(!list)return;
+  const all=filteredMarketAds(ads,{category:cur,featured:feat,search:q,area:adArea,
+    currency:adCurrency,minPrice:adMinPrice,maxPrice:adMaxPrice,sort:adSort});
+  const maxPage=Math.max(1,Math.ceil(all.length/adsPerPage));
+  adPage=Math.min(maxPage,Math.max(1,adPage));
+  const start=(adPage-1)*adsPerPage;
+  list.innerHTML=all.slice(start,start+adsPerPage).map(a=>card(a)).join("")||
+    '<div class="mut">لا توجد إعلانات تطابق البحث. جرب تغيير الفلاتر.</div>';
+  const meta=$("#ad-results-meta");
+  if(meta)meta.textContent="نتائج البحث: "+all.length+" إعلان"+(adCurrency==="all"&&(adMinPrice!==""||adMaxPrice!=="")?" · حدد العملة لتفعيل نطاق السعر":"")+
+    (["priceAsc","priceDesc"].includes(adSort)&&adCurrency==="all"?" · السعر مرتب ضمن كل عملة على حدة":"");
+  const pages=$("#ad-pages");
+  if(pages){
+    pages.innerHTML=all.length>adsPerPage?
+      '<button class="btn l" data-a="adpage" data-page="'+(adPage-1)+'" '+(adPage===1?"disabled":"")+'>السابق</button>'+
+      '<span class="mut">صفحة '+adPage+' من '+maxPage+'</span>'+
+      '<button class="btn l" data-a="adpage" data-page="'+(adPage+1)+'" '+(adPage===maxPage?"disabled":"")+'>التالي</button>':"";
+  }
 }
 function loginBox(){
   const r=mode=="reg";
@@ -619,7 +679,7 @@ document.addEventListener("click",async e=>{
   const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc","favorites"].includes(view))await loadMine();feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
   const ss=e.target.closest("[data-st]");if(ss){curStore=ss.dataset.st;view="store";stx={f:[],r:[]};await loadStoreX(curStore);render();return scrollTo(0,0)}
   const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;if(view!=="home"){view="home";render()}else{const directory=$("#dir");if(directory)directory.innerHTML=dirHtml()}document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt===dtype));return}
-  const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view="home";feat=false;render();return scrollTo(0,0)}
+  const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view="home";feat=false;adPage=1;render();return scrollTo(0,0)}
   const detail=e.target.closest("[data-ad]");if(detail){selectedAdId=detail.dataset.ad;view="adDetail";render();window.scrollTo(0,0);return}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   try{
