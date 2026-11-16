@@ -16,9 +16,10 @@ for (const [label, marker] of [
   ["Image readiness before submission", "await photoReady;"],
   ["Image duplicate detection", "imgHash===photoHash"],
   ["Sponsor booking route", 'view=="sponsor"'],
-  ["Manual payment approval", "هل تحققت بالفعل من استلام الدفع"],
-  ["Trusted finance callable", 'await finance("approveSponsor",id)'],
+  ["Manual payment review dialog", "توثيق الدفع اليدوي"],
+  ["Trusted finance callable", 'await finance(action,id,{payment:{method,reference,amount,currency}})'],
   ["Trusted subscription callable", 'await finance("approveSubscription",id)'],
+  ["Payment receipt confirmation", 'id="pay-attest"'],
   ["Live administration dashboard", 'id="adminDashboard"'],
   ["Administration manual refresh", 'a=="refreshAdmin"'],
   ["Private user favorites", 'view=="favorites"'],
@@ -43,12 +44,14 @@ for(const filename of JSON.parse(assets)){
   assert.ok(existsSync(new URL("../"+filename,import.meta.url)), "Missing PWA precache asset: "+filename);
 }
 const backend = readFileSync(new URL("../functions/index.js",import.meta.url), "utf8");
+assert.ok(backend.includes("paymentReceiptRef(payment)"), "Trusted deduplicated receipts missing");
 new Function("require", backend);
 for(const marker of ['"sub_" + id','"topup_" + id','"promo_" + id']){
   assert.ok(backend.includes(marker), "Server idempotent ledger key missing: "+marker);
 }
 const rules = readFileSync(new URL("../firestore.rules",import.meta.url), "utf8");
 assert.ok(rules.includes("Financial ledger is write-once"), "Ledger protection missing");
+assert.ok(rules.includes("match /paymentReceipts/{id}"), "Protected payment receipt rules missing");
 assert.ok(rules.includes("allow create, update, delete: if false;"), "Direct financial writes must be denied");
 
 console.log("SOUQNA source checks passed (syntax and feature markers).");
