@@ -172,16 +172,18 @@ async function adjustBalance(tx, data, actor, now) {
   if (delta === 0) deny("مبلغ التعديل صفر");
   const note = typeof data.note === "string" ? data.note.trim().slice(0, 200) : "";
   if (note.length < 5) deny("اذكر سبب تعديل الرصيد (خمسة أحرف على الأقل)");
+  const operationId = validId(data.operationId, "معرف عملية التعديل");
   const userRef = reference("users", userId);
-  const userSnap = await tx.get(userRef);
+  const ledgerRef = reference("transactions", "manual_" + operationId);
+  const [userSnap, ledgerSnap] = await getAll(tx, userRef, ledgerRef);
   if (!userSnap.exists) deny("المستخدم غير موجود");
+  if (ledgerSnap.exists) deny("عملية تعديل الرصيد تمت مسبقاً");
   const balance = validBalance(userSnap.data().stars || 0);
   if (balance + delta < 0 || !Number.isSafeInteger(balance + delta)) deny("الرصيد الناتج غير صالح");
-  const ledgerRef = db.collection("transactions").doc();
   tx.update(userRef, { stars: FieldValue.increment(delta) });
   tx.create(ledgerRef, {
     userId, type: delta > 0 ? "credit" : "debit", amount: delta,
-    note, approvedBy: actor, createdAt: now, manual: true
+    note, approvedBy: actor, createdAt: now, manual: true, operationId
   });
   return { message: "حُفظ تعديل الرصيد", userId,
     notification: (delta > 0 ? "أُضيف " : "خُصم ") + Math.abs(delta) + " نجمة: " + note };
@@ -215,10 +217,14 @@ exports.souqnaFinance = onCall(OPTIONS, async request => {
     }
   });
   if (result.userId && result.notification) {
-    db.collection("notifs").add({
-      userId: result.userId, text: result.notification, read: false,
-      createdAt: now, origin: "souqnaFinance", approvedBy: actor
-    }).catch(error => logger.error("Optional finance notification failed", error));
+    try {
+      await db.collection("notifs").add({
+        userId: result.userId, text: result.notification, read: false,
+        createdAt: now, origin: "souqnaFinance", approvedBy: actor
+      });
+    } catch(error) {
+      logger.warn("Optional finance notification failed", error);
+    }
   }
   logger.info("SOUQNA finance operation", { action, requestId: id, adminUid: actor });
   return { ok: true, message: result.message };
