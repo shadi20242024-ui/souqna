@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertSafeHostingOutput } from "./hosting-output.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const target=resolve(process.env.SOUQNA_HOSTING_OUT||join(root,"dist"));
-assert.notEqual(target,root,"Hosting output must never overwrite repository root.");
+assertSafeHostingOutput(target,root);
 const mode=process.argv[2]||"preview";
 assert.ok(["preview","staging"].includes(mode),"Usage: node scripts/build-hosting.mjs [preview|staging path/to/firebase.staging.json]");
 const publicFiles=Object.freeze([
