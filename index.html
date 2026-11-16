@@ -611,7 +611,7 @@ function render(){
     A.innerHTML=!me?loginBox():`<div class="box"><h3>➕ أضف إعلانك</h3><select id="a-cat">${cats.map(c=>`<option value="${c.id}">${esc(c.name_ar)}</option>`).join("")}</select>${myStores.some(s=>s.status=="approved")?`<select id="a-st"><option value="">إعلان شخصي (بدون متجر)</option>${myStores.filter(s=>s.status=="approved").map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>`:""}
     <input id="a-title" placeholder="عنوان الإعلان"><div class="row"><input id="a-price" type="number" placeholder="السعر"><select id="a-cur"><option>$</option><option>ل.س</option></select></div>
     <input id="a-area" placeholder="المنطقة (السويداء، شهبا، صلخد...)"><textarea id="a-desc" rows="3" placeholder="التفاصيل"></textarea>
-    <input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><input id="a-img" type="file" accept="image/*">
+    <input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><label for="a-img" class="mut">صورة الإعلان (اختيارية، JPEG أو PNG أو WebP، حتى 8 ميغابايت)</label><input id="a-img" type="file" accept="image/jpeg,image/png,image/webp"><div id="ad-photo-status" class="mut" role="status" aria-live="polite">اختر صورة لإظهار معاينتها قبل الإرسال.</div><img id="ad-photo-preview" alt="معاينة صورة الإعلان" hidden style="max-width:100%;max-height:290px;object-fit:contain;border-radius:15px;border:1px solid var(--bd);margin:7px 0;background:#eaf0fd">
     <button class="btn g" style="width:100%" data-a="post">إرسال للمراجعة</button><p class="mut">يظهر إعلانك بعد موافقة الإدارة.</p></div>`;
     const f=$("#a-img");if(f)f.onchange=()=>shrink(f.files[0]);
   }else if(view=="store"){const s=stores.find(x=>x.id==curStore)||myStores.find(x=>x.id==curStore)||{};
@@ -699,7 +699,74 @@ function render(){
     A.innerHTML=!me?loginBox():`<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="refreshrole">🔐 تحديث صلاحيات حسابي</button><button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
   }
 }
-function shrink(f){if(!f)return;const im=new Image();im.onload=()=>{const k=Math.min(1,600/im.width),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);photo=c.toDataURL("image/jpeg",.6)};im.src=URL.createObjectURL(f)}
+let adImageTask=null,adPhotoError="",adImageVersion=0,adSubmitting=false;
+function shrink(file){
+  const current=++adImageVersion;
+  photo="";
+  adPhotoError="";
+  const status=$("#ad-photo-status");
+  const preview=$("#ad-photo-preview");
+  if(preview){preview.removeAttribute("src");preview.hidden=true}
+  if(!file){
+    adImageTask=null;
+    if(status)status.textContent="الصورة اختيارية. اختر صورة لإظهار معاينتها قبل إرسال الإعلان.";
+    return;
+  }
+  if(status)status.textContent="جاري فحص وضغط الصورة...";
+  const work=new Promise((resolve,reject)=>{
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)){
+      reject(new Error("الصيغة غير مدعومة. يُسمح فقط بصور JPEG وPNG وWebP"));return;
+    }
+    if(file.size===0||file.size>8*1024*1024){
+      reject(new Error("يجب أن يكون حجم الصورة بين 1 بايت و8 ميغابايت"));return;
+    }
+    const objectUrl=URL.createObjectURL(file);
+    const img=new Image();
+    const cleanup=()=>URL.revokeObjectURL(objectUrl);
+    img.onload=()=>{
+      try{
+        if(img.naturalWidth<1||img.naturalHeight<1||img.naturalWidth>12000||img.naturalHeight>12000){
+          throw new Error("أبعاد الصورة غير مقبولة");
+        }
+        const canvas=document.createElement("canvas"),ctx=canvas.getContext("2d");
+        if(!ctx)throw new Error("تعذر معالجة الصورة على الجهاز");
+        const scale=Math.min(1,850/Math.max(img.naturalWidth,img.naturalHeight));
+        let width=Math.max(1,Math.round(img.naturalWidth*scale));
+        let height=Math.max(1,Math.round(img.naturalHeight*scale));
+        let output="";
+        for(let attempt=0;attempt<5;attempt++){
+          canvas.width=width;canvas.height=height;
+          ctx.drawImage(img,0,0,width,height);
+          output=canvas.toDataURL("image/webp",Math.max(.48,.79-attempt*.08));
+          if(output.startsWith("data:image/webp;base64,")&&output.length<=180000)break;
+          width=Math.max(1,Math.round(width*.78));
+          height=Math.max(1,Math.round(height*.78));
+        }
+        if(!output.startsWith("data:image/webp;base64,")||output.length>180000){
+          throw new Error("الصورة كبيرة جداً بعد الضغط، اختر صورة أصغر");
+        }
+        resolve(output);
+      }catch(error){reject(error)}
+      finally{cleanup()}
+    };
+    img.onerror=()=>{cleanup();reject(new Error("تعذر فتح الصورة المختارة"))};
+    img.src=objectUrl;
+  });
+  adImageTask=work.then(encoded=>{
+    if(current!==adImageVersion)return;
+    photo=encoded;
+    if(preview){preview.src=encoded;preview.hidden=false}
+    if(status)status.textContent="✓ الصورة جاهزة للإرسال";
+  }).catch(error=>{
+    if(current!==adImageVersion)return;
+    adPhotoError=error.message||"تعذر تجهيز الصورة";
+    if(status)status.textContent=adPhotoError;
+    toast(adPhotoError);
+    throw error;
+  });
+  // This asynchronous file-input handler is not awaited by the browser.
+  adImageTask.catch(()=>{});
+}
 const need=()=>{if(!me){toast("سجّل الدخول أولًا");view="acc";render();return false}return true};
 
 document.addEventListener("click",async e=>{
@@ -750,11 +817,24 @@ document.addEventListener("click",async e=>{
     else if(a=="out"){await signOut(auth)}
     else if(a=="refreshrole"){if(!auth.currentUser)return toast("يجب تسجيل الدخول أولاً");const result=await getIdTokenResult(auth.currentUser,true);me.adminClaim=result.claims.admin===true;await loadMine();toast(me.adminClaim?"تم التحقق من صلاحية المدير":"تم التحديث. لا توجد صلاحية مدير موثوقة على هذا الحساب");render()}
     else if(a=="post"){
-      const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
-      if(!t||!val("#a-price")||p.length<9)return toast("أكمل العنوان والسعر ورقم واتساب صحيح");
-      const sid=$("#a-st")?$("#a-st").value:"";if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
-      await addDoc(collection(db,"ads"),{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{}),ownerId:me.uid,ownerName:me.name,status:"pending",createdAt:Date.now()});
-      photo="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
+      if(!need())return;
+      if(adSubmitting)return toast("الإعلان قيد الإرسال، لا تضغط الزر مرة ثانية");
+      const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,""),amount=Number(val("#a-price")),description=val("#a-desc");
+      if(t.length<3||t.length>150)return toast("عنوان الإعلان يجب أن يكون بين 3 و150 حرفاً");
+      if(!Number.isFinite(amount)||amount<0||amount>1e12)return toast("السعر غير صالح");
+      if(p.length<9||p.length>15)return toast("أدخل رقم واتساب صحيحاً مع رمز الدولة");
+      if(description.length>8000)return toast("وصف الإعلان طويل جداً (8000 حرف كحد أقصى)");
+      if(adImageTask){try{await adImageTask}catch{return toast(adPhotoError||"تعذر تجهيز صورة الإعلان")}}
+      if(adPhotoError||($("#a-img")?.files.length&&!photo))return toast(adPhotoError||"صورة الإعلان لم تجهز بعد");
+      const sid=$("#a-st")?$("#a-st").value:"";
+      if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
+      adSubmitting=true;b.disabled=true;
+      try{
+        await addDoc(collection(db,"ads"),{title:t,price:amount,cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:description,phone:p,img:photo,...(sid?{storeId:sid}:{}),ownerId:me.uid,ownerName:me.name,status:"pending",createdAt:Date.now()});
+        photo="";adImageTask=null;adPhotoError="";
+        toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render();
+      }finally{adSubmitting=false;b.disabled=false}
+    }
     else if(a=="buy"){if(!need())return;const n=Math.floor(+val("#n-st"));if(!(n>0))return toast("اكتب عدد النجوم");
       await addDoc(collection(db,"starOrders"),{userId:me.uid,userName:me.name,stars:n,status:"pending",createdAt:Date.now()});
       toast("أُرسل الطلب، أكمل الدفع عبر واتساب");if(wa)open(waLink(`طلب شراء ${n} نجمة (${n}$) في سوقنا\nالاسم: ${me.name}\nالبريد: ${me.email}`),"_blank")}
