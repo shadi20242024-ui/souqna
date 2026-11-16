@@ -115,6 +115,59 @@ try {
       console.log("VISUAL SMOKE OK",item.name,"cards=1","navigation=",JSON.stringify(nav));
     } finally { await context.close(); }
   }
+
+  // Drive the real SOUQNA UI with a customer account; all writes target emulators.
+  const customerContext=await browser.newContext({
+    viewport:{width:1280,height:900},locale:"ar",reducedMotion:"reduce"
+  });
+  try {
+    const page=await customerContext.newPage();
+    const failures=[];
+    page.on("pageerror",e=>failures.push(e.message));
+    await page.goto("http://127.0.0.1:4173/",{waitUntil:"domcontentloaded"});
+    await page.locator("#list .item").first().waitFor({timeout:20000});
+    await page.locator('#nav [data-v="acc"]').click();
+    await page.locator('#app [data-a="swap"]').click();
+    const email="browser-flow-"+Date.now()+"@example.test";
+    await page.locator("#l-name").fill("مستخدم فحص سوقنا");
+    await page.locator("#l-mail").fill(email);
+    await page.locator("#l-pass").fill("SouqnaTest2026!");
+    await page.locator('#app [data-a="auth"]').click();
+    await page.locator('#app [data-v="mystores"]').waitFor({timeout:20000});
+    assert.ok((await page.locator("#app").innerText()).includes("مستخدم فحص سوقنا"),
+      "Registered user's name should be shown in profile");
+
+    await page.locator('#nav [data-v="add"]').click();
+    await page.locator("#a-title").waitFor({timeout:15000});
+    await page.locator('#app [data-a="post"]').click();
+    await page.locator(".toast").filter({hasText:"أكمل العنوان والسعر"}).waitFor({timeout:5000});
+    await page.locator("#a-title").fill("إعلان فحص واجهة سوقنا");
+    await page.locator("#a-price").fill("1500");
+    await page.locator("#a-area").fill("السويداء");
+    await page.locator("#a-desc").fill("إعلان تجريبي للمحاكي فقط");
+    await page.locator("#a-phone").fill("963999999999");
+    await page.locator('#app [data-a="post"]').click();
+    await page.locator("#app .item").filter({hasText:"إعلان فحص واجهة سوقنا"}).waitFor({timeout:20000});
+    await page.locator('#nav [data-v="acc"]').click();
+    await page.locator('#app [data-v="mystores"]').click();
+    await page.locator("#t-n").waitFor({timeout:15000});
+    await page.locator("#t-n").fill("متجر فحص سوقنا");
+    await page.locator("#t-d").fill("متجر تجريبي للنماذج");
+    await page.locator("#t-p").fill("963999999999");
+    await page.locator("#t-a").fill("السويداء");
+    await page.locator('#app [data-a="savest"]').click();
+    await page.locator("#app .box").filter({hasText:"متجر فحص سوقنا"}).first().waitFor({timeout:20000});
+    await page.screenshot({path:"artifacts/souqna-browser-flow.png",fullPage:true,animations:"disabled"});
+    assert.deepEqual(failures,[],"No uncaught errors after signup/ad/store interactions");
+    console.log("UI CUSTOMER FLOW OK",email,"registered, ad pending, store pending");
+  } catch(error) {
+    const page=customerContext.pages()[0];
+    if(page) {
+      await page.screenshot({path:"artifacts/souqna-browser-flow-debug.png",fullPage:true}).catch(()=>{});
+      console.error("UI CUSTOMER FLOW DEBUG", (await page.locator("#app").innerText().catch(()=>"")).slice(0,1800));
+    }
+    throw error;
+  } finally { await customerContext.close(); }
 } finally {
   if(browser)await browser.close();
   if(server)await new Promise(resolve=>server.close(resolve));
