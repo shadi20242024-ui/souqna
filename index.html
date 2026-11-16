@@ -84,6 +84,7 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 <div id="newsHost" class="news-host"></div>
 <main id="app"></main>
 <nav id="nav"></nav>
+<dialog id="paymentDialog" class="payment-dialog" aria-labelledby="paymentDialogTitle"></dialog>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
@@ -115,6 +116,40 @@ const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
 const isF=a=>(a.featuredUntil||0)>Date.now();
 const val=i=>($(i)?.value||"").trim();
+function startPaymentReview(action,id){
+  if(!isAdm())return toast("مراجعة الدفعات متاحة للمدير فقط");
+  const record=action==="approveTopup"?orders.find(x=>x.id===id):pendingSponsorRequests.find(x=>x.id===id);
+  if(!record)return toast("الطلب غير موجود أو لم يعد معلّقاً");
+  const dialog=$("#paymentDialog");
+  dialog.dataset.action=action;
+  dialog.dataset.requestId=id;
+  const isTopup=action==="approveTopup";
+  dialog.innerHTML=`<div class="payment-modal">
+    <div class="payment-modal-head"><h2 id="paymentDialogTitle">💳 توثيق الدفع اليدوي</h2>
+      <button class="payment-close" type="button" data-a="paycancel" aria-label="إغلاق">✕</button></div>
+    <p class="mut">${isTopup?`شحن ${Number(record.stars)} نجمة لحساب ${esc(record.userName||"العميل")}`:
+       `تفعيل بنر الشركة: ${esc(record.company||"")}`}</p>
+    <p class="payment-warning">تحقق من وصول الدفعة في حسابك أو محفظتك خارج سوقنا. إدخال مرجع وحده لا يثبت وصول المال.</p>
+    <label for="pay-method">وسيلة الدفع</label>
+    <select id="pay-method"><option value="bank_transfer">تحويل بنكي</option><option value="zain_cash">زين كاش</option>
+      <option value="asia_hawala">آسيا حوالة</option><option value="card">بطاقة دفع</option><option value="other">وسيلة أخرى</option></select>
+    <label for="pay-reference">رقم إيصال أو مرجع تحويل فريد</label>
+    <input id="pay-reference" autocomplete="off" maxlength="100" placeholder="مثال: TXN-2026-000123" dir="ltr">
+    <div class="payment-amount-grid">
+      <div><label for="pay-amount">المبلغ الذي استلمته فعلياً</label>
+        <input id="pay-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="المبلغ" value="${isTopup?Number(record.stars):""}"></div>
+      <div><label for="pay-currency">عملة الدفع</label>
+        <select id="pay-currency"><option value="USD">USD</option><option value="SYP">SYP</option>
+          <option value="IQD">IQD</option><option value="AED">AED</option></select></div>
+    </div>
+    <label class="payment-attest"><input type="checkbox" id="pay-attest">
+      أؤكد أنني راجعت التحويل خارج التطبيق وأن المبلغ وصل فعلاً.</label>
+    <div class="payment-actions"><button class="btn l" type="button" data-a="paycancel">إلغاء</button>
+      <button class="btn g" type="button" data-a="payconfirm">اعتماد الدفع وتسجيل الإيصال</button></div>
+  </div>`;
+  dialog.showModal();
+  $("#pay-reference")?.focus();
+}
 const waLink=t=>"https://wa.me/"+wa+(t?"?text="+encodeURIComponent(t):"");
 const q2=(c,f,v)=>getDocs(query(collection(db,c),where(f,"==",v))).then(s=>s.docs.map(d=>({id:d.id,...d.data()})));
 
@@ -513,6 +548,27 @@ document.addEventListener("click",async e=>{
       const target=$("#spw");if(target)target.innerHTML=spHtml();
     }
     else if(a=="exportAdmin"){if(!isStaff())return toast("غير مصرح");exportAdminSummary();toast("تم تجهيز ملف الإحصاءات")}
+    else if(a=="paycancel"){
+      $("#paymentDialog")?.close();
+    }
+    else if(a=="payconfirm"){
+      if(!isAdm())return toast("غير مصرح");
+      const dialog=$("#paymentDialog");
+      if(!dialog?.open)return;
+      const action=dialog.dataset.action,id=dialog.dataset.requestId;
+      const reference=val("#pay-reference"),amount=Number(val("#pay-amount"));
+      const method=val("#pay-method"),currency=val("#pay-currency");
+      if(!/^[A-Za-z0-9][A-Za-z0-9._-]{5,99}$/.test(reference))return toast("أدخل رقم إيصال فريداً من 6 إلى 100 حرف");
+      if(!Number.isFinite(amount)||amount<=0||Math.round(amount*100)/100!==amount)return toast("أدخل مبلغاً موجباً حتى منزلتين عشريتين");
+      if(!$("#pay-attest")?.checked)return toast("يجب التأكيد أن الدفعة وصلت فعلاً بعد مراجعة الحساب");
+      b.disabled=true;
+      try {
+        await finance(action,id,{payment:{method,reference,amount,currency}});
+        dialog.close();
+        await loadPublic();await loadMine();render();
+        toast(action==="approveTopup"?"تم توثيق الإيصال وإضافة النجوم":"تم توثيق الإيصال وتفعيل البنر");
+      }finally{b.disabled=false}
+    }
     else if(a=="refreshAdmin"){if(!isStaff())return toast("المدير فقط يمكنه تحديث اللوحة");await loadPublic();await loadMine();render();toast("تم تحديث مؤشرات لوحة الإدارة")}
     else if(a=="more"){more=!more;render()}
     else if(a=="feat"){feat=!feat;cur="all";render()}
@@ -545,10 +601,7 @@ document.addEventListener("click",async e=>{
        tmp.sb="";toast("تم إرسال الحجز، وستتواصل الإدارة معك لتأكيد السعر والدفع");await loadMine();render();
      }
      else if(a=="sbapprove"){
-       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
-       if(!confirm("هل تحققت بالفعل من استلام الدفع؟ تأكيدك سيفعّل البنر فوراً."))return;
-       await finance("approveSponsor",id);
-       await loadPublic();await loadMine();toast("تم تفعيل البنر بعد تأكيد الدفع");render();
+       startPaymentReview("approveSponsor",id);
      }
     else if(a=="sbreject"){
        if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
@@ -627,11 +680,7 @@ document.addEventListener("click",async e=>{
     else if(a=="duty"){await updateDoc(doc(db,"directory",id),{onDuty:!dr.find(x=>x.id==id).onDuty});await loadPublic();render()}
     else if(a=="deldir"){await deleteDoc(doc(db,"directory",id));await loadPublic();render()}
     else if(a=="ordok"){
-       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
-       const o=orders.find(x=>x.id===id);if(!o)return toast("الطلب غير موجود");
-       if(!confirm("هل استلمت دفعة "+o.stars+" دولار فعلياً؟ لا تُضاف النجوم قبل التحقق من الدفع."))return;
-       await finance("approveTopup",id);
-       await loadMine();toast("تمت إضافة النجوم");render();
+       startPaymentReview("approveTopup",id);
      }
     else if(a=="ordno"){await finance("rejectTopup",id);await loadMine();render()}
     else if(a=="prok"){
