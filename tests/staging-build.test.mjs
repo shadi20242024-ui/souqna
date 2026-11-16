@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 
 const root=resolve(import.meta.dirname,"..");
 const builder=join(root,"scripts/build-hosting.mjs");
+const preflight=join(root,"scripts/preflight-staging.mjs");
 const source=readFileSync(join(root,"index.html"),"utf8");
 const original=source.match(/const app=initializeApp\((\{[^\n;]*\})\);/);
 assert.ok(original);
@@ -66,4 +67,11 @@ test("Safe Hosting preflight blocks accidental production data access",t=>{
   assert.ok(!existsSync(join(output,"tests")));
   assert.ok(!existsSync(join(output,"functions")));
   assert.ok(staging.stdout.includes("No deployment performed"));
+  const verify=project=>spawnSync(process.execPath,[preflight,project],{
+    cwd:root,encoding:"utf8",env:{...process.env,SOUQNA_HOSTING_OUT:output}
+  });
+  const passed=verify("souqna-staging-qa");
+  assert.equal(passed.status,0,passed.stderr);
+  assert.notEqual(verify("souqna-sweida").status,0,"Production preflight must be impossible");
+  assert.notEqual(verify("souqna-other-qa").status,0,"Wrong staging project must be rejected");
 });
