@@ -142,8 +142,12 @@ function renderAdDetail(ad,savedIds=[]){
   const ctx=vm.createContext({
     ads:ad?[ad]:[],selectedAdId:ad?.id||"missing",savedAdIds:new Set(savedIds),
     esc:escapeHtml,catName:()=> "مركبات",isF:()=>false,
-    IC:{cars:"🚗"},Date,Number,String,encodeURIComponent
+    IC:{cars:"🚗"},Date,Number,String,URL,encodeURIComponent
   });
+  const helpersStart=source.indexOf("const safeImageSrc=value=>{");
+  const helpersEnd=source.indexOf("const IC=",helpersStart);
+  assert(helpersStart>=0&&helpersEnd>helpersStart,"Missing trusted image URL sanitizer");
+  vm.runInContext(source.slice(helpersStart,helpersEnd),ctx,{filename:"image-safety.js"});
   vm.runInContext(source.slice(start,end),ctx,{filename:"ad-details.js"});
   return ctx.approvedAdDetailsHtml();
 }
@@ -203,4 +207,30 @@ test("privileged callables give explicit setup feedback if App Check is missing"
   assert.match(source,/Firebase App Check بالمفتاح العام/);
   assert.match(source,/getIdTokenResult\(auth\.currentUser,true\)/);
   assert.match(source,/data-a="refreshrole"/);
+});
+
+test("marketplace cards never interpolate raw image URLs into style HTML",()=>{
+  const start=source.indexOf("function card(a,m){");
+  const end=source.indexOf("function drawDesktopNav(){",start);
+  assert(start>=0&&end>start);
+  const markup=source.slice(start,end);
+  assert.match(markup,/safeImageSrc\(a\.img\)/);
+  assert.doesNotMatch(markup,/style="\$\{a\.img\?/);
+  assert.doesNotMatch(markup,/background-image:url\(\$\{a\.img\}\)/);
+  assert.match(source,/const stImg=\(s,k\)=>safeBackgroundImage\(s\[k\]\)/);
+});
+test("unsafe image schemes are rejected by the actual client sanitizer",()=>{
+  const helperStart=source.indexOf("const safeImageSrc=value=>{");
+  const helperEnd=source.indexOf("const IC=",helperStart);
+  const context=vm.createContext({URL,esc:escapeHtml,encodeURI,encodeURIComponent});
+  vm.runInContext(source.slice(helperStart,helperEnd),context);
+  for(const value of ["javascript:alert(1)","data:image/svg+xml,<svg onload=alert(1)>","http://example.com/a.jpg",'https://example.com/pic.png" onerror="alert(1)']){
+    if(value.includes("https://")){
+      const rendered=context.safeBackgroundImage(value);
+      assert(!rendered.includes('" onerror="'));
+    }else{
+      assert.equal(context.safeImageSrc(value),"");
+    }
+  }
+  assert.equal(context.safeImageSrc("https://example.com/cars/1.webp"),"https://example.com/cars/1.webp");
 });
