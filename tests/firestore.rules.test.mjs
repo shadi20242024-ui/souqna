@@ -2,7 +2,7 @@ import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import {
-  collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, deleteDoc
+  collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, deleteDoc, runTransaction, increment
 } from "firebase/firestore";
 
 test("SOUQNA Firestore authorization matrix", async (t) => {
@@ -95,4 +95,39 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
     await assertSucceeds(setDoc(doc(bob,"users","bob"),{name:"تغيير الاسم",email:"bob@example.test",role:"user",stars:0}));
     await assertFails(setDoc(doc(bob,"users","bob"),{role:"admin",stars:500},{merge:true}));
   });
+  await t.test("Concurrent admin approvals credit stars exactly once", async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(),"starOrders","topup-1"),{
+        userId:"alice",userName:"أليس",stars:7,status:"pending",createdAt:Date.now()
+      });
+    });
+    const orderRef=doc(admin,"starOrders","topup-1");
+    const userRef=doc(admin,"users","alice");
+    const ledgerRef=doc(admin,"transactions","topup_topup-1");
+    const approve=() => runTransaction(admin,async tx => {
+      const [r,u]=await Promise.all([tx.get(orderRef),tx.get(userRef)]);
+      if(!r.exists()||r.data().status!=="pending")throw Error("already processed");
+      tx.update(userRef,{stars:increment(7)});
+      tx.set(ledgerRef,{userId:"alice",type:"credit",amount:7,note:"Test top-up",createdAt:Date.now()});
+      tx.update(orderRef,{status:"done"});
+    });
+    const results=await Promise.allSettled([approve(),approve()]);
+    assert.equal(results.filter(x=>x.status==="fulfilled").length,1,"Only one transaction should succeed");
+    assert.equal((await getDoc(userRef)).data().stars,12,"Account should receive exactly seven stars");
+    assert.equal((await getDoc(ledgerRef)).data().amount,7);
+    assert.equal((await getDoc(orderRef)).data().status,"done");
+  });
+
+  await t.test("Ordinary user cannot execute admin billing transaction", async () => {
+    await assertFails(runTransaction(alice, async tx => {
+      const userRef=doc(alice,"users","alice");
+      const current=await tx.get(userRef);
+      if(!current.exists())throw Error("missing user");
+      tx.update(userRef,{stars:increment(10000)});
+      tx.set(doc(alice,"transactions","self-credit"),{
+        userId:"alice",amount:10000,type:"credit",createdAt:Date.now()
+      });
+    }));
+  });
+
 });
