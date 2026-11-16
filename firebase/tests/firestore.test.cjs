@@ -1,7 +1,7 @@
 const {test, before, after} = require("node:test");
 const fs = require("node:fs");
 const {initializeTestEnvironment, assertFails, assertSucceeds} = require("@firebase/rules-unit-testing");
-const {doc, setDoc, updateDoc, getDoc} = require("firebase/firestore");
+const {doc, setDoc, updateDoc, getDoc, deleteDoc} = require("firebase/firestore");
 let env;
 before(async () => {
   env = await initializeTestEnvironment({
@@ -14,6 +14,8 @@ before(async () => {
     await setDoc(doc(db,"users","bob"),{name:"Bob",email:"bob@example.com",role:"user",stars:0});
     await setDoc(doc(db,"users","admin"),{name:"Admin",email:"admin@example.com",role:"admin",stars:0});
     await setDoc(doc(db,"stores","shop"),{ownerId:"alice",status:"approved",name:"Shop"});
+    await setDoc(doc(db,"ads","favoriteAd"),{ownerId:"alice",status:"approved",title:"Approved Ad"});
+    await setDoc(doc(db,"ads","pendingFavoriteAd"),{ownerId:"alice",status:"pending",title:"Pending Ad"});
     await setDoc(doc(db,"reviews","shop_alice"),{storeId:"shop",userId:"alice",stars:4,text:"Good"});
     await setDoc(doc(db,"starOrders","order1"),{userId:"alice",stars:5,status:"pending"});
     await setDoc(doc(db,"sorders","service1"),{userId:"alice",status:"new",serviceName:"Design Service"});
@@ -155,4 +157,45 @@ test("trusted staff can read service orders",async()=>{
 });
 test("other customers cannot access private service orders",async()=>{
   await assertFails(getDoc(doc(dbFor("bob"),"sorders","service1")));
+});
+
+test("user can save approved advertisement privately",async()=>{
+  await assertSucceeds(setDoc(doc(dbFor("alice"),"favorites","alice_favoriteAd"),{
+    userId:"alice",adId:"favoriteAd",createdAt:Date.now()
+  }));
+  await assertSucceeds(getDoc(doc(dbFor("alice"),"favorites","alice_favoriteAd")));
+});
+test("another user cannot read saved favorites",async()=>{
+  await assertFails(getDoc(doc(dbFor("bob"),"favorites","alice_favoriteAd")));
+});
+test("anonymous cannot save an advertisement",async()=>{
+  await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(),"favorites","anon_favoriteAd"),{
+    userId:"anon",adId:"favoriteAd",createdAt:Date.now()
+  }));
+});
+test("user cannot create another account's favorites",async()=>{
+  await assertFails(setDoc(doc(dbFor("bob"),"favorites","alice_other"),{
+    userId:"alice",adId:"favoriteAd",createdAt:Date.now()
+  }));
+});
+test("user cannot favorite a pending advertisement",async()=>{
+  await assertFails(setDoc(doc(dbFor("alice"),"favorites","alice_pendingFavoriteAd"),{
+    userId:"alice",adId:"pendingFavoriteAd",createdAt:Date.now()
+  }));
+});
+test("user cannot write a favorite without correct deterministic ID",async()=>{
+  await assertFails(setDoc(doc(dbFor("alice"),"favorites","unrelated"),{
+    userId:"alice",adId:"favoriteAd",createdAt:Date.now()
+  }));
+});
+test("user cannot mutate favorite ownership or target advertisement",async()=>{
+  await assertFails(updateDoc(doc(dbFor("alice"),"favorites","alice_favoriteAd"),{
+    userId:"bob",adId:"pendingFavoriteAd"
+  }));
+});
+test("user cannot delete another account's favorite",async()=>{
+  await assertFails(deleteDoc(doc(dbFor("bob"),"favorites","alice_favoriteAd")));
+});
+test("owner can remove a saved advertisement",async()=>{
+  await assertSucceeds(deleteDoc(doc(dbFor("alice"),"favorites","alice_favoriteAd")));
 });
