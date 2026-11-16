@@ -213,6 +213,7 @@ main:has(.souqna-home-layout){padding:8px 8px 90px}.souqna-home-layout{grid-temp
 .ad-details-description p{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:850px){.ad-details-layout{grid-template-columns:1fr;gap:9px}.ad-details-media{min-height:220px}.ad-details-media img{max-height:390px}.ad-details-sidebar .contact-actions{grid-template-columns:1fr 1fr}}
 
+.item .img>img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
 </style>
 </head>
 <body>
@@ -238,6 +239,19 @@ const moderateSecure=(name,recordId,decision)=>verifiedCall(name,{recordId,decis
 const adminSecure=(name,data)=>verifiedCall(name,data);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// Image URLs are untrusted listing data. Never interpolate them into raw HTML/CSS.
+const safeImageSrc=value=>{
+  if(typeof value!=="string"||value.length>450000)return "";
+  if(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value))return value;
+  try{const u=new URL(value);return u.protocol==="https:"&&u.hostname?u.href:""}catch{return ""}
+};
+const safeBackgroundImage=value=>{
+  const src=safeImageSrc(value);if(!src)return "";
+  const encoded=encodeURI(src).replace(/[()"'\\]/g,c=>encodeURIComponent(c));
+  return 'background-image:url("'+esc(encoded)+'")';
+};
+
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
 let savedAdIds=new Set();
@@ -346,7 +360,7 @@ function pick(f,k,w){
   im.onerror=()=>{finish();toast("تعذر فتح الصورة المختارة")};
   im.src=imageUrl;
 }
-const stImg=(s,k)=>s[k]?`background-image:url(${s[k]})`:"";
+const stImg=(s,k)=>safeBackgroundImage(s[k]);
 const storesHtml=()=>stores.length?`<div class="sec"><b>🏪 متاجر سوقنا</b><a data-v="stores">عرض الكل ‹</a></div><div class="sr2">${[...stores].sort((x,y)=>(planOf(y)?.order||0)-(planOf(x)?.order||0)).map(s=>`<button class="stc" data-st="${s.id}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div><span>${esc(s.name)}</span>${planTag(s)}</button>`).join("")}</div>`:"";
 const planOf=s=>(s.planUntil>Date.now()&&plans.find(p=>p.id==s.plan&&p.active!==false))||plans.find(p=>p.id=="free")||null;
 const planTag=s=>{const p=planOf(s);return p&&p.id!="free"?`<span class="tag g">${esc(p.badge||p.name)}</span>`:""};
@@ -377,7 +391,7 @@ async function loadMine(){
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
   const msg="مرحبًا، بخصوص إعلانك في سوقنا: "+a.title;
-  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${a.img?`background-image:url(${a.img})`:""}">${a.img?"":IC[a.cat]||"🛍️"}${!m?`<button type="button" class="ad-image-open" data-ad="${esc(a.id)}" aria-label="عرض تفاصيل ${esc(a.title)}"></button>`:""}${!m?`<button type="button" class="favorite-toggle ${savedAdIds.has(a.id)?"saved":""}" data-a="favorite" data-id="${esc(a.id)}" aria-pressed="${savedAdIds.has(a.id)}" aria-label="${savedAdIds.has(a.id)?"حذف من المفضلة":"حفظ في المفضلة"}">${savedAdIds.has(a.id)?"♥":"♡"}</button>`:""}</div><div class="bd">
+  return `<div class="item ${isF(a)?"f":""}"><div class="img">${safeImageSrc(a.img)?`<img src="${esc(safeImageSrc(a.img))}" alt="${esc(a.title)}" loading="lazy">`:IC[a.cat]||"🛍️"}${!m?`<button type="button" class="ad-image-open" data-ad="${esc(a.id)}" aria-label="عرض تفاصيل ${esc(a.title)}"></button>`:""}${!m?`<button type="button" class="favorite-toggle ${savedAdIds.has(a.id)?"saved":""}" data-a="favorite" data-id="${esc(a.id)}" aria-pressed="${savedAdIds.has(a.id)}" aria-label="${savedAdIds.has(a.id)?"حذف من المفضلة":"حفظ في المفضلة"}">${savedAdIds.has(a.id)?"♥":"♡"}</button>`:""}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div>${m?`<b>${esc(a.title)}</b>`:`<button type="button" class="ad-title-open" data-ad="${esc(a.id)}" aria-label="عرض تفاصيل الإعلان">${esc(a.title)}</button>`}</div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
@@ -435,7 +449,7 @@ function approvedAdDetailsHtml(){
   if(!a)return '<div class="box"><h2>الإعلان غير متاح</h2><p class="mut">ربما تم حذف الإعلان أو إيقافه.</p><button class="btn g" data-v="home">العودة للرئيسية</button></div>';
   const phone=String(a.phone||"").replace(/\D/g,"");
   const whatsapp=phone.length>=9&&phone.length<=15?'https://wa.me/'+phone+'?text='+encodeURIComponent("مرحباً، أريد الاستفسار عن إعلان سوقنا: "+a.title):"";
-  const image=typeof a.img==="string"&&(/^(https:\/\/|data:image\/(?:jpeg|png|webp);base64,)/i.test(a.img))?a.img:"";
+  const image=safeImageSrc(a.img);
   const saved=savedAdIds.has(a.id);
   return `<div class="ad-details-layout">
     <div class="ad-details-media">${image?`<img src="${esc(image)}" alt="${esc(a.title)}" loading="lazy">`:`<span class="ad-placeholder">${IC[a.cat]||"🛍️"}</span>`}</div>
