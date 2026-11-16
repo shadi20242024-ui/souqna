@@ -122,3 +122,15 @@ test("owner dashboard requires trusted Firebase Auth admin claim",()=>{
   assert(source.includes("getIdTokenResult"),"Admin claim must come from Firebase Auth");
   assert(source.includes("isAdm=()=>me&&me.adminClaim===true"),"Admin UI must not trust profile role alone");
 });
+
+test("screenshot-aligned listing cards support authenticated favorites",()=>{
+  assert.match(source,/class="favorite-toggle/);
+  assert.match(source,/data-a="favorite"/);
+  assert.match(source,/data-v="favorites"/);
+  assert.match(source,/view=="favorites"/);
+  assert.match(source,/savedAdIds=new Set/);
+  assert.match(source,/q2\("favorites","userId",me\.uid\)/);
+  assert.match(source,/setDoc\(favoriteRef,\{userId:me\.uid,adId:id/);
+  assert.match(source,/deleteDoc\(favoriteRef\)/);
+  assert.match(source,/onAuthStateChanged\(auth,async u=>\{\s*me=null;savedAdIds=new Set/);
+});
