@@ -20,7 +20,7 @@ const MIME = {
 const authImport='import{connectAuthEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";';
 const storeImport='import{connectFirestoreEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";';
 const functionImport='import{connectFunctionsEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";';
-const anchor="const auth=getAuth(app),db=getFirestore(app);";
+const anchor='const auth=getAuth(app),db=getFirestore(app),functions=getFunctions(app,"us-central1");';
 
 async function startServer() {
   const server=createServer(async (req,res)=>{
