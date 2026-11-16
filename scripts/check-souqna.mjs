@@ -19,6 +19,8 @@ for (const [label, marker] of [
   ["Manual payment approval", "هل تحققت بالفعل من استلام الدفع"],
   ["Trusted finance callable", 'await finance("approveSponsor",id)'],
   ["Trusted subscription callable", 'await finance("approveSubscription",id)'],
+  ["Live administration dashboard", 'id="adminDashboard"'],
+  ["Administration manual refresh", 'a=="refreshAdmin"'],
   ["Private user favorites", 'view=="favorites"'],
   ["Favorite save/remove action", 'a=="toggleFav"'],
   ["Premium sponsor carousel", 'a=="spnext"||a=="spprev"'],
