@@ -39,6 +39,18 @@ service cloud.firestore {
       return id.matches('^[A-Za-z0-9_-]{1,128}$');
     }
 
+    function safeText(value, minimum, maximum) {
+      return value is string && value.size() >= minimum && value.size() <= maximum;
+    }
+    function safePhone(value) {
+      return value is string && value.matches('^[0-9]{9,15}$');
+    }
+    function safeImageData(value) {
+      return value is string
+        && value.size() <= 700000
+        && (value == "" || value.matches('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$'));
+    }
+
     function ownsApprovedStore(storeId) {
       return signedIn()
         && storeId is string
@@ -79,7 +91,21 @@ service cloud.firestore {
       allow create: if safeDocumentId(id) && signedIn()
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.status == "pending"
-        && request.resource.data.title is string
+        && safeText(request.resource.data.title, 3, 150)
+        && safeText(request.resource.data.ownerName, 1, 100)
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0
+        && request.resource.data.price <= 1000000000000
+        && request.resource.data.cur in ["$", "ل.س"]
+        && safeText(request.resource.data.cat, 2, 60)
+        && safeText(request.resource.data.area, 1, 100)
+        && safeText(request.resource.data.desc, 0, 5000)
+        && safePhone(request.resource.data.phone)
+        && safeImageData(request.resource.data.img)
+        && (!("imgHash" in request.resource.data)
+          || (request.resource.data.imgHash is string && request.resource.data.imgHash.matches('^[0-9a-f]{64}$')))
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0
         && (!('storeId' in request.resource.data) || ownsApprovedStore(request.resource.data.storeId))
         && request.resource.data.keys().hasOnly([
           "title", "price", "cur", "cat", "area", "desc", "phone",
@@ -99,6 +125,16 @@ service cloud.firestore {
       allow create: if safeDocumentId(id) && signedIn()
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.status == "pending"
+        && safeText(request.resource.data.name, 2, 120)
+        && safeText(request.resource.data.ownerName, 1, 100)
+        && safeText(request.resource.data.desc, 0, 3000)
+        && safePhone(request.resource.data.phone)
+        && safeText(request.resource.data.area, 1, 100)
+        && safeText(request.resource.data.map, 0, 1200)
+        && safeImageData(request.resource.data.logo)
+        && safeImageData(request.resource.data.cover)
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0
         && request.resource.data.keys().hasOnly([
           "name", "desc", "phone", "area", "map", "logo", "cover",
           "ownerId", "ownerName", "status", "createdAt"
@@ -181,6 +217,15 @@ service cloud.firestore {
         && request.resource.data.status == "pending"
         && request.resource.data.days >= 1
         && request.resource.data.days <= 90
+        && request.resource.data.days is int
+        && safeText(request.resource.data.userName, 1, 100)
+        && safeText(request.resource.data.company, 2, 100)
+        && safeText(request.resource.data.title, 3, 120)
+        && safeText(request.resource.data.desc, 0, 500)
+        && safePhone(request.resource.data.phone)
+        && safeImageData(request.resource.data.img)
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0
         && request.resource.data.keys().hasOnly([
           "userId", "userName", "company", "title", "desc",
           "phone", "days", "img", "status", "createdAt"
@@ -212,7 +257,13 @@ service cloud.firestore {
         && request.resource.data.status == "pending"
         && request.resource.data.stars is int
         && request.resource.data.stars > 0
-        && request.resource.data.stars <= 100000;
+        && request.resource.data.stars <= 100000
+        && safeText(request.resource.data.userName, 1, 100)
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0
+        && request.resource.data.keys().hasOnly([
+          "userId", "userName", "stars", "status", "createdAt"
+        ]);
       allow update, delete: if false;
     }
 
@@ -262,7 +313,8 @@ service cloud.firestore {
     }
 
     match /notifs/{id} {
-      allow read: if isStaff()
+      // Financial and personal notifications remain private to owner and administrator.
+      allow read: if isAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
       allow create: if isStaff();
       allow update: if isStaff()
