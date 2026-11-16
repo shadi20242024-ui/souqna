@@ -134,3 +134,49 @@ test("screenshot-aligned listing cards support authenticated favorites",()=>{
   assert.match(source,/deleteDoc\(favoriteRef\)/);
   assert.match(source,/onAuthStateChanged\(auth,async u=>\{\s*me=null;savedAdIds=new Set/);
 });
+
+function renderAdDetail(ad,savedIds=[]){
+  const start=source.indexOf("function approvedAdDetailsHtml(){");
+  const end=source.indexOf("function approvedHomeHtml(){",start);
+  assert(start>=0&&end>start,"Missing isolated ad detail renderer");
+  const ctx=vm.createContext({
+    ads:ad?[ad]:[],selectedAdId:ad?.id||"missing",savedAdIds:new Set(savedIds),
+    esc:escapeHtml,catName:()=> "مركبات",isF:()=>false,
+    IC:{cars:"🚗"},Date,Number,String,encodeURIComponent
+  });
+  vm.runInContext(source.slice(start,end),ctx,{filename:"ad-details.js"});
+  return ctx.approvedAdDetailsHtml();
+}
+test("public advertisement detail has trustworthy image, seller and WhatsApp action",()=>{
+  const html=renderAdDetail({
+    id:"car_123",cat:"cars",img:"https://example.com/real-car.jpg",
+    title:"سيارة تويوتا",price:1250000,cur:"ل.س",area:"السويداء",
+    ownerName:"بائع موثوق",phone:"963912345678",desc:"سيارة بحالة جيدة",createdAt:Date.now()
+  },["car_123"]);
+  assert.match(html,/ad-details-media/);
+  assert.match(html,/سيارة تويوتا/);
+  assert.match(html,/https:\/\/example.com\/real-car.jpg/);
+  assert.match(html,/https:\/\/wa.me\/963912345678/);
+  assert.match(html,/إزالة من المفضلة/);
+});
+test("public ad detail safely escapes untrusted description",()=>{
+  const html=renderAdDetail({
+    id:"car_x",cat:"cars",img:"javascript:alert(1)",
+    title:'<img src=x onerror="alert(1)">',price:0,cur:"ل.س",
+    desc:"<script>bad()</script>",phone:"none"
+  });
+  assert.doesNotMatch(html,/<script>|onerror=|src="javascript:/);
+  assert.match(html,/&lt;script&gt;/);
+  assert.match(html,/ad-placeholder/);
+  assert.match(html,/رقم التواصل غير متاح/);
+});
+test("deleted ads show a clean missing-listing state",()=>{
+  assert.match(renderAdDetail(null),/الإعلان غير متاح/);
+});
+test("listing detail is reachable by card controls",()=>{
+  assert.match(source,/class="ad-image-open"/);
+  assert.match(source,/class="ad-title-open"/);
+  assert.match(source,/data-ad="\$\{esc\(a\.id\)\}"/);
+  assert.match(source,/view=="adDetail"/);
+  assert.match(source,/selectedAdId=detail\.dataset\.ad/);
+});
