@@ -255,6 +255,20 @@ try {
     await page.locator('#app [data-a="auth"]').click();
     await page.locator('#app [data-v="admin"]').waitFor({timeout:20000});
     await page.locator('#app [data-v="admin"]').click();
+    await page.locator("#adminDashboard").waitFor({timeout:12000});
+    const dashboard=page.locator("#adminDashboard");
+    assert.ok(await dashboard.locator(".admin-stat").count()>=10,"Admin dashboard metrics should render");
+    const downloadEvent=page.waitForEvent("download",{timeout:12000});
+    await dashboard.locator('[data-a="exportAdmin"]').click();
+    const report=await downloadEvent;
+    assert.match(report.suggestedFilename(),/^souqna-admin-summary-\\d{4}-\\d{2}-\\d{2}\\.csv$/);
+    const reportFile=await report.path();
+    const reportCsv=await readFile(reportFile,"utf8");
+    assert.ok(reportCsv.includes("الإعلانات المنشورة"),"Export must include published ads");
+    assert.ok(reportCsv.includes("الحسابات المسجلة"),"Admin export must include account totals");
+    assert.ok(!reportCsv.includes(adminEmail),"Export must not expose customer email addresses");
+    console.log("UI ADMIN CSV OK",report.suggestedFilename(),"bytes",reportCsv.length);
+
     const pendingAd=page.locator("#app .item").filter({hasText:"إعلان فحص واجهة سوقنا"});
     await pendingAd.locator('[data-a="ok"]').waitFor({timeout:20000});
     await pendingAd.locator('[data-a="ok"]').click();
