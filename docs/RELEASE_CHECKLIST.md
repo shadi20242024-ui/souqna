@@ -8,7 +8,7 @@ Run `npm install`, `npm --prefix functions install`, then `npm test` (Node 22+, 
 
 ## Before merging or publishing
 
-1. Compare the new interface with the separately approved SOUQNA interactive mockup (navy/blue and gold, Sweida background, 3D icons). The existing GitHub interface is not yet a full visual match.
+1. Compare the new interface with the separately approved SOUQNA interactive mockup (navy/blue and gold, Sweida background, 3D icons). Some existing interface screens may still differ from the approved mockup and require sign-off.
 2. Use two ordinary test accounts and an existing administrator on a **test Firebase project**. Confirm users cannot write `role`, `stars`, `featuredUntil`, store subscription fields, or approve their own sponsors through direct Firestore calls.
 3. Review `firestore.rules` and test it with the Firestore emulator. The rules are a draft and have **not** been deployed. Firestore-emulator unit tests have been added to GitHub Actions; verify the current CI result and run additional integration tests before deploying to production.
 4. Verify new-account registration, ad posting/approval, store registration and editing, subscription requests, reviews, notifications, services, and account login. Test both authenticated and anonymous query access.
@@ -25,7 +25,7 @@ Run `npm install`, `npm --prefix functions install`, then `npm test` (Node 22+, 
 - No direct Firebase production deployment or database alteration is performed by this branch.
 - The 1-star = USD 1 convention is a **business pricing rule**, not automatic online payment processing.
 - Fuel-station and pharmacy status content is entered by administrators; it must not be represented as independently verified real-time data.
-- Account-level `maxStores` and store-level `maxAds` are currently enforced by client UI; server-side enforcement is necessary before production.
+- Account-level `maxStores` and store-level `maxAds` are enforced by trusted `souqnaMarketplace` callable in Firestore transactions; direct client listing/store creation is denied in the new rules. Validate concurrent requests and migrate all old clients before publishing those rules.
 - Role and billing controls are now enforced in the `firestore.rules` draft and server-side callable. Additional end-to-end production security review is still needed.
 - Firebase Functions deployment **requires Blaze billing**, despite no-cost monthly usage allowances. Local emulator testing can remain free. Set a billing budget, alerts and Cloud Run maximum instances before deployment.
 - Existing production users may still have an older cached site/service worker. Schedule a coordinated deployment of Functions, Security Rules and the client and check old-tab behavior. **Never deploy these restrictive rules alone** while the old client still performs direct billing writes.
@@ -47,3 +47,10 @@ Run `npm install`, `npm --prefix functions install`, then `npm test` (Node 22+, 
 - `paymentReceipts` قابلة للقراءة للمدير فقط، ولا يستطيع المتصفح كتابة إيصال أو تعديله أو حذفه. يحتفظ دفتر النجوم بمعرّف الإيصال المجزّأ لا رقم الإيصال المكشوف.
 - هذه إجراءات **توثيق داخلي** وليست تحققاً من البنك ولا إثباتاً مستقلاً لصحة تحويل الأموال. إذا استخدم مزود دفع مرجعاً واحداً لعدة حركات، يجب الحصول على معرّف فريد لكل حركة قبل اعتمادها.
 - لا تُسمح الموافقة المالية دون مراجعة بشرية وتحقيق سجل إيصال صحيح. يظل مشروع الإنتاج غير منشور، والاختبارات تستخدم محاكيات Firebase فقط.
+
+## خادم نشر الإعلانات والمتاجر
+
+- تستعمل الواجهة `souqnaMarketplace` لإنشاء إعلان أو متجر بعد التحقق من الحساب ورقم الهاتف وصحة الصور وتصنيف الإعلان.
+- يتحقق الخادم من عدد متاجر صاحب الحساب واشتراك كل متجر وحدّ إعلاناته؛ معاملات Firestore تربط تحديث عداد المالك أو المتجر بالإنشاء لمنع تجاوز الحدود بطلبات متزامنة.
+- يمنع `firestore.rules` إنشاء الإعلانات والمتاجر مباشرة من العميل. لذلك **لا يجوز نشر قواعد Firestore الجديدة دون نشر الدالة الجديدة وتحديث الموقع معاً**؛ العملاء الذين يحتفظون بنسخ قديمة سيفشل لديهم إرسال إعلانات ومتاجر.
+- تظل مراقبة إساءة الاستخدام، وApp Check، وحدود البيانات، وحقوق الخصوصية، واختبار Firestore الحقيقي إلزامية قبل الإطلاق الجماهيري.
