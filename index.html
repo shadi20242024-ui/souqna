@@ -80,8 +80,8 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 </head>
 <body>
 <div id="desktopBar" class="desktop-bar" aria-label="شريط البحث والتنقل"></div>
-<div id="newsHost" class="news-host"></div>
 <div id="hd" class="hd"></div>
+<div id="newsHost" class="news-host"></div>
 <main id="app"></main>
 <nav id="nav"></nav>
 <script type="module">
@@ -370,7 +370,7 @@ document.addEventListener("click",async e=>{
   const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc"].includes(view))await loadMine();feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
   const ss=e.target.closest("[data-st]");if(ss){curStore=ss.dataset.st;view="store";stx={f:[],r:[]};await loadStoreX(curStore);render();return scrollTo(0,0)}
   const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;$("#dir").innerHTML=dirHtml();document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt==dtype));return}
-  const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view="home";feat=false;render();return scrollTo(0,0)}
+  const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view=view==="ads"?"ads":"home";feat=false;render();return scrollTo(0,0)}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   try{
     if(a=="clearphoto"){photoSeq++;photo="";photoHash="";photoError="";photoReady=Promise.resolve();const f=$("#a-img"),p=$("#a-preview");if(f)f.value="";if(p){p.hidden=true;p.removeAttribute("src")}toast("أُزيلت صورة الإعلان")}
