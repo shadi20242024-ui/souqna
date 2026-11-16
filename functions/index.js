@@ -2,6 +2,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { logger } = require("firebase-functions");
+const { createHash } = require("node:crypto");
 
 initializeApp();
 const db = getFirestore();
@@ -30,6 +31,35 @@ function numberInRange(value, minimum, maximum, label) {
   }
   return n;
 }
+function verifiedPayment(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new HttpsError("invalid-argument", "بيانات إيصال الدفع مطلوبة");
+  }
+  const method = String(raw.method || "");
+  if (!["bank_transfer","zain_cash","asia_hawala","card","other"].includes(method)) {
+    throw new HttpsError("invalid-argument", "وسيلة الدفع غير صالحة");
+  }
+  const referenceText = typeof raw.reference === "string" ? raw.reference.trim() : "";
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{5,99}$/.test(referenceText)) {
+    throw new HttpsError("invalid-argument", "رقم الإيصال يجب أن يحتوي 6-100 حرف لاتيني أو رقم");
+  }
+  const currency = String(raw.currency || "");
+  if (!["USD","SYP","IQD","AED"].includes(currency)) {
+    throw new HttpsError("invalid-argument", "عملة الإيصال غير صالحة");
+  }
+  const amount = raw.amount;
+  if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0 ||
+      amount > 1000000000 || Math.abs(Math.round(amount * 100) / 100 - amount) > 1e-8) {
+    throw new HttpsError("invalid-argument", "مبلغ الإيصال يجب أن يكون رقماً موجباً بدقتين عشريتين");
+  }
+  return { method, reference: referenceText, currency, amount };
+}
+function paymentReceiptRef(payment) {
+  // Keep receipt identifiers out of public document paths and user-readable ledgers.
+  const normalized = payment.reference.normalize("NFKC").toUpperCase();
+  const key = createHash("sha256").update(payment.method + "::" + normalized).digest("hex");
+  return db.collection("paymentReceipts").doc(key);
+}
 function validBalance(value) {
   return numberInRange(value, 0, Number.MAX_SAFE_INTEGER, "رصيد المستخدم");
 }
@@ -54,7 +84,7 @@ function debitUser(tx, ref, balance, amount) {
   tx.update(ref, { stars: FieldValue.increment(-amount) });
 }
 
-async function approveTopup(tx, id, actor, now) {
+async function approveTopup(tx, id, actor, now, payment) {
   const orderRef = reference("starOrders", id);
   const orderSnap = await tx.get(orderRef);
   const order = pending(orderSnap, "طلب شحن النجوم");
@@ -64,12 +94,19 @@ async function approveTopup(tx, id, actor, now) {
   if (!userSnap.exists) deny("حساب المستخدم غير موجود");
   const balance = validBalance(userSnap.data().stars || 0);
   if (!Number.isSafeInteger(balance + amount)) deny("الرصيد الناتج أكبر من الحد المسموح");
+  const receiptRef = paymentReceiptRef(payment);
+  const receiptSnap = await tx.get(receiptRef);
+  if (receiptSnap.exists) deny("رقم إيصال الدفع مستخدم في طلب سابق");
+  tx.create(receiptRef, {
+    ...payment, requestType: "topup", requestId: id, verifiedBy: actor, verifiedAt: now
+  });
   tx.update(userRef, { stars: FieldValue.increment(amount) });
   ledger(tx, "topup_" + id, {
     userId: order.userId, type: "credit", amount,
-    note: "شحن نجوم بعد التحقق اليدوي من الدفع", requestId: id, approvedBy: actor, createdAt: now
+    note: "شحن نجوم بعد التحقق اليدوي من الدفع", requestId: id, paymentReceiptId: receiptRef.id,
+    approvedBy: actor, createdAt: now
   });
-  tx.update(orderRef, { status: "done", approvedAt: now, approvedBy: actor, creditedStars: amount });
+  tx.update(orderRef, { status: "done", approvedAt: now, approvedBy: actor, creditedStars: amount, paymentReceiptId: receiptRef.id });
   return { message: "تم اعتماد الشحن", userId: order.userId, notification: "أُضيف " + amount + " نجمة إلى رصيدك" };
 }
 
@@ -130,7 +167,7 @@ async function approvePromotion(tx, id, actor, now) {
     notification: "تم تمييز إعلانك: " + String(ad.title || "").slice(0, 100) };
 }
 
-async function approveSponsor(tx, id, actor, now) {
+async function approveSponsor(tx, id, actor, now, payment) {
   const requestRef = reference("sponsorRequests", id);
   const snapshot = await tx.get(requestRef);
   const request = pending(snapshot, "طلب البنر");
@@ -142,6 +179,12 @@ async function approveSponsor(tx, id, actor, now) {
   const sponsorRef = reference("sponsors", "booking_" + id);
   const sponsorSnapshot = await tx.get(sponsorRef);
   if (sponsorSnapshot.exists) deny("تم إنشاء البنر من قبل");
+  const receiptRef = paymentReceiptRef(payment);
+  const receiptSnap = await tx.get(receiptRef);
+  if (receiptSnap.exists) deny("رقم إيصال الدفع مستخدم في طلب سابق");
+  tx.create(receiptRef, {
+    ...payment, requestType: "sponsor", requestId: id, verifiedBy: actor, verifiedAt: now
+  });
   tx.create(sponsorRef, {
     company: request.company.slice(0, 100),
     title: request.title.slice(0, 120),
@@ -149,9 +192,9 @@ async function approveSponsor(tx, id, actor, now) {
     phone: String(request.phone || "").slice(0, 30),
     img: typeof request.img === "string" ? request.img : "",
     from: now, to: now + days * 86400000,
-    active: true, requestId: id, approvedBy: actor
+    active: true, requestId: id, approvedBy: actor, paymentReceiptId: receiptRef.id
   });
-  tx.update(requestRef, { status: "approved", sponsorId: sponsorRef.id, approvedAt: now, approvedBy: actor });
+  tx.update(requestRef, { status: "approved", sponsorId: sponsorRef.id, approvedAt: now, approvedBy: actor, paymentReceiptId: receiptRef.id });
   return { message: "تم تفعيل البنر", userId: request.userId,
     notification: "تمت الموافقة على بنرك الإعلاني: " + request.title.slice(0, 120) };
 }
@@ -199,6 +242,7 @@ exports.souqnaFinance = onCall(OPTIONS, async request => {
   ];
   if (!supported.includes(action)) throw new HttpsError("invalid-argument", "عملية غير مدعومة");
   const id = action === "adjustBalance" ? null : validId(data.id);
+  const payment = action === "approveTopup" || action === "approveSponsor" ? verifiedPayment(data.payment) : null;
   const actor = request.auth.uid;
   const now = Date.now();
   const result = await db.runTransaction(async tx => {
@@ -208,10 +252,10 @@ exports.souqnaFinance = onCall(OPTIONS, async request => {
       throw new HttpsError("permission-denied", "صلاحيات مدير سوقنا مطلوبة");
     }
     switch (action) {
-      case "approveTopup": return approveTopup(tx, id, actor, now);
+      case "approveTopup": return approveTopup(tx, id, actor, now, payment);
       case "approveSubscription": return approveSubscription(tx, id, actor, now);
       case "approvePromotion": return approvePromotion(tx, id, actor, now);
-      case "approveSponsor": return approveSponsor(tx, id, actor, now);
+      case "approveSponsor": return approveSponsor(tx, id, actor, now, payment);
       case "adjustBalance": return adjustBalance(tx, data, actor, now);
       default: return rejectRequest(tx, action, id, actor, now);
     }
