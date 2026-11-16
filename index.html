@@ -90,6 +90,14 @@ const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDo
 const auth=getAuth(app),db=getFirestore(app);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const safeHttpUrl=raw=>{try{const url=new URL(String(raw||"").trim());return url.protocol==="https:"||url.protocol==="http:"?url.href:""}catch{return ""}};
+const safeImage=raw=>{
+  const value=String(raw||"").trim();
+  if(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value))return value;
+  return safeHttpUrl(value);
+};
+const bgImage=raw=>{const safe=safeImage(raw);return safe?`background-image:url("${esc(safe)}")`:""};
+
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
 let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
@@ -114,7 +122,7 @@ function tkHtml(secondary=false){
   const items=entries.map(t=>String(t||"").trim()).filter(Boolean);
   return items.length?`<div class="tk ${secondary?"alt":""}" role="region" aria-label="${secondary?"تنبيهات الخدمات والوقود":"أخبار سوقنا"}"><b>${secondary?"⛽ الخدمات":"📰 الأخبار"}</b><div class="tkw" title="${esc(items.join(" • "))}"><span>${items.map(esc).join(" • ")}</span></div></div>`:"";
 }
-function spHtml(){const l=sp.filter(s=>s.active&&s.to>Date.now()),cta=`<button class="cta" style="border:0;background:transparent;font:inherit;cursor:pointer" data-v="sponsor">📢 احجز بنرك الإعلاني المميز في سوقنا ‹</button>`;if(!l.length)return cta;const s=l[spi%l.length];return `<div class="spn" style="${s.img?`background-image:linear-gradient(90deg,#0a2a72f2,#0a2a7299),url(${s.img})`:""}"><small>إعلان برعاية</small><div class="sco">${esc(s.company)}</div><b>${esc(s.title)}</b><div>${esc(s.desc||"")}</div>${s.phone?`<a class="gold" style="margin-top:8px" target="_blank" href="https://wa.me/${esc(s.phone)}">تواصل مع الشركة</a>`:""}</div>`+cta}
+function spHtml(){const l=sp.filter(s=>s.active&&s.to>Date.now()),cta=`<button class="cta" style="border:0;background:transparent;font:inherit;cursor:pointer" data-v="sponsor">📢 احجز بنرك الإعلاني المميز في سوقنا ‹</button>`;if(!l.length)return cta;const s=l[spi%l.length];return `<div class="spn" style="${safeImage(s.img)?`background-image:linear-gradient(90deg,#0a2a72f2,#0a2a7299),url(&quot;${esc(safeImage(s.img))}&quot;)`:""}"><small>إعلان برعاية</small><div class="sco">${esc(s.company)}</div><b>${esc(s.title)}</b><div>${esc(s.desc||"")}</div>${s.phone?`<a class="gold" style="margin-top:8px" target="_blank" href="https://wa.me/${esc(s.phone)}">تواصل مع الشركة</a>`:""}</div>`+cta}
 function dirHtml(){const L=dr.filter(x=>x.type==dtype&&x.active!==false&&(dtype!="pharmacy"||x.onDuty)).sort((x,y)=>(y.stars||0)-(x.stars||0));return L.map(x=>`<div class="dr"><div class="av">${esc((x.name||"?")[0])}</div><div style="flex:1"><b>${esc(x.name)}</b> <span class="gs">${"★".repeat(x.stars||0)}</span>${x.onDuty?' <span class="tag">مناوبة اليوم</span>':""}<div class="mut">${esc(x.spec||"")}${x.area?" · "+esc(x.area):""}</div></div>${x.phone?`<a class="btn g" href="tel:${esc(x.phone)}">اتصال</a>`:""}</div>`).join("")||'<p class="mut">لا توجد بيانات بعد.</p>'}
 const adHtml=()=>site.adClient?`<ins class="adsbygoogle" style="display:block;margin:12px 0" data-ad-client="${esc(site.adClient)}" data-ad-slot="${esc(site.adSlot||"")}" data-ad-format="auto" data-full-width-responsive="true"></ins>`:"";
 function initAds(){if(site.adClient&&!document.getElementById("ads-js")){const e=document.createElement("script");e.id="ads-js";e.async=true;e.crossOrigin="anonymous";e.src="https://pagead2.googleapis.com/pagead/js/adsbygoogle.js?client="+encodeURIComponent(site.adClient);document.head.append(e)}}
@@ -136,7 +144,7 @@ async function pick(f,k,w){
   }catch(error){toast(error.message||"تعذر تجهيز الصورة")}
   finally{URL.revokeObjectURL(url)}
 }
-const stImg=(s,k)=>s[k]?`background-image:url(${s[k]})`:"";
+const stImg=(s,k)=>bgImage(s?.[k]);
 const storesHtml=()=>stores.length?`<div class="sec"><b>🏪 متاجر سوقنا</b><a data-v="stores">عرض الكل ‹</a></div><div class="sr2">${[...stores].sort((x,y)=>(planOf(y)?.order||0)-(planOf(x)?.order||0)).map(s=>`<button class="stc" data-st="${s.id}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div><span>${esc(s.name)}</span>${planTag(s)}</button>`).join("")}</div>`:"";
 const planOf=s=>(s.planUntil>Date.now()&&plans.find(p=>p.id==s.plan&&p.active!==false))||plans.find(p=>p.id=="free")||null;
 const planTag=s=>{const p=planOf(s);return p&&p.id!="free"?`<span class="tag g">${esc(p.badge||p.name)}</span>`:""};
@@ -166,7 +174,7 @@ async function loadMine(){
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
   const msg="مرحبًا، بخصوص إعلانك في سوقنا: "+a.title;
-  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${a.img?`background-image:url(${a.img})`:""}">${a.img?"":IC[a.cat]||"🛍️"}</div><div class="bd">
+  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":IC[a.cat]||"🛍️"}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
@@ -176,7 +184,7 @@ function card(a,m){
 function drawHd(){
   const H=$("#hd");
   if(view=="home"){H.className="hd big";
-    H.innerHTML=`<div class="top">${site.logo?`<img class="lgi" src="${site.logo}" alt="">`:'<div class="sp lg"></div>'}<div></div><a class="ic" ${wa?`href="${waLink()}" target="_blank"`:""}>📞</a></div><div class="sr"><span>🇸🇾</span><input id="q" placeholder="ابحث في سوقنا ..." value="${esc(q)}"><i>🔍</i></div>`;
+    H.innerHTML=`<div class="top">${safeImage(site.logo)?`<img class="lgi" src="${esc(safeImage(site.logo))}" alt="">`:'<div class="sp lg"></div>'}<div></div><a class="ic" ${wa?`href="${waLink()}" target="_blank"`:""}>📞</a></div><div class="sr"><span>🇸🇾</span><input id="q" placeholder="ابحث في سوقنا ..." value="${esc(q)}"><i>🔍</i></div>`;
     $("#q").oninput=e=>{q=e.target.value;drawList()};
   }else{H.className="hd";H.innerHTML='<img class="s" src="logo.png" alt=""><h2>سوقنا | Souqna</h2>'}
 }
@@ -198,8 +206,8 @@ function loginBox(){
 function render(){
   drawHd();drawNav();const A=$("#app");
   if(view=="home"){
-    A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>a.img).slice(0,8).map(a=>`<button class="sc" data-c="${a.cat}" aria-label="${esc(a.title)}" style="background-image:url(${a.img})"></button>`).join("")}</div>
-    ${tkHtml()}${site.banner?`<img class="bnr" src="${site.banner}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
+    A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>safeImage(a.img)).slice(0,8).map(a=>`<button class="sc" data-c="${esc(a.cat)}" aria-label="${esc(a.title)}" style="${bgImage(a.img)}"></button>`).join("")}</div>
+    ${tkHtml()}${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
     ${wxHtml()}<div id="spw">${spHtml()}</div>${tkHtml(true)}${storesHtml()}
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
     <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
@@ -217,7 +225,7 @@ function render(){
     <button class="btn g" style="width:100%" data-a="post">إرسال للمراجعة</button><p class="mut">يظهر إعلانك بعد موافقة الإدارة.</p></div>`;
     const f=$("#a-img");if(f)f.onchange=()=>{photoReady=shrink(f.files[0]);};
   }else if(view=="store"){const s=stores.find(x=>x.id==curStore)||myStores.find(x=>x.id==curStore)||{};
-    A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><div class="cv" style="${stImg(s,"cover")}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div></div><h2 style="margin:0">${esc(s.name)} ${planTag(s)}</h2><div class="mut">${esc(s.desc||"")}</div><div class="mut">📍 ${esc(s.area||"")}</div><div class="acts">${s.phone?`<a class="btn wa" target="_blank" href="https://wa.me/${esc(s.phone)}">واتساب</a><a class="btn" href="tel:${esc(s.phone)}">اتصال</a>`:""}${s.map?`<a class="btn l" target="_blank" href="${esc(s.map)}">الموقع على الخريطة</a>`:""}</div>${xHtml(s)}<div class="sec"><b>إعلانات المتجر</b></div><div class="grid">${ads.filter(a=>a.storeId==s.id).map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات للمتجر.</p>'}</div>`;
+    A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><div class="cv" style="${stImg(s,"cover")}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div></div><h2 style="margin:0">${esc(s.name)} ${planTag(s)}</h2><div class="mut">${esc(s.desc||"")}</div><div class="mut">📍 ${esc(s.area||"")}</div><div class="acts">${s.phone?`<a class="btn wa" target="_blank" href="https://wa.me/${esc(s.phone)}">واتساب</a><a class="btn" href="tel:${esc(s.phone)}">اتصال</a>`:""}${safeHttpUrl(s.map)?`<a class="btn l" rel="noopener noreferrer" target="_blank" href="${esc(safeHttpUrl(s.map))}">الموقع على الخريطة</a>`:""}</div>${xHtml(s)}<div class="sec"><b>إعلانات المتجر</b></div><div class="grid">${ads.filter(a=>a.storeId==s.id).map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات للمتجر.</p>'}</div>`;
   }else if(view=="mystores"){
     A.innerHTML=!me?loginBox():`<button class="btn l" data-v="acc">‹ رجوع</button><div style="height:10px"></div>${myStores.map(s=>`<div class="box"><b>${esc(s.name)}</b> ${stTag(s.status)} ${planTag(s)}<div class="mut">${esc(s.desc||"")}</div><div class="mut">الاشتراك: ${esc(planOf(s)?.name||"—")}${s.planUntil>Date.now()?" · حتى "+new Date(s.planUntil).toLocaleDateString("ar"):""}</div>${s.status=="approved"&&plans.some(p=>p.id!="free"&&p.active!==false)?`<div class="row"><select id="pl-${s.id}">${plans.filter(p=>p.id!="free"&&p.active!==false).map(p=>`<option value="${p.id}">${esc(p.name)} · ${p.stars}★ / ${p.days} يوم</option>`).join("")}</select><button class="btn g" data-a="subreq" data-id="${s.id}">اشترك / جدّد</button></div>`:""}<div class="acts"><button class="btn" data-st="${s.id}">فتح</button><button class="btn l" data-a="edst" data-id="${s.id}">تعديل</button><button class="btn r" data-a="delst" data-id="${s.id}">حذف</button></div></div>`).join("")}
     <div class="box"><h3>${editSt?"تعديل المتجر":"🏪 متجر جديد"}</h3><input id="t-n" placeholder="اسم المتجر / النشاط" value="${esc(editSt?.name||"")}"><textarea id="t-d" rows="3" placeholder="وصف النشاط">${esc(editSt?.desc||"")}</textarea><input id="t-p" dir="ltr" placeholder="واتساب/هاتف مع رمز الدولة" value="${esc(editSt?.phone||"")}"><input id="t-a" placeholder="المنطقة / العنوان" value="${esc(editSt?.area||"")}"><input id="t-m" dir="ltr" placeholder="رابط الموقع من خرائط Google (اختياري)" value="${esc(editSt?.map||"")}">
