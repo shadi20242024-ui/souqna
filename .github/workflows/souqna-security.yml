@@ -1,0 +1,33 @@
+name: SOUQNA branch checks
+
+on:
+  push:
+    branches:
+      - feature/**
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules-and-syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up Java (Firestore emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned test tooling
+        run: npm install --no-audit --no-fund
+      - name: Check client source and Firestore security rules
+        run: npm test
