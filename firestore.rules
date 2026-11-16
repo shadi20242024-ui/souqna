@@ -248,6 +248,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /paymentReceipts/{id} {
+      // Manual payment proofs are finance-only: clients must never forge or edit them.
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
     match /transactions/{id} {
       allow read: if isAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
