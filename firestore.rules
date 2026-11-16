@@ -36,7 +36,214 @@ service cloud.firestore {
     }
 
     function safeDocumentId(id) {
-      return id.matches('^[A-Za-z0-9_-]{1,128}$');
+      return id.matches('^[A-Za-z0-9_-]{1,128}
+
+    match /users/{uid} {
+      allow get, list: if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid)
+        && request.resource.data.role == "user"
+        && request.resource.data.stars == 0
+        && request.resource.data.keys().hasOnly(["name", "email", "role", "stars"]);
+      allow update: if isAdmin()
+        || (isSelf(uid) && changedOnly(["name"]));
+      allow delete: if isAdmin();
+    }
+
+    match /categories/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /ads/{id} {
+      allow read: if resource.data.status == "approved"
+        || (signedIn() && resource.data.ownerId == request.auth.uid)
+        || isStaff();
+
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.title is string
+        && (!('storeId' in request.resource.data) || ownsApprovedStore(request.resource.data.storeId))
+        && request.resource.data.keys().hasOnly([
+          "title", "price", "cur", "cat", "area", "desc", "phone",
+          "img", "imgHash", "storeId", "ownerId", "ownerName", "status", "createdAt"
+        ]);
+      allow update: if isAdmin()
+        || (isStaff() && changedOnly(["status"]));
+      allow delete: if isStaff()
+        || (signedIn() && resource.data.ownerId == request.auth.uid);
+    }
+
+    match /stores/{id} {
+      allow read: if resource.data.status == "approved"
+        || (signedIn() && resource.data.ownerId == request.auth.uid)
+        || isStaff();
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.keys().hasOnly([
+          "name", "desc", "phone", "area", "map", "logo", "cover",
+          "ownerId", "ownerName", "status", "createdAt"
+        ]);
+      allow update: if isAdmin()
+        || (isStaff() && changedOnly(["status"]))
+        || (signedIn() && resource.data.ownerId == request.auth.uid
+          && changedOnly(["name", "desc", "phone", "area", "map", "logo", "cover"]));
+      allow delete: if isStaff()
+        || (signedIn() && resource.data.ownerId == request.auth.uid);
+    }
+
+    match /follows/{id} {
+      allow read: if true;
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && id == request.resource.data.storeId + "_" + request.auth.uid
+        && request.resource.data.keys().hasOnly(["storeId", "userId"]);
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /reviews/{id} {
+      allow read: if true;
+      allow create, update: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && id == request.resource.data.storeId + "_" + request.auth.uid
+        && request.resource.data.stars >= 1
+        && request.resource.data.stars <= 5
+        && request.resource.data.keys().hasOnly([
+          "storeId", "userId", "userName", "stars", "text", "createdAt"
+        ]);
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /packages/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /plans/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /sponsors/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /sponsorRequests/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.days >= 1
+        && request.resource.data.days <= 90
+        && request.resource.data.keys().hasOnly([
+          "userId", "userName", "company", "title", "desc",
+          "phone", "days", "img", "status", "createdAt"
+        ]);
+      allow update, delete: if isAdmin();
+    }
+
+    match /directory/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /services/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /partners/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /starOrders/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.stars is int
+        && request.resource.data.stars > 0
+        && request.resource.data.stars <= 100000;
+      allow update, delete: if isAdmin();
+    }
+
+    match /promos/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && ownsApprovedAd(request.resource.data.adId);
+      allow update, delete: if isAdmin();
+    }
+
+    match /subs/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && ownsApprovedStore(request.resource.data.storeId)
+        && request.resource.data.planId is string
+        && exists(/databases/$(database)/documents/plans/$(request.resource.data.planId));
+      allow update, delete: if isAdmin();
+    }
+
+    match /sorders/{id} {
+      allow read: if isStaff()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "new";
+      allow update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    match /transactions/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /notifs/{id} {
+      allow read: if isStaff()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isStaff();
+      allow update: if isStaff()
+        || (signedIn() && resource.data.userId == request.auth.uid
+          && changedOnly(["read"]) && request.resource.data.read == true);
+      allow delete: if isAdmin();
+    }
+  }
+}
+);
+    }
+
+    function ownsApprovedStore(storeId) {
+      return signedIn()
+        && storeId is string
+        && exists(/databases/$(database)/documents/stores/$(storeId))
+        && get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+        && get(/databases/$(database)/documents/stores/$(storeId)).data.status == "approved";
+    }
+
+    function ownsApprovedAd(adId) {
+      return signedIn()
+        && adId is string
+        && exists(/databases/$(database)/documents/ads/$(adId))
+        && get(/databases/$(database)/documents/ads/$(adId)).data.ownerId == request.auth.uid
+        && get(/databases/$(database)/documents/ads/$(adId)).data.status == "approved";
     }
 
     match /users/{uid} {
