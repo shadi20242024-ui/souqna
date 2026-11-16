@@ -260,6 +260,36 @@ function loginBox(){
   <button class="btn" style="width:100%" data-a="auth">${r?"إنشاء الحساب":"دخول"}</button>
   <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
 
+function adminReportRows(){
+  const summary=summarizeAdmin({
+    ads,stores,pend,pendStores,sorders,sp,orders,promos,subs,pendingSponsorRequests,
+    users:isAdm()?allUsers:[],transactions:isAdm()?allTx:[],isOwner:isAdm()
+  });
+  const p=summary.publicStats,m=summary.pending,a=summary.owner;
+  return [
+    ["الإعلانات المنشورة",p.publishedAds],["المتاجر المنشورة",p.publishedStores],
+    ["الإعلانات المميزة حالياً",p.featuredAds],["اشتراكات المتاجر الفعالة",p.activeStorePlans],
+    ["بنرات الرعاية النشطة",p.activeSponsors],["الإعلانات بانتظار المراجعة",m.ads],
+    ["المتاجر بانتظار المراجعة",m.stores],["طلبات الخدمات المفتوحة",m.serviceOrders],
+    ...(a?[["الطلبات المالية المعلقة",m.finance],["الحسابات المسجلة",a.users],
+      ["النجوم في المحافظ",a.walletStars],["النجوم المضافة في الدفتر",a.creditedStars],
+      ["النجوم المخصومة في الدفتر",a.debitedStars],["قيود دفتر النجوم",a.ledgerEntries]]:[])
+  ];
+}
+function exportAdminSummary(){
+  if(!isStaff())throw Error("غير مصرح بتصدير تقرير الإدارة");
+  const rows=[["المؤشر","القيمة"],...adminReportRows(),["وقت جلب البيانات",new Date(adminUpdatedAt||Date.now()).toISOString()]];
+  const csv="\uFEFF"+rows.map(row=>row.map(value=>{
+    const raw=String(value??"");
+    const safe=/^\s*[=+@-]/.test(raw)?"'"+raw:raw;
+    return '"'+safe.replace(/"/g,'""')+'"';
+  }).join(",")).join("\r\n");
+  const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  const link=document.createElement("a");
+  link.href=url;link.download="souqna-admin-summary-"+new Date().toISOString().slice(0,10)+".csv";
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
 function adminDashboardHtml(){
   if(!isStaff())return "";
   const results=summarizeAdmin({
@@ -303,7 +333,7 @@ function adminDashboardHtml(){
         <h2>📊 لوحة تحكم سوقنا</h2>
         <p>مؤشرات مأخوذة من سجلات Firebase المتاحة لصلاحيات حسابك.</p>
       </div>
-      <button class="btn g" data-a="refreshAdmin" id="refreshAdmin" aria-label="تحديث إحصاءات الإدارة">⟳ تحديث البيانات</button>
+      <button class="btn g" data-a="refreshAdmin" id="refreshAdmin" aria-label="تحديث إحصاءات الإدارة">⟳ تحديث البيانات</button><button class="btn l" data-a="exportAdmin" aria-label="تنزيل ملخص إحصاءات سوقنا CSV">⬇ تنزيل CSV</button>
     </div>
     <div class="admin-refresh-time">آخر جلب للبيانات: ${esc(updated)} · ليست إحصاءات متدفقة لحظياً</div>
     <h3>حالة السوق والإعلانات</h3><div class="admin-stat-grid">${cards(publicCards)}</div>
@@ -482,6 +512,7 @@ document.addEventListener("click",async e=>{
       spi=(spi+(a==="spnext"?1:count-1))%count;
       const target=$("#spw");if(target)target.innerHTML=spHtml();
     }
+    else if(a=="exportAdmin"){if(!isStaff())return toast("غير مصرح");exportAdminSummary();toast("تم تجهيز ملف الإحصاءات")}
     else if(a=="refreshAdmin"){if(!isStaff())return toast("المدير فقط يمكنه تحديث اللوحة");await loadPublic();await loadMine();render();toast("تم تحديث مؤشرات لوحة الإدارة")}
     else if(a=="more"){more=!more;render()}
     else if(a=="feat"){feat=!feat;cur="all";render()}
