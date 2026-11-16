@@ -337,6 +337,7 @@ function pick(f,k,w){
       tmp[k]=encoded;
       const preview=$("#brand-preview-"+k);
       if(preview&&preview.tagName==="IMG")preview.src=encoded;
+      else if(preview){const newImg=document.createElement("img");newImg.id=preview.id;newImg.alt="معاينة بانر السويداء";newImg.src=encoded;newImg.style.cssText="display:block;width:100%;height:auto;max-height:185px;object-fit:cover;border:1px solid #dbe4f5;border-radius:12px;margin:6px 0 15px";preview.replaceWith(newImg)}
       const st=$("#brand-image-status");if(st&&["logo","banner"].includes(k))st.textContent="✅ أصبحت صورة "+(k==="logo"?"الشعار":"البنر")+" جاهزة للمعاينة. اضغط حفظ لتطبيقها.";
       toast("تم تجهيز الصورة للمعاينة");
     }catch(e){toast(e.message||"تعذر تجهيز الصورة");}
