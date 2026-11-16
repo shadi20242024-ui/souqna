@@ -291,6 +291,43 @@ try {
   } finally {
     await adminContext.close();
   }
+
+  // Moderators can use operational review metrics but cannot see wallet totals.
+  const moderatorEmail="souqna-moderator-"+Date.now()+"@example.test";
+  const moderatorPassword="SouqnaModerator2026!";
+  const moderatorResponse=await fetch(
+    "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=local-emulator",
+    {method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email:moderatorEmail,password:moderatorPassword,returnSecureToken:true})}
+  );
+  const moderatorAuth=await moderatorResponse.json();
+  assert.ok(moderatorResponse.ok && moderatorAuth.localId,"Moderator test identity creation failed");
+  await env.withSecurityRulesDisabled(async ctx=>{
+    await setDoc(doc(ctx.firestore(),"users",moderatorAuth.localId),{
+      name:"مشرف مراجعة",email:moderatorEmail,role:"moderator",stars:0
+    });
+  });
+  const moderatorContext=await browser.newContext({viewport:{width:1280,height:900},locale:"ar"});
+  try {
+    const page=await moderatorContext.newPage();
+    const errors=[];
+    page.on("pageerror",err=>errors.push(err.message));
+    await page.goto("http://127.0.0.1:4173/",{waitUntil:"domcontentloaded"});
+    await page.locator("#list .item").first().waitFor({timeout:20000});
+    await page.locator('#nav [data-v="acc"]').click();
+    await page.locator("#l-mail").fill(moderatorEmail);
+    await page.locator("#l-pass").fill(moderatorPassword);
+    await page.locator('#app [data-a="auth"]').click();
+    await page.locator('#nav [data-v="admin"]').waitFor({timeout:15000});
+    await page.locator('#nav [data-v="admin"]').click();
+    await page.locator("#adminDashboard").waitFor({timeout:15000});
+    assert.equal(await page.locator('#adminDashboard .admin-stat').filter({hasText:"الحسابات المسجلة"}).count(),0);
+    assert.equal(await page.locator('#adminDashboard .admin-stat').filter({hasText:"نجوم في المحافظ"}).count(),0);
+    assert.equal(await page.locator('#adminDashboard .admin-stat').filter({hasText:"طلبات مالية معلّقة"}).count(),0);
+    assert.ok((await page.locator("#adminDashboard").innerText()).includes("إعلانات للمراجعة"));
+    assert.deepEqual(errors,[],"Moderator dashboard should load without script errors");
+    console.log("UI MODERATOR PERMISSIONS OK","operational metrics only; user wallets hidden");
+  } finally { await moderatorContext.close(); }
 } finally {
   if(browser)await browser.close();
   if(server)await new Promise(resolve=>server.close(resolve));
