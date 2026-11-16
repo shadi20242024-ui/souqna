@@ -54,8 +54,8 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
     await assertFails(updateDoc(doc(alice,"users","alice"),{stars:9999}));
     await assertFails(setDoc(doc(alice,"users","new-admin"),{name:"x",email:"x@example.test",role:"admin",stars:0}));
   });
-  await t.test("Ordinary user can create pending ad, not preapproved ad", async () => {
-    await assertSucceeds(setDoc(doc(alice,"ads","alice-pending"),{
+  await t.test("Direct listing creation denied: use trusted Marketplace callable", async () => {
+    await assertFails(setDoc(doc(alice,"ads","alice-pending"),{
       ownerId:"alice",ownerName:"أليس",status:"pending",title:"عقار",price:150,
       cur:"$",cat:"real_estate",area:"السويداء",desc:"وصف",phone:"963999999999",
       img:"",createdAt:Date.now()
@@ -66,7 +66,7 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
       img:"",createdAt:Date.now()
     }));
   });
-  await t.test("Listing content cannot bypass length, price, image and phone validation", async () => {
+  await t.test("All direct listing writes are denied, even with plausible values", async () => {
     const valid={
       ownerId:"alice",ownerName:"أليس",status:"pending",title:"سيارة للبيع",
       price:150,cur:"$",cat:"cars",area:"السويداء",desc:"وصف مختصر",
@@ -80,17 +80,17 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
     await assertFails(setDoc(doc(alice,"ads","bad-big-image"),{...valid,img:"data:image/png;base64,"+"A".repeat(700001)}));
     await assertFails(setDoc(doc(alice,"ads","bad-hash"),{...valid,imgHash:"forged"}));
     await assertFails(setDoc(doc(alice,"ads","bad-extra"),{...valid,adminApproved:true}));
-    await assertSucceeds(setDoc(doc(alice,"ads","valid-listing"),valid));
+    await assertFails(setDoc(doc(alice,"ads","valid-listing"),valid));
   });
 
-  await t.test("Stores and financial requests reject oversized and forged fields", async () => {
+  await t.test("Direct store creation is denied and financial request fields are checked", async () => {
     const store={
       name:"متجر للاختبار",desc:"وصف",phone:"963999999999",area:"السويداء",map:"",
       logo:"",cover:"",ownerId:"alice",ownerName:"أليس",status:"pending",createdAt:Date.now()
     };
     await assertFails(setDoc(doc(alice,"stores","bad-cover"),{...store,cover:"X".repeat(700002)}));
     await assertFails(setDoc(doc(alice,"stores","bad-name"),{...store,name:"X".repeat(121)}));
-    await assertSucceeds(setDoc(doc(alice,"stores","valid-store"),store));
+    await assertFails(setDoc(doc(alice,"stores","valid-store"),store));
     const topup={userId:"alice",userName:"أليس",stars:5,status:"pending",createdAt:Date.now()};
     await assertFails(setDoc(doc(alice,"starOrders","fake-topup"),{...topup,paymentReceiptId:"pretend-paid"}));
     await assertFails(setDoc(doc(alice,"starOrders","bad-stars"),{...topup,stars:5.3}));
