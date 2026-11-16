@@ -6,7 +6,7 @@
   "description": "Development-only checks for Souqna; does not deploy Firebase",
   "scripts": {
     "test:source": "node scripts/check-souqna.mjs",
-    "test:rules": "firebase emulators:exec --project demo-souqna-rules --only auth,firestore \"node --test tests/*.test.mjs\"",
+    "test:rules": "firebase emulators:exec --project demo-souqna-rules --only auth,firestore,functions \"node --test tests/*.test.mjs\"",
     "test": "npm run test:source && npm run test:rules"
   },
   "devDependencies": {
