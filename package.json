@@ -11,7 +11,8 @@
     "build:hosting": "node scripts/build-hosting.mjs",
     "test:release": "npm run test:source && npm run test:build-isolation && npm run build:hosting",
     "test:build-isolation": "node --test tests/staging-build.test.mjs",
-    "build:staging": "node scripts/build-hosting.mjs staging"
+    "build:staging": "node scripts/build-hosting.mjs staging",
+    "preflight:staging": "node scripts/preflight-staging.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
