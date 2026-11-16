@@ -181,3 +181,26 @@ test("listing detail is reachable by card controls",()=>{
   assert.match(source,/view=="adDetail"/);
   assert.match(source,/selectedAdId=detail\.dataset\.ad/);
 });
+
+test("approved branding files can be previewed without replacing the screenshot-approved layout",()=>{
+  assert.match(source,/logo_bag\.webp/);
+  assert.match(source,/sweida_approved_hero_clean\.webp/);
+  assert.match(source,/id="brand-preview-logo"/);
+  assert.match(source,/id="brand-preview-banner"/);
+  assert.match(source,/id="brand-image-status"/);
+  assert.match(source,/newImg\.src=encoded/);
+  assert.match(source,/src="\$\{esc\(tmp\.logo\|\|site\.logo/);
+});
+test("owner branding imports have bounded file size, dimensions and compression",()=>{
+  assert.match(source,/function pick\(f,k,w\)/);
+  assert.match(source,/f\.size>8\*1024\*1024/);
+  assert.match(source,/encoded\.length>220000/);
+  assert.match(source,/toDataURL\("image\/webp",\.78\)/);
+  assert.match(source,/imageProcessing\)return toast/);
+});
+test("privileged callables give explicit setup feedback if App Check is missing",()=>{
+  assert.match(source,/const verifiedCall=\(name,data\)=>appCheckInitialized/);
+  assert.match(source,/Firebase App Check بالمفتاح العام/);
+  assert.match(source,/getIdTokenResult\(auth\.currentUser,true\)/);
+  assert.match(source,/data-a="refreshrole"/);
+});
