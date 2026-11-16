@@ -54,3 +54,22 @@ Run `npm install`, `npm --prefix functions install`, then `npm test` (Node 22+, 
 - يتحقق الخادم من عدد متاجر صاحب الحساب واشتراك كل متجر وحدّ إعلاناته؛ معاملات Firestore تربط تحديث عداد المالك أو المتجر بالإنشاء لمنع تجاوز الحدود بطلبات متزامنة.
 - يمنع `firestore.rules` إنشاء الإعلانات والمتاجر مباشرة من العميل. لذلك **لا يجوز نشر قواعد Firestore الجديدة دون نشر الدالة الجديدة وتحديث الموقع معاً**؛ العملاء الذين يحتفظون بنسخ قديمة سيفشل لديهم إرسال إعلانات ومتاجر.
 - تظل مراقبة إساءة الاستخدام، وApp Check، وحدود البيانات، وحقوق الخصوصية، واختبار Firestore الحقيقي إلزامية قبل الإطلاق الجماهيري.
+
+## Launch readiness gate — 2026-11-16
+
+**Status: NOT APPROVED FOR PUBLIC LAUNCH.** Passing emulator tests is not proof that a live Firebase project, real payment verification, or disaster recovery works.
+
+- [x] Application and financial authorization tests run in Firebase emulators.
+- [x] Desktop/mobile smoke tests run on source and built staging bundle.
+- [x] Manual receipt references protected against duplicate approval; human verification remains mandatory.
+- [x] Service worker caches only explicitly allowlisted static assets and navigation shell, not arbitrary authenticated responses.
+- [ ] Firebase staging project created under the owner's account and independently configured.
+- [ ] Email/password Auth, Firestore rules and callable functions verified together on staging.
+- [ ] Blaze billing plan and cost alerts approved by owner if Cloud Functions are deployed.
+- [ ] Admin bootstrap reviewed; role assignment cannot be obtained by normal user registration.
+- [ ] Recovery drill: export staging data, restore to isolated test project, verify restored access and audit log.
+- [ ] Review media storage limits and migrate large embedded Firestore base64 images to Storage before scale.
+- [ ] Validate domain, HTTPS, privacy policy, contact and moderation processes for public customers.
+- [ ] Written owner approval for public production deployment, after staging sign-off.
+
+**Important:** Do not run `firebase deploy` against `souqna-sweida` based solely on these checks. No live Firebase access or billing approval is available to this development session.
