@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
@@ -20,6 +20,22 @@ for (const [label, marker] of [
   ["Atomic sponsor approval", "runTransaction(db"],
 ]) {
   assert.ok(html.includes(marker), label + " is missing");
+}
+
+// Verify desktop styling and that every pre-cached file actually exists.
+const css = readFileSync(new URL("../assets/responsive.css",import.meta.url), "utf8");
+assert.match(css, /@media\s*\(min-width:\s*1024px\)/);
+assert.ok(html.includes('href="assets/responsive.css"'), "Desktop stylesheet must be linked");
+const sw = readFileSync(new URL("../sw.js",import.meta.url), "utf8");
+new Function(sw);
+const assets = sw.match(/,F=(\[[^;]+\]);/)?.[1];
+assert.ok(assets, "Precache manifest not found");
+for(const filename of JSON.parse(assets)){
+  if(filename==="./")continue;
+  assert.ok(existsSync(new URL("../"+filename,import.meta.url)), "Missing PWA precache asset: "+filename);
+}
+for(const marker of ['"sub_"+id','"topup_"+id','"promo_"+id']){
+  assert.ok(html.includes(marker), "Idempotent ledger key missing: "+marker);
 }
 
 console.log("SOUQNA source checks passed (syntax and feature markers).");
