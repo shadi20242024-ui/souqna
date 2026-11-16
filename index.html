@@ -821,11 +821,12 @@ document.addEventListener("click",async e=>{
       if(adSubmitting)return toast("الإعلان قيد الإرسال، لا تضغط الزر مرة ثانية");
       const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,""),amount=Number(val("#a-price")),description=val("#a-desc");
       if(t.length<3||t.length>150)return toast("عنوان الإعلان يجب أن يكون بين 3 و150 حرفاً");
-      if(!Number.isFinite(amount)||amount<0||amount>1e12)return toast("السعر غير صالح");
+      if(!val("#a-price")||!Number.isFinite(amount)||amount<0||amount>1e12)return toast("السعر غير صالح");
       if(p.length<9||p.length>15)return toast("أدخل رقم واتساب صحيحاً مع رمز الدولة");
       if(description.length>8000)return toast("وصف الإعلان طويل جداً (8000 حرف كحد أقصى)");
       if(adImageTask){try{await adImageTask}catch{return toast(adPhotoError||"تعذر تجهيز صورة الإعلان")}}
       if(adPhotoError||($("#a-img")?.files.length&&!photo))return toast(adPhotoError||"صورة الإعلان لم تجهز بعد");
+      if(adSubmitting)return toast("الإعلان قيد الإرسال، لا تضغط الزر مرة ثانية");
       const sid=$("#a-st")?$("#a-st").value:"";
       if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
       adSubmitting=true;b.disabled=true;
