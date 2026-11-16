@@ -184,6 +184,16 @@ main:has(.souqna-home-layout){padding:8px 8px 90px}.souqna-home-layout{grid-temp
 @media(max-width:850px){#nav .desktop-extra{display:none}} 
 #souqna-topnav button,#souqna-topnav a{cursor:pointer}
 @media(max-width:850px){.souqna-topnav-inner{min-height:51px}.souqna-logo{font-size:20px}.souqna-logo img{width:31px;height:31px}.souqna-profile{font-size:11px;padding:6px 8px}}
+
+.souqna-heart{border:1px solid #284c84;border-radius:50%;background:#092651;color:#fff;font-size:24px;line-height:1;padding:9px 11px;position:relative;cursor:pointer}
+.souqna-heart .heart-count{position:absolute;right:-3px;top:-7px;border-radius:14px;padding:1px 5px;font-size:10px;background:#f6bc3e;color:#0c244f;font-weight:900}
+.item .img{position:relative}
+.favorite-toggle{position:absolute;left:7px;top:6px;border:1px solid #ffffff95;background:#09224f80;color:#fff;border-radius:50%;height:35px;width:35px;cursor:pointer;font-size:23px;display:grid;place-items:center;box-shadow:0 3px 8px #0004}
+.favorite-toggle.saved{background:linear-gradient(#fdf1be,#f0b72c);color:#ac2d3a;border-color:#fff}
+.favorite-toggle:hover{transform:scale(1.1)}
+.favorites-page{max-width:1380px;margin:auto}
+.favorites-page .grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+@media(max-width:850px){.souqna-heart{font-size:18px;padding:7px 9px}.souqna-heart .heart-count{font-size:9px}}
 </style>
 </head>
 <body>
@@ -210,6 +220,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
+let savedAdIds=new Set();
 let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],sq="",plans=[],subs=[],editPl=null,editSp=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
@@ -311,6 +322,7 @@ async function loadPublic(){
 async function loadMine(){
   if(!me)return;
   const u=await getDoc(doc(db,"users",me.uid));if(u.exists())Object.assign(me,u.data());
+  savedAdIds=new Set((await q2("favorites","userId",me.uid).catch(error=>{console.warn("تعذر تحميل المفضلة",error);return[]})).map(x=>x.adId));
   mine=(await q2("ads","ownerId",me.uid)).sort((x,y)=>y.createdAt-x.createdAt);myStores=await q2("stores","ownerId",me.uid).catch(()=>[]);const byT=(x,y)=>y.createdAt-x.createdAt;txs=(await q2("transactions","userId",me.uid).catch(()=>[])).sort(byT);notifs=(await q2("notifs","userId",me.uid).catch(()=>[])).sort(byT);mySorders=(await q2("sorders","userId",me.uid).catch(()=>[])).sort(byT);
   if(isStaff()){pend=(await q2("ads","status","pending")).sort((x,y)=>y.createdAt-x.createdAt);pendStores=await q2("stores","status","pending").catch(()=>[]);sorders=(await getDocs(collection(db,"sorders")).catch(()=>({docs:[]}))).docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.createdAt-x.createdAt);
     if(isAdm()){orders=await q2("starOrders","status","pending");promos=await q2("promos","status","pending");subs=await q2("subs","status","pending").catch(()=>[]);allUsers=(await getDocs(collection(db,"users"))).docs.map(d=>({id:d.id,...d.data()}));allTx=(await getDocs(collection(db,"transactions"))).docs.map(d=>d.data())}}
@@ -318,7 +330,7 @@ async function loadMine(){
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
   const msg="مرحبًا، بخصوص إعلانك في سوقنا: "+a.title;
-  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${a.img?`background-image:url(${a.img})`:""}">${a.img?"":IC[a.cat]||"🛍️"}</div><div class="bd">
+  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${a.img?`background-image:url(${a.img})`:""}">${a.img?"":IC[a.cat]||"🛍️"}${!m?`<button type="button" class="favorite-toggle ${savedAdIds.has(a.id)?"saved":""}" data-a="favorite" data-id="${esc(a.id)}" aria-pressed="${savedAdIds.has(a.id)}" aria-label="${savedAdIds.has(a.id)?"حذف من المفضلة":"حفظ في المفضلة"}">${savedAdIds.has(a.id)?"♥":"♡"}</button>`:""}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
@@ -336,6 +348,7 @@ function drawDesktopNav(){
     '<div class="souqna-links">'+menu+'</div>'+
     '<button class="souqna-vip" data-v="stars">♛ الباقات والنجوم</button>'+
     '<button class="souqna-balance" data-v="wallet">⭐ <b>'+Number(me?.stars||0).toLocaleString("ar")+'</b> نجمة</button>'+
+    '<button class="souqna-heart" data-v="favorites" aria-label="إعلاناتي المفضلة">♡ <span class="heart-count">'+savedAdIds.size+'</span></button>'+
     '<button class="souqna-profile" data-v="'+(isAdm()?"admin":"acc")+'">👤 '+esc(me?.name||"حسابي")+'</button>'+
     '</div>';
 }
@@ -449,6 +462,11 @@ function render(){
     A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><div class="sec"><b>🎨 خدمات سوقنا</b></div>${services.filter(x=>x.active!==false).map(x=>`<div class="box"><b>${esc(x.name)}</b> <span class="tag g">${x.price?esc(x.price)+" $":"حسب الاتفاق"}</span><div class="mut">${esc(x.desc||"")}</div></div>`).join("")||'<p class="mut">لا خدمات متاحة حاليًا.</p>'}
     <div class="sec"><b>📣 شبكة شركاء النشر</b></div>${partners.filter(x=>x.active!==false).map(x=>`<div class="dr"><div class="av">${esc((x.platform||"?")[0].toUpperCase())}</div><div style="flex:1"><b>${esc(x.name)}</b><div class="mut">${esc(x.platform||"")} · ${esc(x.region||"")} · ${esc(x.audience||"")}</div></div><span class="tag g">${x.price?esc(x.price)+" $":"حسب الاتفاق"}</span></div>`).join("")||'<p class="mut">قريبًا.</p>'}
     <div class="box"><h3>طلب خدمة أو حملة</h3>${me?`<select id="o-s">${services.filter(x=>x.active!==false).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select><select id="o-p"><option value="">بدون شريك نشر</option>${partners.filter(x=>x.active!==false).map(x=>`<option value="${x.id}">${esc(x.name)} (${esc(x.platform||"")})</option>`).join("")}</select><textarea id="o-d" rows="3" placeholder="تفاصيل الطلب: النص، المقاس، الجمهور المستهدف..."></textarea><button class="btn g" style="width:100%" data-a="sorder">إرسال الطلب</button>`:"<p class='mut'>سجّل الدخول لإرسال طلب.</p>"}</div>`;
+  }else if(view=="favorites"){
+    const favAds=ads.filter(a=>savedAdIds.has(a.id));
+    A.innerHTML=!me?loginBox():`<section class="favorites-page"><div class="sec"><b>♥ إعلاناتي المفضلة</b><span class="mut">${favAds.length} إعلان محفوظ</span></div>
+    <p class="mut">تُحفظ المفضلة في حسابك، وتظهر فقط الإعلانات المنشورة والمتاحة حالياً.</p><div class="grid">${favAds.map(a=>card(a)).join("")||'<div class="box">لا توجد إعلانات محفوظة حتى الآن. افتح الرئيسية واضغط القلب بجانب الإعلان.</div>'}</div>
+    <button class="btn l" data-v="home">العودة للرئيسية</button></section>`;
   }else if(view=="mine"){
     A.innerHTML=!me?loginBox():`<div class="grid">${mine.map(a=>card(a,"mine")).join("")||'<p class="mut">لا توجد إعلانات لك.</p>'}</div>`;
   }else if(view=="stars"){
@@ -512,7 +530,7 @@ function shrink(f){if(!f)return;const im=new Image();im.onload=()=>{const k=Math
 const need=()=>{if(!me){toast("سجّل الدخول أولًا");view="acc";render();return false}return true};
 
 document.addEventListener("click",async e=>{
-  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc"].includes(view))await loadMine();feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
+  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc","favorites"].includes(view))await loadMine();feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
   const ss=e.target.closest("[data-st]");if(ss){curStore=ss.dataset.st;view="store";stx={f:[],r:[]};await loadStoreX(curStore);render();return scrollTo(0,0)}
   const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;if(view!=="home"){view="home";render()}else{const directory=$("#dir");if(directory)directory.innerHTML=dirHtml()}document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt===dtype));return}
   const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view="home";feat=false;render();return scrollTo(0,0)}
@@ -522,6 +540,17 @@ document.addEventListener("click",async e=>{
     else if(a=="search"){view="home";drawList();$("#list")?.scrollIntoView({behavior:"smooth",block:"start"})}
     else if(a=="spnext"||a=="spprev"){const items=sp.filter(s=>s.active===true&&s.paymentVerified===true&&Number(s.to)>Date.now()&&Number(s.from||0)<=Date.now());if(items.length){spi=(spi+(a=="spnext"?1:items.length-1))%items.length;const e=$("#spw");if(e)e.innerHTML=spHtml()}}
     else if(a=="feat"){feat=!feat;cur="all";view="home";render()}
+    else if(a=="favorite"){
+      if(!need())return;
+      const ad=ads.find(x=>x.id===id);
+      if(!ad)return toast("هذا الإعلان غير متاح حالياً");
+      if(!/^[A-Za-z0-9_-]{1,128}$/.test(id))return toast("معرف الإعلان غير صالح");
+      const favoriteRef=doc(db,"favorites",me.uid+"_"+id);
+      if(savedAdIds.has(id)){await deleteDoc(favoriteRef);savedAdIds.delete(id);toast("أُزيل الإعلان من المفضلة")}
+      else{await setDoc(favoriteRef,{userId:me.uid,adId:id,createdAt:Date.now()});savedAdIds.add(id);toast("حُفظ الإعلان في المفضلة")}
+      render();
+    }
+
     else if(a=="swap"){mode=mode=="reg"?"login":"reg";render()}
     else if(a=="auth"){
       if(mode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");
@@ -614,7 +643,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900}[f.dataset.img])});
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
 onAuthStateChanged(auth,async u=>{
-  me=null;
+  me=null;savedAdIds=new Set();
   if(u){const s=await getDoc(doc(db,"users",u.uid));let adminClaim=false;try{adminClaim=(await getIdTokenResult(u)).claims.admin===true}catch(error){console.warn("تعذر التحقق من صلاحية المدير",error)}me=s.exists()?{uid:u.uid,...s.data(),adminClaim}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0,adminClaim};await loadMine()}
   else{mine=[];pend=[];orders=[];promos=[]}
   if(view=="admin"&&!isStaff())view="home";
