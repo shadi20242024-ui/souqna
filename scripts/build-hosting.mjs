@@ -78,7 +78,13 @@ if(mode==="staging"){
   };
 }
 const replacement="const app=initializeApp("+JSON.stringify(config)+");";
-const output=html.replace(original[0],()=>replacement);
+const environmentText=mode==="preview"
+  ?"⚠️ نسخة معاينة معزولة — لا تتصل بقاعدة البيانات ولا تعمل كنسخة منشورة"
+  :"🧪 بيئة اختبار سوقنا — بيانات تجريبية فقط — "+config.projectId;
+const environmentBanner='<div id="souqna-environment-banner" role="status" style="position:relative;z-index:110;padding:9px 14px;text-align:center;background:#fdf0c4;color:#1f2d48;border-bottom:2px solid #d89e25;font:700 14px system-ui,sans-serif" dir="rtl">'+environmentText+'</div>';
+const output=html.replace(original[0],()=>replacement)
+  .replace("</head>",'<meta name="robots" content="noindex,nofollow,noarchive">\n</head>')
+  .replace("<body>","<body>\n"+environmentBanner);
 assert.ok(!output.includes(production.apiKey),"Production Firebase key leaked into staging/preview.");
 assert.ok(!output.includes('projectId:"souqna-sweida"'),"HTML still points to production.");
 assert.ok(!output.includes(production.appId),"Production Firebase app ID leaked into staging/preview.");
