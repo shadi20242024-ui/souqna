@@ -232,9 +232,10 @@ const auth=getAuth(app),db=getFirestore(app);
 const secureFunctions=getFunctions(app,"europe-west1");
 let appCheckInitialized=false;
 function ensureAppCheck(key){if(appCheckInitialized||!key)return false;try{initializeAppCheck(app,{provider:new ReCaptchaV3Provider(key),isTokenAutoRefreshEnabled:true});appCheckInitialized=true;return true}catch(err){console.error("Firebase App Check initialization failed",err);return false}}
-const approveSecure=(name,requestId)=>httpsCallable(secureFunctions,name)({[name==="approveStarOrder"?"orderId":"requestId"]:requestId});
-const moderateSecure=(name,recordId,decision)=>httpsCallable(secureFunctions,name)({recordId,decision});
-const adminSecure=(name,data)=>httpsCallable(secureFunctions,name)(data);
+const verifiedCall=(name,data)=>appCheckInitialized?httpsCallable(secureFunctions,name)(data):Promise.reject(new Error("يجب أولاً تهيئة Firebase App Check بالمفتاح العام والتحقق منه قبل تنفيذ العمليات الإدارية المحمية."));
+const approveSecure=(name,requestId)=>verifiedCall(name,{[name==="approveStarOrder"?"orderId":"requestId"]:requestId});
+const moderateSecure=(name,recordId,decision)=>verifiedCall(name,{recordId,decision});
+const adminSecure=(name,data)=>verifiedCall(name,data);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
@@ -318,7 +319,32 @@ function dirHtml(){const L=dr.filter(x=>x.type==dtype&&x.active!==false&&(dtype!
 const adHtml=()=>site.adClient?`<ins class="adsbygoogle" style="display:block;margin:12px 0" data-ad-client="${esc(site.adClient)}" data-ad-slot="${esc(site.adSlot||"")}" data-ad-format="auto" data-full-width-responsive="true"></ins>`:"";
 function initAds(){if(site.adClient&&!document.getElementById("ads-js")){const e=document.createElement("script");e.id="ads-js";e.async=true;e.crossOrigin="anonymous";e.src="https://pagead2.googleapis.com/pagead/js/adsbygoogle.js?client="+encodeURIComponent(site.adClient);document.head.append(e)}}
 const pushAds=()=>document.querySelectorAll("ins.adsbygoogle").forEach(()=>{try{(window.adsbygoogle=window.adsbygoogle||[]).push({})}catch(e){}});
-function pick(f,k,w){if(!f)return;const im=new Image();im.onload=()=>{const r=Math.min(1,w/im.width),c=document.createElement("canvas");c.width=im.width*r;c.height=im.height*r;c.getContext("2d").drawImage(im,0,0,c.width,c.height);tmp[k]=c.toDataURL("image/jpeg",.65);toast("تم اختيار الصورة")};im.src=URL.createObjectURL(f)}
+let imageProcessing=0;
+function pick(f,k,w){
+  if(!f)return;
+  if(!["image/webp","image/png","image/jpeg"].includes(f.type)||f.size>8*1024*1024)return toast("الصورة يجب أن تكون PNG أو JPEG أو WebP وبحجم لا يتجاوز 8 ميغابايت");
+  imageProcessing++;
+  const im=new Image(),imageUrl=URL.createObjectURL(f);
+  const finish=()=>{imageProcessing--;URL.revokeObjectURL(imageUrl)};
+  im.onload=()=>{
+    try{
+      if(!im.naturalWidth||!im.naturalHeight)throw new Error("ملف صورة غير صالح");
+      const ratio=Math.min(1,(Number(w)||800)/im.naturalWidth),c=document.createElement("canvas");
+      c.width=Math.max(1,Math.round(im.naturalWidth*ratio));c.height=Math.max(1,Math.round(im.naturalHeight*ratio));
+      c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+      const encoded=c.toDataURL("image/webp",.78);
+      if(encoded.length>220000)throw new Error("الصورة كبيرة جداً بعد الضغط. اختر صورة أصغر");
+      tmp[k]=encoded;
+      const preview=$("#brand-preview-"+k);
+      if(preview&&preview.tagName==="IMG")preview.src=encoded;
+      const st=$("#brand-image-status");if(st&&["logo","banner"].includes(k))st.textContent="✅ أصبحت صورة "+(k==="logo"?"الشعار":"البنر")+" جاهزة للمعاينة. اضغط حفظ لتطبيقها.";
+      toast("تم تجهيز الصورة للمعاينة");
+    }catch(e){toast(e.message||"تعذر تجهيز الصورة");}
+    finally{finish();}
+  };
+  im.onerror=()=>{finish();toast("تعذر فتح الصورة المختارة")};
+  im.src=imageUrl;
+}
 const stImg=(s,k)=>s[k]?`background-image:url(${s[k]})`:"";
 const storesHtml=()=>stores.length?`<div class="sec"><b>🏪 متاجر سوقنا</b><a data-v="stores">عرض الكل ‹</a></div><div class="sr2">${[...stores].sort((x,y)=>(planOf(y)?.order||0)-(planOf(x)?.order||0)).map(s=>`<button class="stc" data-st="${s.id}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div><span>${esc(s.name)}</span>${planTag(s)}</button>`).join("")}</div>`:"";
 const planOf=s=>(s.planUntil>Date.now()&&plans.find(p=>p.id==s.plan&&p.active!==false))||plans.find(p=>p.id=="free")||null;
@@ -535,8 +561,8 @@ function render(){
 <button class="btn g" data-a="savesite">حفظ الأخبار والإعدادات</button>
 <span class="admin-hint">تنتهي المناوبة المسجلة بعد 24 ساعة، وتُزال حالات الوقود من الشريط عند مرور أكثر من 24 ساعة دون تحديث. هذه بيانات يدوية وليست تحديثات رسمية لحظية.</span>
 </div>
-<div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label><input type="checkbox" id="s-wxon" style="width:auto" ${site.weatherOn!==false?"checked":""}> إظهار الطقس</label>
-    <label class="mut">Firebase App Check — مفتاح موقع reCAPTCHA v3 العام (Public Site Key)</label><input id="s-appcheck" dir="ltr" placeholder="مفتاح الموقع من لوحة Firebase، وليس المفتاح السري" value="${esc(site.appCheckKey||"")}"><span class="admin-hint">بعد تهيئة App Check في Firebase وإضافة نطاق موقعك المسموح، سيُستخدم المفتاح العام لإرسال رموز التحقق في طلبات الوظائف الخلفية المحمية.</span>
+<div class="box"><h3>🎨 المظهر والإعدادات</h3><p class="mut">لاستعادة الهوية المتفق عليها، استخدم الملفين <b>logo_bag.webp</b> و<b>sweida_approved_hero_clean.webp</b> من حزمة صور سوقنا المعتمدة. اعرض المعاينة قبل الحفظ.</p><label class="mut">الشعار المعتمد — الحقيبة الذهبية</label><input type="file" accept="image/webp,image/png,image/jpeg" data-img="logo"><img id="brand-preview-logo" src="${esc(tmp.logo||site.logo||"logo.png")}" alt="معاينة شعار سوقنا" style="display:block;width:128px;max-width:100%;height:auto;object-fit:contain;border:1px solid var(--bd);border-radius:12px;margin:6px 0 15px;background:#092550"><label class="mut">بانر السويداء الرسمي (خلفية المدينة، منفصل عن البنر الإعلاني المدفوع)</label><input type="file" accept="image/webp,image/png,image/jpeg" data-img="banner">${tmp.banner||site.banner?`<img id="brand-preview-banner" src="${esc(tmp.banner||site.banner)}" alt="معاينة بنر السويداء" style="display:block;width:100%;height:auto;max-height:185px;object-fit:cover;border:1px solid var(--bd);border-radius:12px;margin:6px 0 15px">`:`<div id="brand-preview-banner" class="mut" style="padding:10px;border:1px dashed var(--bd);border-radius:10px;margin-bottom:10px">لا يوجد بنر مخصص بعد</div>`}<div id="brand-image-status" class="admin-hint" role="status">تُحفظ صور الهوية بصيغة WebP مضغوطة للحفاظ على حجم قاعدة البيانات.</div><label><input type="checkbox" id="s-wxon" style="width:auto" ${site.weatherOn!==false?"checked":""}> إظهار الطقس</label>
+    <label class="mut">Firebase App Check — مفتاح موقع reCAPTCHA v3 العام (Public Site Key)</label><input id="s-appcheck" dir="ltr" placeholder="مفتاح الموقع من لوحة Firebase، وليس المفتاح السري" value="${esc(site.appCheckKey||"")}"><span class="admin-hint">بعد تهيئة App Check في Firebase وإضافة نطاق موقعك المسموح، سيُستخدم المفتاح العام لإرسال رموز التحقق في طلبات الوظائف الخلفية المحمية.</span><div class="mut" style="margin:6px 0 12px;padding:8px;background:#edf2ff;border-radius:10px"><b>${appCheckInitialized?"✅ تم بدء مكتبة App Check في المتصفح":"⚠️ لم يُهيأ App Check في المتصفح"}</b> · هذا لا يؤكد نجاح التحقق لدى Firebase. تحقق من النطاق والرمز في بيئة الاختبار. لا تدخل المفتاح السري أبداً.</div>
     <input id="s-adc" dir="ltr" placeholder="Google AdSense: ca-pub-XXXXXXXXXXXXXXXX" value="${esc(site.adClient||"")}"><input id="s-ads" dir="ltr" placeholder="رقم وحدة الإعلان (slot)" value="${esc(site.adSlot||"")}"><label class="mut">الحد الأقصى لمتاجر الحساب الواحد</label><input id="s-mx" type="number" min="1" value="${site.maxStores??3}"><div class="acts"><button class="btn" data-a="savesite">حفظ</button><button class="btn l" data-a="clrimg">حذف الشعار والبانر المخصصين</button></div></div>
     <div class="box"><h3>🌟 البانر الرئيسي المدفوع — حجز إعلاني مميز</h3><p class="mut">الإعلان يظهر في أعلى الرئيسية بصورة كبيرة بعد تأكيد الإدارة استلام الدفع يدوياً، ويختفي تلقائياً بانتهاء المدة أو عند إيقافه.</p>${sp.map(s=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(s.company)} · ${Math.max(0,Math.ceil((s.to-Date.now())/864e5))} يوم · ${s.paymentVerified===true?"✅ دفع مؤكد":"⏳ دفع غير موثق"}</span><button class="btn l" data-a="editsp" data-id="${s.id}">تعديل</button><button class="btn l" data-a="togsp" data-id="${s.id}">${s.active?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="delsp" data-id="${s.id}">حذف</button></div>`).join("")}
     <h4>${editSp?"تعديل إعلان "+esc(editSp.company):"إعلان مدفوع جديد"}</h4>
@@ -568,7 +594,7 @@ function render(){
     `<h3>طلبات الخدمات (${sorders.filter(x=>x.status=="new"||x.status=="progress").length})</h3>${sorders.filter(x=>x.status=="new"||x.status=="progress").map(x=>`<div class="box"><b>${esc(x.userName)}</b> · ${esc(x.serviceName)}${x.partnerName?" · "+esc(x.partnerName):""} <span class="tag g">${SL[x.status]}</span><div class="mut">${esc(x.details)}</div><div class="acts"><button class="btn" data-a="sost" data-s="progress" data-id="${x.id}">قيد التنفيذ</button><button class="btn g" data-a="sost" data-s="done" data-id="${x.id}">مكتمل</button><button class="btn l" data-a="sost" data-s="rejected" data-id="${x.id}">رفض</button></div></div>`).join("")}
     <h3>متاجر بانتظار المراجعة (${pendStores.length})</h3>${pendStores.map(s=>`<div class="box"><b>${esc(s.name)}</b> · ${esc(s.ownerName)}<div class="mut">${esc(s.desc||"")}</div><div class="acts"><button class="btn" data-a="stok" data-id="${s.id}">قبول</button><button class="btn l" data-a="stno" data-id="${s.id}">رفض</button><button class="btn r" data-a="delst" data-id="${s.id}">حذف</button></div></div>`).join("")||'<p class="mut">لا توجد متاجر بانتظار المراجعة.</p>'}<h3>إعلانات بانتظار المراجعة (${pend.length})</h3><div class="grid">${pend.map(a=>card(a,"pend")).join("")||'<p class="mut">لا شيء بانتظار المراجعة.</p>'}</div>`;
   }else{
-    A.innerHTML=!me?loginBox():`<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
+    A.innerHTML=!me?loginBox():`<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="refreshrole">🔐 تحديث صلاحيات حسابي</button><button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
   }
 }
 function shrink(f){if(!f)return;const im=new Image();im.onload=()=>{const k=Math.min(1,600/im.width),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);photo=c.toDataURL("image/jpeg",.6)};im.src=URL.createObjectURL(f)}
@@ -606,6 +632,7 @@ document.addEventListener("click",async e=>{
     }
     else if(a=="reset"){await sendPasswordResetEmail(auth,val("#l-mail"));toast("أُرسل رابط استعادة كلمة المرور إلى بريدك")}
     else if(a=="out"){await signOut(auth)}
+    else if(a=="refreshrole"){if(!auth.currentUser)return toast("يجب تسجيل الدخول أولاً");const result=await getIdTokenResult(auth.currentUser,true);me.adminClaim=result.claims.admin===true;await loadMine();toast(me.adminClaim?"تم التحقق من صلاحية المدير":"تم التحديث. لا توجد صلاحية مدير موثوقة على هذا الحساب");render()}
     else if(a=="post"){
       const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
       if(!t||!val("#a-price")||p.length<9)return toast("أكمل العنوان والسعر ورقم واتساب صحيح");
@@ -656,7 +683,7 @@ document.addEventListener("click",async e=>{
     else if(a=="cancelst"){editSt=null;render()}
     else if(a=="delst"){if(!confirm("حذف المتجر؟"))return;await deleteDoc(doc(db,"stores",id));await loadPublic();await loadMine();render()}
     else if(a=="stok"||a=="stno"){await moderateSecure("moderateStore",id,a=="stok"?"approved":"rejected");await loadPublic();await loadMine();toast(a=="stok"?"تمت الموافقة على المتجر":"تم رفض المتجر");render()}
-    else if(a=="savesite"){const speed=Number(val("#s-tkspeed"));if(!Number.isInteger(speed)||speed<14||speed>120)return toast("مدة دورة الأخبار بين 14 و120 ثانية");await setDoc(doc(db,"settings","site"),{ticker:val("#s-tk").slice(0,2500),tickerOn:$("#s-tkon").checked,tickerSpeed:speed,showPharmacies:$("#s-showpharm").checked,showFuel:$("#s-showfuel").checked,showOffers:$("#s-showoffers").checked,weatherOn:$("#s-wxon").checked,appCheckKey:val("#s-appcheck").slice(0,180),adClient:val("#s-adc"),adSlot:val("#s-ads"),maxStores:+val("#s-mx")||3,logo:tmp.logo||site.logo||"",banner:tmp.banner||site.banner||""},{merge:true});tmp.logo=tmp.banner="";await loadPublic();toast("تم حفظ الأخبار وإعدادات الموقع");render()}
+    else if(a=="savesite"){if(imageProcessing)return toast("لم ينته تجهيز الصور بعد، أعد الحفظ بعد ظهور المعاينة");const speed=Number(val("#s-tkspeed"));if(!Number.isInteger(speed)||speed<14||speed>120)return toast("مدة دورة الأخبار بين 14 و120 ثانية");await setDoc(doc(db,"settings","site"),{ticker:val("#s-tk").slice(0,2500),tickerOn:$("#s-tkon").checked,tickerSpeed:speed,showPharmacies:$("#s-showpharm").checked,showFuel:$("#s-showfuel").checked,showOffers:$("#s-showoffers").checked,weatherOn:$("#s-wxon").checked,appCheckKey:val("#s-appcheck").slice(0,180),adClient:val("#s-adc"),adSlot:val("#s-ads"),maxStores:+val("#s-mx")||3,logo:tmp.logo||site.logo||"",banner:tmp.banner||site.banner||""},{merge:true});tmp.logo=tmp.banner="";await loadPublic();toast("تم حفظ الأخبار وإعدادات الموقع");render()}
     else if(a=="clrimg"){await setDoc(doc(db,"settings","site"),{logo:"",banner:""},{merge:true});await loadPublic();render()}
     else if(a=="editsp"){editSp=sp.find(x=>x.id===id)||null;render();scrollTo(0,0)}
     else if(a=="cancelsp"){editSp=null;tmp.sp="";render()}
