@@ -125,7 +125,7 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
 
   let subscriptionRef;
 
-  let subscriptionRef, topupRef;
+  let topupRef;
   await t.test("Customer requests stars and subscription; admin finance callable handles billing", async () => {
     topupRef = await addDoc(collection(db, "starOrders"), {
       userId: uid, userName: "زبون تجريبي", stars: 30, status: "pending", createdAt: Date.now()
