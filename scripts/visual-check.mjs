@@ -6,7 +6,9 @@ import { chromium } from "playwright";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 
-const ROOT = process.cwd();
+const STAGING = process.env.SOUQNA_VISUAL_STAGING === "1";
+const ROOT = STAGING ? resolve(process.cwd(),"dist") : process.cwd();
+const screenshotName = name => "artifacts/souqna-" + (STAGING?"staging-":"") + name;
 const PROJECT_ID = "demo-souqna-rules";
 const MIME = {
   ".html":"text/html; charset=utf-8",
@@ -33,8 +35,15 @@ async function startServer() {
       if(filename.endsWith("index.html")) {
         let html=bytes.toString("utf8");
         assert.ok(html.includes(anchor),"Firebase startup anchor not found");
-        assert.ok(html.includes('projectId:"souqna-sweida"'),"Original project id not found");
-        html=html.replace('projectId:"souqna-sweida"','projectId:"demo-souqna-rules"');
+        if(STAGING){
+          assert.ok(html.includes('"projectId":"demo-souqna-rules"'),"Built staging project must use the isolated emulator ID");
+          assert.ok(!html.includes('projectId:"souqna-sweida"'),"Staging bundle leaked production config");
+          assert.ok(html.includes('id="souqna-environment-banner"'),"Staging banner is missing");
+          assert.ok(html.includes('name="robots" content="noindex,nofollow,noarchive"'),"Staging should be non-indexable");
+        }else{
+          assert.ok(html.includes('projectId:"souqna-sweida"'),"Original project id not found");
+          html=html.replace('projectId:"souqna-sweida"','projectId:"demo-souqna-rules"');
+        }
         html=html.replace(anchor,()=>
           authImport+"\n"+storeImport+"\n"+anchor+"\n"+
           'connectAuthEmulator(auth,"http://127.0.0.1:9099",{disableWarnings:true});\n'+
@@ -109,10 +118,14 @@ try {
       page.on("requestfailed",req=>errors.push("REQUEST: "+req.url()+" "+req.failure()?.errorText));
       const response=await page.goto("http://127.0.0.1:4173/",{waitUntil:"domcontentloaded",timeout:45000});
       assert.equal(response.status(),200);
+      if(STAGING){
+        await page.locator("#souqna-environment-banner").filter({hasText:"بيئة اختبار سوقنا"}).waitFor({timeout:5000});
+        assert.ok((await page.content()).includes('"projectId":"demo-souqna-rules"'));
+      }
       try {
         await page.locator("#list .item").first().waitFor({timeout:20000});
       } catch(error) {
-        await page.screenshot({path:"artifacts/souqna-"+item.name+"-debug.png",fullPage:true});
+        await page.screenshot({path:screenshotName(item.name+"-debug.png"),fullPage:true});
         console.error("VISUAL ERROR",item.name,JSON.stringify(errors).slice(0,3500));
         console.error("VISIBLE CONTENT",(await page.locator("#app").innerText().catch(()=>"")).slice(0,1500));
         throw error;
@@ -123,7 +136,7 @@ try {
       assert.ok(nav,"Navigation not rendered");
       if(item.mobile)assert.ok(nav.y>=item.viewport.height/2,"Mobile navigation should be at bottom");
       else assert.ok(nav.x>item.viewport.width/2,"Desktop navigation should be on the side");
-      await page.screenshot({path:"artifacts/souqna-"+item.name+".png",fullPage:true,animations:"disabled"});
+      await page.screenshot({path:screenshotName(item.name+".png"),fullPage:true,animations:"disabled"});
       await page.locator("#newsHost .tk").first().waitFor({timeout:5000});
       const sponsorTitle=page.locator("#spw .premium-banner h3");
       await sponsorTitle.waitFor({timeout:7000});
@@ -146,7 +159,7 @@ try {
         await page.locator("#sl .dr").first().waitFor({timeout:8000});
         await page.locator("#newsHost .tk").first().waitFor({timeout:4000});
         assert.ok((await page.locator("#app").innerText()).includes("متجر تجريبي"));
-        await page.screenshot({path:"artifacts/souqna-desktop-stores.png",fullPage:true,animations:"disabled"});
+        await page.screenshot({path:screenshotName("desktop-stores.png"),fullPage:true,animations:"disabled"});
         console.log("PREMIUM NAVIGATION OK", "desktop search, ads and stores; global news across pages");
       }
       assert.deepEqual(errors,[],"Unexpected browser script errors");
@@ -183,7 +196,7 @@ try {
     await page.locator('#nav [data-v="favorites"]').click();
     await page.locator('#app .desktop-page-title h2').filter({hasText:"إعلاناتي المفضلة"}).waitFor({timeout:15000});
     await page.locator('#app .item').filter({hasText:"سيارة مستعملة للبيع"}).waitFor({timeout:15000});
-    await page.screenshot({path:"artifacts/souqna-favorites.png",fullPage:true,animations:"disabled"});
+    await page.screenshot({path:screenshotName("favorites.png"),fullPage:true,animations:"disabled"});
     await page.reload({waitUntil:"domcontentloaded"});
     await page.locator('#list .item [data-a="toggleFav"][aria-pressed="true"]').first().waitFor({timeout:20000});
     await page.locator('#nav [data-v="favorites"]').click();
@@ -213,13 +226,13 @@ try {
     await page.locator("#t-a").fill("السويداء");
     await page.locator('#app [data-a="savest"]').click();
     await page.locator("#app .box").filter({hasText:"متجر فحص سوقنا"}).first().waitFor({timeout:20000});
-    await page.screenshot({path:"artifacts/souqna-browser-flow.png",fullPage:true,animations:"disabled"});
+    await page.screenshot({path:screenshotName("browser-flow.png"),fullPage:true,animations:"disabled"});
     assert.deepEqual(failures,[],"No uncaught errors after signup/ad/store interactions");
     console.log("UI CUSTOMER FLOW OK",email,"registered, ad pending, store pending");
   } catch(error) {
     const page=customerContext.pages()[0];
     if(page) {
-      await page.screenshot({path:"artifacts/souqna-browser-flow-debug.png",fullPage:true}).catch(()=>{});
+      await page.screenshot({path:screenshotName("browser-flow-debug.png"),fullPage:true}).catch(()=>{});
       console.error("UI CUSTOMER FLOW DEBUG", (await page.locator("#app").innerText().catch(()=>"")).slice(0,1800));
     }
     throw error;
@@ -311,7 +324,7 @@ try {
       assert.equal((await getDoc(doc(ctx.firestore(),"users",authData.localId))).data().stars,16);
     });
     console.log("UI RECEIPT VERIFICATION OK","manual attestation required and duplicates rejected");
-    await page.screenshot({path:"artifacts/souqna-admin-receipts.png",fullPage:true,animations:"disabled"});
+    await page.screenshot({path:screenshotName("admin-receipts.png"),fullPage:true,animations:"disabled"});
 
     const pendingAd=page.locator("#app .item").filter({hasText:"إعلان فحص واجهة سوقنا"});
     await pendingAd.locator('[data-a="ok"]').waitFor({timeout:20000});
@@ -322,7 +335,7 @@ try {
     await page.locator('#nav [data-v="home"]').click();
     await page.locator("#list .item").filter({hasText:"إعلان فحص واجهة سوقنا"}).waitFor({timeout:20000});
     await page.locator("#app .stc").filter({hasText:"متجر فحص سوقنا"}).waitFor({timeout:20000});
-    await page.screenshot({path:"artifacts/souqna-admin-approved.png",fullPage:true,animations:"disabled"});
+    await page.screenshot({path:screenshotName("admin-approved.png"),fullPage:true,animations:"disabled"});
     await page.locator('#nav [data-v="admin"]').click();
     await page.locator("#adminDashboard .admin-stat").first().waitFor({timeout:15000});
     const metric=name=>page.locator("#adminDashboard .admin-stat").filter({hasText:name}).first();
@@ -335,14 +348,14 @@ try {
     await page.locator("#refreshAdmin").click();
     await page.locator("#adminDashboard .admin-stat").first().waitFor({timeout:15000});
     assert.equal(await metric("الإعلانات المنشورة").getAttribute("data-value"),"2");
-    await page.screenshot({path:"artifacts/souqna-admin-metrics.png",fullPage:true,animations:"disabled"});
+    await page.screenshot({path:screenshotName("admin-metrics.png"),fullPage:true,animations:"disabled"});
     console.log("UI ADMIN DASHBOARD OK","Firestore-backed metrics, owner-only ledger and manual refresh");
     assert.deepEqual(errors,[],"Admin moderation flow should not throw script errors");
     console.log("UI ADMIN MODERATION OK","ad approved, store approved, both visible on homepage");
   } catch(error) {
     const page=adminContext.pages()[0];
     if(page) {
-      await page.screenshot({path:"artifacts/souqna-admin-debug.png",fullPage:true}).catch(()=>{});
+      await page.screenshot({path:screenshotName("admin-debug.png"),fullPage:true}).catch(()=>{});
       console.error("UI ADMIN DEBUG",(await page.locator("#app").innerText().catch(()=>"")).slice(0,2000));
     }
     throw error;
