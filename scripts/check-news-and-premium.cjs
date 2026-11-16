@@ -223,7 +223,7 @@ test("unsafe image schemes are rejected by the actual client sanitizer",()=>{
   const helperStart=source.indexOf("const safeImageSrc=value=>{");
   const helperEnd=source.indexOf("const IC=",helperStart);
   const context=vm.createContext({URL,esc:escapeHtml,encodeURI,encodeURIComponent});
-  vm.runInContext(source.slice(helperStart,helperEnd),context);
+  vm.runInContext(source.slice(helperStart,helperEnd)+"\nthis.safeImageSrc=safeImageSrc;this.safeBackgroundImage=safeBackgroundImage;",context);
   for(const value of ["javascript:alert(1)","data:image/svg+xml,<svg onload=alert(1)>","http://example.com/a.jpg",'https://example.com/pic.png" onerror="alert(1)']){
     if(value.includes("https://")){
       const rendered=context.safeBackgroundImage(value);
