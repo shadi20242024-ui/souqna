@@ -293,3 +293,18 @@ test("screenshot-consistent controls include accessible search, filters and 12-i
   assert.match(source,/document\.addEventListener\("input",updateAdFilter\)/);
   assert.match(source,/data-a="more"/);
 });
+
+test("new registration waits for its user profile before showing account dashboard",()=>{
+  const start=source.indexOf('if(a=="auth"){');
+  const end=source.indexOf('else if(a=="reset")',start);
+  assert(start>=0&&end>start,"Could not locate registration handler");
+  const authBlock=source.slice(start,end);
+  assert.match(authBlock,/createUserWithEmailAndPassword/);
+  assert.match(authBlock,/const profile=\{name:n,email:u\.user\.email,role:"user",stars:0\}/);
+  const write=authBlock.indexOf('await setDoc(doc(db,"users",u.user.uid),profile)');
+  const read=authBlock.indexOf('await loadMine()');
+  const render=authBlock.indexOf('view="acc";mode="login";render()');
+  assert(write>=0&&read>write&&render>read,"Registration must persist profile before refreshing UI");
+  assert.match(authBlock,/adminClaim:false/);
+  assert.match(authBlock,/auth\.currentUser\?\.uid===u\.user\.uid/);
+});
