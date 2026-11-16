@@ -4,7 +4,7 @@ This branch is a proposed update, **not a production release**. It preserves the
 
 ## Local source check
 
-Run `npm install` and then `npm test` (Node 22+, Java 21+); this checks source, cache assets and Firestore permissions with the local emulator. Run `node scripts/check-souqna.mjs` for the lightweight source check alone. It validates JavaScript syntax and confirms key UI features are present. It does **not** verify UI rendering, Firebase integration, or deployed security.
+Run `npm install`, `npm --prefix functions install`, then `npm test` (Node 22+, Java 21+); this checks source, cache assets, Auth/Firestore/Functions emulators, and trusted financial approval flows. Run `node scripts/check-souqna.mjs` for the lightweight source check alone. It validates JavaScript syntax and confirms key UI features are present. It does **not** verify UI rendering, Firebase integration, or deployed security.
 
 ## Before merging or publishing
 
@@ -16,7 +16,7 @@ Run `npm install` and then `npm test` (Node 22+, Java 21+); this checks source, 
 6. Enter news text and on-duty pharmacy/fuel-station data as admin; confirm both ribbons display appropriately, and the second is **below the paid sponsor banner**. Verify the settings toggles and reduced-motion behavior.
 7. Create a sponsor request as a regular user. Admin should see it; the sponsor must **not appear publicly before** the admin explicitly confirms payment. Test rejection, repeat approval attempts, and Firestore transaction security.
 8. Check mobile screens, keyboard navigation, assistive technology labels, PWA installation, HTTPS, cache updates, and offline fallback.
-9. Audit billing logic for stars, promotions, store subscriptions, and all admin approvals. Star top-up, store subscriptions, ad promotion, banner activation and manual star adjustments now use client-side Firestore transactions. **This is not a substitute for trusted server-side billing or payment verification**; keep manual confirmation and audit other financial paths.
+9. Audit billing logic for stars, promotions, store subscriptions, and all admin approvals. Star top-up, store subscriptions, ad promotion, paid banner activation, and manual star adjustments now use the **server-side** `souqnaFinance` callable function with atomic Firestore transactions and admin authorization. User-side writes to balances, subscription state, paid sponsorship approvals and ledgers are denied by the draft rules. **The admin's confirmation is not bank/payment-provider verification**; manual reconciliation with actual receipts is still required.
 10. Monitor Firestore document-size limits. Compressed images are currently embedded in documents; for scale and production reliability, migrate uploads to protected object storage.
 
 ## Infrastructure notes
@@ -26,4 +26,7 @@ Run `npm install` and then `npm test` (Node 22+, Java 21+); this checks source, 
 - The 1-star = USD 1 convention is a **business pricing rule**, not automatic online payment processing.
 - Fuel-station and pharmacy status content is entered by administrators; it must not be represented as independently verified real-time data.
 - Account-level `maxStores` and store-level `maxAds` are currently enforced by client UI; server-side enforcement is necessary before production.
-- Role and billing controls must be enforced by Firebase Security Rules plus trusted server-side transactions for critical financial actions.
+- Role and billing controls are now enforced in the `firestore.rules` draft and server-side callable. Additional end-to-end production security review is still needed.
+- Firebase Functions deployment **requires Blaze billing**, despite no-cost monthly usage allowances. Local emulator testing can remain free. Set a billing budget, alerts and Cloud Run maximum instances before deployment.
+- Existing production users may still have an older cached site/service worker. Schedule a coordinated deployment of Functions, Security Rules and the client and check old-tab behavior. **Never deploy these restrictive rules alone** while the old client still performs direct billing writes.
+- Additional pre-launch requirements: implement App Check where practical, explicitly log manual payment verification references, audit role changes, verify authorization revocations and migrate base64 media out of Firestore at scale.
