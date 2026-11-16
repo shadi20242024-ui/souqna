@@ -1,0 +1,235 @@
+/* SOUQNA responsive presentation — blue and gold visual language */
+:root {
+  --surface-shadow: 0 12px 30px rgba(10, 42, 114, .075);
+}
+body {
+  background: radial-gradient(ellipse 1100px 450px at 85% 0%, rgba(63, 117, 238, .09), transparent 66%), var(--bg);
+}
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid #f4b400;
+  outline-offset: 3px;
+}
+.item, .box, .dr {
+  box-shadow: var(--surface-shadow);
+}
+.item {
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px rgba(10, 42, 114, .12);
+}
+.item .img {
+  height: 175px;
+}
+.item .bd b {
+  line-height: 1.75;
+}
+.cc {
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(160deg,#fff 0%,#f3f7ff 60%,#e8eeff 100%);
+  border-color: #d8e3ff;
+  border-radius: 18px;
+  min-height: 98px;
+  box-shadow: inset 0 1px 0 #ffffff, 0 7px 20px #0a2a720c;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.cc::before {
+  content: "";
+  position: absolute;
+  top: -45px;
+  left: -20px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: radial-gradient(circle,#f4b40025, transparent 70%);
+  pointer-events: none;
+}
+.cc .ci, .cc i {
+  filter: drop-shadow(0 5px 5px #12275b28);
+  transition: transform .2s ease;
+}
+.cc:hover { transform: translateY(-3px);box-shadow:0 10px 22px #0a2a7220; }
+.cc:hover .ci, .cc:hover i { transform: scale(1.07); }
+.sc {
+  box-shadow: 0 5px 12px #12275b1c;
+}
+.spn {
+  min-height: 125px;
+  box-shadow: 0 9px 24px rgba(10,42,114,.2);
+}
+.bn {
+  box-shadow: 0 14px 35px #0a2a7227;
+}
+.btn, .gold {
+  transition: transform .15s ease, filter .15s ease;
+}
+.btn:hover, .gold:hover { filter: brightness(1.05); }
+.btn:active, .gold:active { transform: scale(.98); }
+
+@media (min-width: 1024px) {
+  body {
+    padding: 0 244px 0 0;
+  }
+  nav {
+    z-index: 50;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: auto;
+    width: 244px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 110px 14px 22px;
+    overflow-y: auto;
+    border: 0;
+    border-left: 1px solid #ffffff20;
+    background: linear-gradient(180deg, #071e56 0%, #0a2a72 46%, #123b99 100%);
+    box-shadow: -6px 0 30px #0a2a7226;
+  }
+  nav::before {
+    content: "SOUQNA  ✦  سوقنا";
+    position: absolute;
+    top: 35px;
+    right: 15px;
+    left: 15px;
+    color: #ffd54f;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: .4px;
+    text-align: center;
+    text-shadow: 0 2px 8px #0002;
+  }
+  nav button {
+    flex: none;
+    width: 100%;
+    color: #f6f8ff;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 14px 16px;
+    min-height: 57px;
+    text-align: right;
+    border: 1px solid transparent;
+    border-radius: 15px;
+    background: #ffffff0e;
+    transition: background .2s, border-color .2s;
+  }
+  nav button br { display: none; }
+  nav button.on {
+    color: #ffe08a;
+    border-color: #ffd75c7a;
+    background: linear-gradient(105deg,#ffffff26,#ffd65913);
+  }
+  nav button:hover {
+    background: #ffffff24;
+  }
+  nav .pl {
+    flex: none;
+    margin: 0;
+    order: 0;
+    color: #fff;
+  }
+  nav .pl i {
+    display: inline-flex;
+    vertical-align: middle;
+    width: 30px;
+    height: 30px;
+    margin: 0 0 0 6px;
+    font-size: 23px;
+    background: linear-gradient(160deg,#ffd54a,#f4a000);
+  }
+  .hd {
+    position: relative;
+    border-radius: 0 0 21px 21px;
+    padding: 16px 28px;
+    box-shadow: 0 10px 30px #0a2a721a;
+  }
+  .hd.big {
+    padding: 20px 28px 24px;
+    border-radius: 0 0 24px 24px;
+  }
+  .hd .sr {
+    max-width: 710px;
+    margin: 15px auto 0;
+    box-shadow: 0 8px 24px #071e562d;
+  }
+  main {
+    max-width: 1310px;
+    padding: 22px 32px 48px;
+  }
+  .cg {
+    grid-template-columns: repeat(5, minmax(0,1fr));
+    gap: 13px;
+  }
+  .cc {
+    min-height: 120px;
+    font-size: 14px;
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fill,minmax(255px,1fr));
+    gap: 17px;
+  }
+  .img {
+    height: 190px;
+  }
+  .box {
+    padding: 20px;
+  }
+  .bn {
+    min-height: 190px;
+    font-size: 21px;
+  }
+  .bn .bp {
+    transform: scale(1.15);
+    margin-left: 35px;
+  }
+  .sec {
+    font-size: 20px;
+    margin-top: 19px;
+    margin-bottom: 13px;
+  }
+  .qt { gap: 12px; }
+  .qt>* { font-size: 14px;padding: 14px 8px; }
+  .tk { min-height: 45px; }
+}
+@media (min-width: 1024px) and (max-width: 1200px) {
+  body { padding-right: 210px; }
+  nav { width: 210px; }
+  main { padding: 18px 22px; }
+  .cg { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+@media (max-width: 480px) {
+  .hd.big { padding-bottom: 16px; }
+  .top img { width: 62px;height: 62px; }
+  .sr2 { gap: 7px; }
+  .sc { width: 58px;height: 58px; }
+  .cg { gap: 7px; }
+  .cc { min-height: 86px;font-size: 11px; }
+  .ci { transform: scale(.9); }
+  .bn { padding: 12px; }
+  .bp { transform: scale(.78);transform-origin: center; margin-right:-14px;margin-left:-12px; }
+  .row { flex-wrap: wrap; }
+  .row>* { min-width: 120px; }
+  nav button { font-size: 10px; }
+  nav .pl { flex-basis: 57px; }
+  nav .pl i { width: 54px;height:54px;font-size:32px; }
+  .tkw span { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc, .item, .btn, .gold, .cc .ci, .cc i {
+    transition: none;
+  }
+  .item:hover, .cc:hover, .cc:hover .ci, .cc:hover i {
+    transform: none;
+  }
+}
