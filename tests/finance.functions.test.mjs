@@ -110,10 +110,11 @@ test("SOUQNA server finance: permission, cost integrity, idempotence and ledgers
   });
 
   await t.test("Manual corrections require a reason and never make balance negative",async()=>{
-    await assert.rejects(()=>owner.call({action:"adjustBalance",userId:customer.uid,delta:-10000,note:"اختبار تخفيض"}));
-    await assert.rejects(()=>owner.call({action:"adjustBalance",userId:customer.uid,delta:5,note:"x"}));
-    await assert.rejects(()=>customer.call({action:"adjustBalance",userId:customer.uid,delta:5000,note:"محاولة تزوير"}));
-    await owner.call({action:"adjustBalance",userId:customer.uid,delta:-5,note:"تسوية يدوية محاسبية"});
+    await assert.rejects(()=>owner.call({action:"adjustBalance",userId:customer.uid,delta:-10000,note:"اختبار تخفيض",operationId:"manual-neg"}));
+    await assert.rejects(()=>owner.call({action:"adjustBalance",userId:customer.uid,delta:5,note:"x",operationId:"manual-short"}));
+    await assert.rejects(()=>customer.call({action:"adjustBalance",userId:customer.uid,delta:5000,note:"محاولة تزوير",operationId:"manual-bypass"}));
+    await owner.call({action:"adjustBalance",userId:customer.uid,delta:-5,note:"تسوية يدوية محاسبية",operationId:"manual-settlement"});
+    await assert.rejects(()=>owner.call({action:"adjustBalance",userId:customer.uid,delta:-5,note:"تسوية يدوية محاسبية",operationId:"manual-settlement"}));
     assert.equal((await getDoc(doc(owner.db,"users",customer.uid))).data().stars,65);
   });
 
