@@ -30,3 +30,12 @@ Run `npm install`, `npm --prefix functions install`, then `npm test` (Node 22+, 
 - Firebase Functions deployment **requires Blaze billing**, despite no-cost monthly usage allowances. Local emulator testing can remain free. Set a billing budget, alerts and Cloud Run maximum instances before deployment.
 - Existing production users may still have an older cached site/service worker. Schedule a coordinated deployment of Functions, Security Rules and the client and check old-tab behavior. **Never deploy these restrictive rules alone** while the old client still performs direct billing writes.
 - Additional pre-launch requirements: implement App Check where practical, explicitly log manual payment verification references, audit role changes, verify authorization revocations and migrate base64 media out of Firestore at scale.
+
+## New administrator analytics prelaunch review
+
+- The administration dashboard reads **Firestore document snapshots**, not placeholder numbers. It shows approved ads/stores, active paid listings and sponsors, pending moderation/service/finance requests.
+- Account count, total wallet stars and positive/negative ledger movements are **admin-only**. Moderators see only operational counts, not user balances. **Stars credited/debited do not equal verified revenue, cash collected or net profit.**
+- Data is refreshed manually; it is **not a streaming real-time dashboard**. The refresh time is displayed.
+- Current owner queries enumerate users and transaction records. This becomes costly and slow with growth; migrate to trusted server-side materialized aggregates / paginated views, and cross-check ledger balances before scale.
+- Final browser tests must verify: owner-only cards, customer restrictions, accurate values from test Firebase data, manual refresh, and desktop/mobile layout.
+- Do not publish the analytics module without adding `assets/admin-metrics.js` to Hosting dist and PWA caches (now configured in the development branch).
