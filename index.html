@@ -89,6 +89,7 @@ import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-ap
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,increment,runTransaction}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import{getFunctions,httpsCallable,connectFunctionsEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
+import{summarizeAdmin}from"./assets/admin-metrics.js";
 const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
 const auth=getAuth(app),db=getFirestore(app),functions=getFunctions(app,"us-central1");
 const finance=async (action,id,extra={})=>{
@@ -108,7 +109,7 @@ const bgImage=raw=>{const safe=safeImage(raw);return safe?`background-image:url(
 
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
-let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
+let adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
@@ -198,7 +199,8 @@ async function loadMine(){
   const u=await getDoc(doc(db,"users",me.uid));if(u.exists())Object.assign(me,u.data());
   mine=(await q2("ads","ownerId",me.uid)).sort((x,y)=>y.createdAt-x.createdAt);favorites=await q2("favorites","userId",me.uid);myStores=await q2("stores","ownerId",me.uid).catch(()=>[]);const byT=(x,y)=>y.createdAt-x.createdAt;txs=(await q2("transactions","userId",me.uid).catch(()=>[])).sort(byT);notifs=(await q2("notifs","userId",me.uid).catch(()=>[])).sort(byT);mySponsorRequests=(await q2("sponsorRequests","userId",me.uid).catch(()=>[])).sort(byT);mySorders=(await q2("sorders","userId",me.uid).catch(()=>[])).sort(byT);
   if(isStaff()){pend=(await q2("ads","status","pending")).sort((x,y)=>y.createdAt-x.createdAt);pendStores=await q2("stores","status","pending").catch(()=>[]);sorders=(await getDocs(collection(db,"sorders")).catch(()=>({docs:[]}))).docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.createdAt-x.createdAt);
-    if(isAdm()){orders=await q2("starOrders","status","pending");promos=await q2("promos","status","pending");subs=await q2("subs","status","pending").catch(()=>[]);pendingSponsorRequests=(await q2("sponsorRequests","status","pending").catch(()=>[])).sort(byT);allUsers=(await getDocs(collection(db,"users"))).docs.map(d=>({id:d.id,...d.data()}));allTx=(await getDocs(collection(db,"transactions"))).docs.map(d=>d.data())}}
+    if(isAdm()){orders=await q2("starOrders","status","pending");promos=await q2("promos","status","pending");subs=await q2("subs","status","pending").catch(()=>[]);pendingSponsorRequests=(await q2("sponsorRequests","status","pending").catch(()=>[])).sort(byT);allUsers=(await getDocs(collection(db,"users"))).docs.map(d=>({id:d.id,...d.data()}));allTx=(await getDocs(collection(db,"transactions"))).docs.map(d=>({id:d.id,...d.data()}))}}
+    adminUpdatedAt=Date.now();
 }
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
@@ -257,6 +259,59 @@ function loginBox(){
   <input id="l-mail" type="email" dir="ltr" placeholder="البريد الإلكتروني"><input id="l-pass" type="password" dir="ltr" placeholder="كلمة المرور (6 أحرف على الأقل)">
   <button class="btn" style="width:100%" data-a="auth">${r?"إنشاء الحساب":"دخول"}</button>
   <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
+
+function adminDashboardHtml(){
+  if(!isStaff())return "";
+  const results=summarizeAdmin({
+    ads,stores,pend,pendStores,sorders,sp,orders,promos,subs,pendingSponsorRequests,
+    users:isAdm()?allUsers:[],
+    transactions:isAdm()?allTx:[],
+    isOwner:isAdm()
+  });
+  const card=(icon,label,value,description)=>`<div class="admin-stat" role="group" aria-label="${esc(label)}">
+    <span class="admin-stat-icon" aria-hidden="true">${icon}</span>
+    <div class="admin-stat-name">${esc(label)}</div>
+    <strong class="admin-stat-value" dir="ltr">${Number(value).toLocaleString("ar-SY")}</strong>
+    <small>${esc(description)}</small>
+  </div>`;
+  const p=results.publicStats,m=results.pending,a=results.owner;
+  const publicCards=[
+    ["📢","الإعلانات المنشورة",p.publishedAds,"إعلانات وافقت الإدارة على نشرها"],
+    ["🏪","المتاجر المنشورة",p.publishedStores,"متاجر معتمدة من الإدارة"],
+    ["⭐","إعلانات مميزة الآن",p.featuredAds,"ضمن فترة التمييز الحالية"],
+    ["💎","اشتراكات متاجر فعالة",p.activeStorePlans,"باقات صالحة بتاريخ اليوم"],
+    ["🏅","بنرات رعاية نشطة",p.activeSponsors,"بانرات ضمن فترة العرض"]
+  ];
+  const queue=[
+    ["🕓","إعلانات للمراجعة",m.ads,"بانتظار قرار فريق الإشراف"],
+    ["🏬","متاجر للمراجعة",m.stores,"بانتظار قرار فريق الإشراف"],
+    ["🎨","طلبات خدمات مفتوحة",m.serviceOrders,"جديدة أو قيد التنفيذ"],
+    ...(a?[["💳","طلبات مالية معلّقة",m.finance,"نجوم، تمييز، اشتراكات وبنرات"]]:[])
+  ];
+  const financeCards=a?[
+    ["👥","الحسابات المسجلة",a.users,"عدد ملفات المستخدمين الموجودة"],
+    ["💰","نجوم في المحافظ",a.walletStars,"مجموع أرصدة المستخدمين"],
+    ["➕","نجوم أُضيفت",a.creditedStars,"حركات إضافة في دفتر النجوم"],
+    ["➖","نجوم خُصمت",a.debitedStars,"حركات خصم في دفتر النجوم"],
+    ["📑","قيود دفتر النجوم",a.ledgerEntries,"عدد العمليات المسجلة"]
+  ]:[];
+  const cards=x=>x.map(row=>card(...row)).join("");
+  const updated=adminUpdatedAt?new Date(adminUpdatedAt).toLocaleString("ar-SY"):"لم يكتمل التحديث";
+  return `<section id="adminDashboard" class="admin-dashboard" aria-label="إحصاءات إدارة سوقنا">
+    <div class="admin-dashboard-head">
+      <div><span class="admin-eyebrow">SOUQNA CONTROL CENTER</span>
+        <h2>📊 لوحة تحكم سوقنا</h2>
+        <p>مؤشرات مأخوذة من سجلات Firebase المتاحة لصلاحيات حسابك.</p>
+      </div>
+      <button class="btn g" data-a="refreshAdmin" id="refreshAdmin" aria-label="تحديث إحصاءات الإدارة">⟳ تحديث البيانات</button>
+    </div>
+    <div class="admin-refresh-time">آخر جلب للبيانات: ${esc(updated)} · ليست إحصاءات متدفقة لحظياً</div>
+    <h3>حالة السوق والإعلانات</h3><div class="admin-stat-grid">${cards(publicCards)}</div>
+    <h3>المتابعة والمراجعة</h3><div class="admin-stat-grid">${cards(queue)}</div>
+    ${a?`<h3>حركة النجوم والمستخدمين</h3><div class="admin-stat-grid">${cards(financeCards)}</div>
+      <p class="admin-finance-disclaimer">تنبيه مالي: حركة النجوم ليست إجمالي مبيعات أو أرباح بالدولار. أي إيراد نقدي يحتاج توثيق إيصال الدفع وتسوية محاسبية منفصلة.</p>`:""}
+  </section>`;
+}
 
 function render(){
   drawHd();drawNav();drawDesktopBar();$("#newsHost").innerHTML=tkHtml();const A=$("#app");
@@ -327,7 +382,7 @@ function render(){
     <h3>🚀 باقات تمييز الإعلان</h3>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
-    A.innerHTML=(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
+    A.innerHTML=adminDashboardHtml()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
     <div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label class="mut">أخبار الشريط العاجل (سطر لكل خبر)</label><textarea id="s-tk" rows="3">${esc(site.ticker||"")}</textarea><label class="mut">شريط الخدمات والوقود أسفل البنر (خبر في كل سطر)</label><textarea id="s-tk2" rows="3">${esc(site.tickerSecondary||"")}</textarea>
@@ -337,7 +392,6 @@ function render(){
     <input id="p-co" placeholder="اسم الشركة"><input id="p-ti" placeholder="عنوان العرض"><input id="p-de" placeholder="تفاصيل قصيرة"><input id="p-ph" dir="ltr" placeholder="واتساب الشركة (اختياري)"><input id="p-days" type="number" placeholder="مدة الإعلان بالأيام"><input type="file" accept="image/*" data-img="sp"><button class="btn g" data-a="addsp">إضافة البانر</button></div>
     <div class="box"><h3>📋 الدليل المميز</h3>${dr.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} (${TY[x.type]||""}) ${"★".repeat(x.stars||0)}</span>${x.type=="pharmacy"?`<button class="btn ${x.onDuty?"g":"l"}" data-a="duty" data-id="${x.id}">${x.onDuty?"مناوبة اليوم":"غير مناوبة"}</button>`:""}<button class="btn r" data-a="deldir" data-id="${x.id}">حذف</button></div>`).join("")}
     <select id="d-t"><option value="pharmacy">صيدلية</option><option value="doctor">طبيب</option><option value="lawyer">محامٍ</option><option value="engineer">مهندس</option><option value="fuel">محطة وقود</option></select><input id="d-n" placeholder="الاسم"><input id="d-s" placeholder="الاختصاص"><input id="d-a" placeholder="الحي / المنطقة"><input id="d-p" dir="ltr" placeholder="رقم الهاتف"><select id="d-st"><option value="1">★</option><option value="2">★★</option><option value="3" selected>★★★</option></select><button class="btn g" data-a="adddir">إضافة</button></div>
-    <div class="box"><h3>📊 التقارير</h3>${(()=>{const cr=allTx.filter(t=>t.amount>0).reduce((q,t)=>q+t.amount,0),sx=allTx.filter(t=>t.amount<0).reduce((q,t)=>q-t.amount,0);return [["المستخدمون",allUsers.length],["نجوم مشحونة (≈ دولار)",cr],["نجوم مُنفقة",sx],["نجوم في المحافظ",allUsers.reduce((q,u)=>q+(u.stars||0),0)],["إعلانات منشورة",ads.length],["متاجر منشورة",stores.length],["اشتراكات فعّالة",stores.filter(x=>x.planUntil>Date.now()).length],["بانرات نشطة",sp.filter(x=>x.active&&x.to>Date.now()).length],["طلبات خدمات جديدة",sorders.filter(x=>x.status=="new").length]].map(([k,v])=>`<div class="row"><span>${k}</span><b>${v}</b></div>`).join("")})()}</div>
     <div class="box"><h3>👥 المستخدمون</h3>${allUsers.slice(0,60).map(u=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(u.name)} · ${esc(u.role)} · ⭐${u.stars||0}</span><button class="btn l" data-a="ustars" data-id="${u.id}">± نجوم</button><button class="btn l" data-a="urole" data-id="${u.id}">الدور</button></div>`).join("")}</div>
     <div class="box"><h3>🎨 الخدمات</h3>${services.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${x.price||"اتفاق"}</span><button class="btn l" data-a="svprice" data-id="${x.id}">السعر</button><button class="btn l" data-a="svtog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="svdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="sv-n" placeholder="اسم الخدمة"><input id="sv-d" placeholder="الوصف"><input id="sv-p" type="number" placeholder="السعر بالدولار (فارغ = حسب الاتفاق)"><div class="acts"><button class="btn g" data-a="svadd">إضافة</button>${services.length?"":'<button class="btn" data-a="svseed">الخدمات الافتراضية</button>'}</div></div>
     <div class="box"><h3>📣 شركاء النشر</h3>${partners.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${esc(x.platform||"")}</span><button class="btn l" data-a="pttog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="ptdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="pt-n" placeholder="اسم الصفحة / الشريك"><select id="pt-pl"><option>facebook</option><option>instagram</option><option>tiktok</option><option>other</option></select><input id="pt-r" placeholder="المنطقة (مثل: ألمانيا، الخليج)"><input id="pt-a" placeholder="الجمهور / عدد المتابعين"><input id="pt-p" type="number" placeholder="السعر بالدولار"><button class="btn g" data-a="ptadd">إضافة</button></div>
@@ -428,6 +482,7 @@ document.addEventListener("click",async e=>{
       spi=(spi+(a==="spnext"?1:count-1))%count;
       const target=$("#spw");if(target)target.innerHTML=spHtml();
     }
+    else if(a=="refreshAdmin"){if(!isStaff())return toast("المدير فقط يمكنه تحديث اللوحة");await loadPublic();await loadMine();render();toast("تم تحديث مؤشرات لوحة الإدارة")}
     else if(a=="more"){more=!more;render()}
     else if(a=="feat"){feat=!feat;cur="all";render()}
     else if(a=="swap"){mode=mode=="reg"?"login":"reg";render()}
