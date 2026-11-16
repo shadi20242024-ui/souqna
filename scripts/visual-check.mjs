@@ -219,7 +219,7 @@ try {
     await page.locator('#nav [data-v="add"]').click();
     await page.locator("#a-title").waitFor({timeout:15000});
     await page.locator('#app [data-a="post"]').click();
-    await page.locator(".toast").filter({hasText:"أكمل العنوان والسعر"}).waitFor({timeout:5000});
+    await page.locator(".toast").filter({hasText:"تحقق من عنوان الإعلان"}).waitFor({timeout:5000});
     await page.locator("#a-title").fill("إعلان فحص واجهة سوقنا");
     await page.locator("#a-price").fill("1500");
     await page.locator("#a-area").fill("السويداء");
