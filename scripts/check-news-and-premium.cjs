@@ -234,3 +234,62 @@ test("unsafe image schemes are rejected by the actual client sanitizer",()=>{
   }
   assert.equal(context.safeImageSrc("https://example.com/cars/1.webp"),"https://example.com/cars/1.webp");
 });
+
+function runMarketFilter(input,options={}){
+  const start=source.indexOf("const arabicSearch=value=>");
+  const end=source.indexOf("function drawList(){",start);
+  assert(start>=0&&end>start,"Marketplace filter must exist");
+  const context=vm.createContext({
+    String,Number,Array,Date,
+    isF:a=>Number(a.featuredUntil||0)>Date.now(),
+    catName:cat=>({cars:"مركبات",real_estate:"عقارات"}[cat]||cat)
+  });
+  vm.runInContext(source.slice(start,end),context,{filename:"market-filter.js"});
+  return JSON.parse(JSON.stringify(context.filteredMarketAds(input,options)));
+}
+test("Arabic marketplace search accepts letter variants and finds title, area and category",()=>{
+  const listings=[
+    {id:"1",cat:"cars",title:"سيارة أحمد",area:"السويداء",desc:"نظيفة",price:100,cur:"$",createdAt:3},
+    {id:"2",cat:"real_estate",title:"أرض",area:"شهبا",desc:"للبيع",price:500,cur:"$",createdAt:4}
+  ];
+  assert.equal(runMarketFilter(listings,{search:"احمد"}).length,1);
+  assert.equal(runMarketFilter(listings,{search:"اراض",category:"cars"}).length,0);
+  assert.equal(runMarketFilter(listings,{area:"شَهبا"}).length,1);
+  assert.equal(runMarketFilter(listings,{search:"عقارات"}).length,1);
+});
+test("price ranges are applied only to the selected currency",()=>{
+  const listings=[
+    {id:"1",cat:"cars",title:"A",price:50,cur:"$",createdAt:1},
+    {id:"2",cat:"cars",title:"B",price:200,cur:"$",createdAt:2},
+    {id:"3",cat:"cars",title:"C",price:200,cur:"ل.س",createdAt:3}
+  ];
+  assert.deepEqual(runMarketFilter(listings,{currency:"$",minPrice:100,maxPrice:250}).map(x=>x.id),["2"]);
+  assert.equal(runMarketFilter(listings,{currency:"all",minPrice:100,maxPrice:250}).length,3);
+});
+test("listing results can sort by price or recency without altering source data",()=>{
+  const listings=[
+    {id:"a",cat:"cars",title:"A",price:300,cur:"$",createdAt:2},
+    {id:"b",cat:"cars",title:"B",price:100,cur:"$",createdAt:4},
+    {id:"c",cat:"cars",title:"C",price:200,cur:"$",createdAt:3}
+  ];
+  assert.deepEqual(runMarketFilter(listings,{sort:"priceAsc"}).map(x=>x.id),["b","c","a"]);
+  assert.deepEqual(runMarketFilter(listings,{sort:"priceDesc"}).map(x=>x.id),["a","c","b"]);
+  assert.deepEqual(runMarketFilter(listings,{sort:"oldest"}).map(x=>x.id),["a","c","b"]);
+});
+test("featured listings remain prominent for default order",()=>{
+  const listings=[
+    {id:"old-featured",cat:"cars",title:"A",price:50,cur:"$",createdAt:1,featuredUntil:Date.now()+86400000},
+    {id:"new-normal",cat:"cars",title:"B",price:50,cur:"$",createdAt:9999999}
+  ];
+  assert.equal(runMarketFilter(listings,{sort:"latest"})[0].id,"old-featured");
+  assert.deepEqual(runMarketFilter(listings,{featured:true}).map(x=>x.id),["old-featured"]);
+});
+test("screenshot-consistent controls include accessible search, filters and 12-item paging",()=>{
+  for(const id of ["q","ad-sort","ad-currency","ad-area","ad-min","ad-max","ad-results-meta","ad-pages","list"])
+    assert(source.includes('id="'+id+'"'),"Missing marketplace control "+id);
+  assert.match(source,/const adsPerPage=12/);
+  assert.match(source,/data-a="clearfilters"/);
+  assert.match(source,/data-a="adpage"/);
+  assert.match(source,/document\.addEventListener\("input",updateAdFilter\)/);
+  assert.match(source,/data-a="more"/);
+});
