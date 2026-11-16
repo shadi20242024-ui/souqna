@@ -112,6 +112,23 @@ try {
       if(item.mobile)assert.ok(nav.y>=item.viewport.height/2,"Mobile navigation should be at bottom");
       else assert.ok(nav.x>item.viewport.width/2,"Desktop navigation should be on the side");
       await page.screenshot({path:"artifacts/souqna-"+item.name+".png",fullPage:true,animations:"disabled"});
+      await page.locator("#newsHost .tk").first().waitFor({timeout:5000});
+      if(item.mobile){
+        assert.equal(await page.locator("#desktopBar").isVisible(),false);
+        assert.equal(await page.locator('#nav [data-v="ads"]').isVisible(),false);
+      }else{
+        assert.equal(await page.locator("#desktopBar").isVisible(),true);
+        await page.locator('#nav [data-v="ads"]').click();
+        await page.locator('#list .item').first().waitFor({timeout:8000});
+        await page.locator("#globalSearch").fill("سيارة مستعملة للبيع");
+        assert.equal(await page.locator("#list .item").count(),1,"Search must filter ads");
+        await page.locator('#nav [data-v="stores"]').click();
+        await page.locator("#sl .dr").first().waitFor({timeout:8000});
+        await page.locator("#newsHost .tk").first().waitFor({timeout:4000});
+        assert.ok((await page.locator("#app").innerText()).includes("متجر تجريبي"));
+        await page.screenshot({path:"artifacts/souqna-desktop-stores.png",fullPage:true,animations:"disabled"});
+        console.log("PREMIUM NAVIGATION OK", "desktop search, ads and stores; global news across pages");
+      }
       assert.deepEqual(errors,[],"Unexpected browser script errors");
       console.log("VISUAL SMOKE OK",item.name,"cards=1","navigation=",JSON.stringify(nav));
     } finally { await context.close(); }
