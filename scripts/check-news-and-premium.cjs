@@ -308,3 +308,22 @@ test("new registration waits for its user profile before showing account dashboa
   assert.match(authBlock,/adminClaim:false/);
   assert.match(authBlock,/auth\.currentUser\?\.uid===u\.user\.uid/);
 });
+
+test("ad photo selection has a bounded WebP preview and rejects unsafe files",()=>{
+  assert.match(source,/function shrink\(file\)/);
+  assert.match(source,/image\/jpeg","image\/png","image\/webp/);
+  assert.match(source,/file\.size>8\*1024\*1024/);
+  assert.match(source,/toDataURL\("image\/webp"/);
+  assert.match(source,/output\.length<=180000/);
+  assert.match(source,/URL\.revokeObjectURL\(objectUrl\)/);
+  assert.match(source,/id="ad-photo-status"/);
+  assert.match(source,/id="ad-photo-preview"/);
+  assert.match(source,/await adImageTask/);
+});
+test("ad submission requires valid price and cannot execute twice",()=>{
+  assert.match(source,/let adImageTask=null,adPhotoError="",adImageVersion=0,adSubmitting=false/);
+  assert.match(source,/if\(!val\("#a-price"\)\|\|!Number\.isFinite\(amount\)/);
+  assert.match(source,/if\(adSubmitting\)return toast\("الإعلان قيد الإرسال/);
+  assert.match(source,/adSubmitting=true;b\.disabled=true/);
+  assert.match(source,/finally\{adSubmitting=false;b\.disabled=false\}/);
+});
