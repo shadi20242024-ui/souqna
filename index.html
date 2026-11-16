@@ -594,7 +594,7 @@ document.addEventListener("click",async e=>{
        if(photoError)return toast(photoError);
        if(photoHash&&mine.some(x=>x.imgHash===photoHash&&x.status!=="rejected"))return toast("الصورة نفسها مستخدمة في إعلان سابق. اختر صورة أخرى.");
       const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
-      if(!t||!val("#a-price")||p.length<9)return toast("أكمل العنوان والسعر ورقم واتساب صحيح");
+      if(t.length<3||t.length>150||!val("#a-price")||!Number.isFinite(+val("#a-price"))||+val("#a-price")<0||+val("#a-price")>1000000000000||p.length<9||p.length>15)return toast("تحقق من عنوان الإعلان (3–150 حرفاً)، السعر ورقم الهاتف");
       const sid=$("#a-st")?$("#a-st").value:"";if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
       await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
       photo="";photoHash="";photoError="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
@@ -669,7 +669,7 @@ document.addEventListener("click",async e=>{
     else if(a=="cancelpl"){editPl=null;render()}
     else if(a=="togpl"){await updateDoc(doc(db,"plans",id),{active:plans.find(x=>x.id==id).active===false});await loadPublic();render()}
     else if(a=="delpl"){if(!confirm("حذف الباقة؟"))return;await deleteDoc(doc(db,"plans",id));await loadPublic();render()}
-    else if(a=="savest"){await pickReady;if(!val("#t-n"))return toast("اكتب اسم المتجر");const m=val("#t-m");if(m&&!/^https?:\/\//.test(m))return toast("رابط الخريطة يجب أن يبدأ بـ https://");const o={name:val("#t-n"),desc:val("#t-d"),phone:val("#t-p").replace(/\D/g,""),area:val("#t-a"),map:m};
+    else if(a=="savest"){await pickReady;if(val("#t-n").length<2||val("#t-n").length>120)return toast("اسم المتجر يجب أن يكون بين 2 و120 حرفاً");const m=val("#t-m");if(m&&!/^https:\/\//.test(m))return toast("رابط الخريطة يجب أن يبدأ بـ https://");const o={name:val("#t-n"),desc:val("#t-d"),phone:val("#t-p").replace(/\D/g,""),area:val("#t-a"),map:m};
       if(editSt){if(tmp.stlogo)o.logo=tmp.stlogo;if(tmp.stcover)o.cover=tmp.stcover;await updateDoc(doc(db,"stores",editSt.id),o);editSt=null}
       else{const lim=site.maxStores??3;if(myStores.length>=lim)return toast("وصلت للحد الأقصى من المتاجر ("+lim+")");await marketplace("createStore","stores",{...o,logo:tmp.stlogo||"",cover:tmp.stcover||""})}
       tmp.stlogo=tmp.stcover="";toast("تم الحفظ");await loadMine();render()}
@@ -697,7 +697,7 @@ document.addEventListener("click",async e=>{
        await loadPublic();await loadMine();toast("تم تمييز الإعلان");render();
      }
     else if(a=="prno"){await finance("rejectPromotion",id);await loadMine();render()}
-  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":isAdm()&&["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
+  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
 });
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
