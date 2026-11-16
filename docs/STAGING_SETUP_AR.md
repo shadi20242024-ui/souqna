@@ -76,6 +76,26 @@ npm run seed:staging -- --project YOUR_UNIQUE_STAGING_PROJECT_ID --execute --con
 
 **قد تؤثر حدود Spark وتوافر المنتجات بحسب المنطقة على الخدمات المتاحة؛ راجع صفحة التسعير الرسمية قبل أي عملية تؤدي إلى فوترة.**
 
+## تعيين مدير الاختبار الأول
+
+يجب أن يسجل مالك المشروع أولاً حساب مستخدم **تجريبياً** في Firebase Authentication داخل مشروع Staging، مع ملفه في `users/{uid}` في Firestore. لا يمكن لأي زائر منح نفسه صلاحيات الإدارة.
+
+تم تجهيز أداة تحكم موثوقة `functions/bootstrap-staging-admin.cjs` تعمل **افتراضياً في وضع المعاينة فقط** وتحتاج صلاحيات مشروع Firebase التجريبي عند التنفيذ. لا تربطها أبداً بمشروع الإنتاج.
+
+استعراض الدور الذي ستُنشئه الأداة، من دون اتصال أو تعديل:
+
+~~~powershell
+node functions/bootstrap-staging-admin.cjs --project YOUR_UNIQUE_STAGING_PROJECT_ID --email TEST_ADMIN_EMAIL
+~~~
+
+بعد التأكد من هوية الحساب، وتوفر صلاحيات Google Application Default Credentials للمشروع التجريبي، والحصول على موافقة المالك الصريحة، يمكن تنفيذ التعيين:
+
+~~~powershell
+node functions/bootstrap-staging-admin.cjs --project YOUR_UNIQUE_STAGING_PROJECT_ID --email TEST_ADMIN_EMAIL --execute --confirm "ADMIN:YOUR_UNIQUE_STAGING_PROJECT_ID:TEST_ADMIN_EMAIL"
+~~~
+
+عند التنفيذ تتحقق الأداة من أن البريد موجود في Firebase Auth وأن ملف Firestore يطابقه، وتسجل تغيير الدور في `bootstrapAudits` من خلال Admin SDK. وترفض أي تنفيذ على `souqna-sweida`. **لم تُنفذ الأداة على مشروع حقيقي.**
+
 ## بناء واختبار نسخة Staging (من دون نشر)
 
 بعد إنشاء ملف الإعداد التجريبي:
