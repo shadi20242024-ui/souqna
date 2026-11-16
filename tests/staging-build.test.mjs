@@ -35,6 +35,9 @@ test("Safe Hosting preflight blocks accidental production data access",t=>{
   assert.equal(preview.status,0,preview.stderr);
   const previewHtml=readFileSync(join(output,"index.html"),"utf8");
   assert.ok(previewHtml.includes('"projectId":"souqna-preview-disabled"'));
+  assert.ok(previewHtml.includes('name="robots" content="noindex,nofollow,noarchive"'));
+  assert.ok(previewHtml.includes('id="souqna-environment-banner"'));
+  assert.ok(previewHtml.includes('نسخة معاينة معزولة'));
   assert.ok(!previewHtml.includes(live.apiKey));
   assert.ok(!previewHtml.includes(live.appId));
   assert.ok(!existsSync(join(output,"firestore.rules")));
@@ -61,6 +64,9 @@ test("Safe Hosting preflight blocks accidental production data access",t=>{
   assert.equal(staging.status,0,staging.stderr);
   const stagingHtml=readFileSync(join(output,"index.html"),"utf8");
   assert.ok(stagingHtml.includes('"projectId":"souqna-staging-qa"'));
+  assert.ok(stagingHtml.includes('بيئة اختبار سوقنا'));
+  assert.ok(stagingHtml.includes('id="souqna-environment-banner"'));
+  assert.ok(stagingHtml.includes('name="robots" content="noindex,nofollow,noarchive"'));
   assert.ok(stagingHtml.includes('"apiKey":"test-only-isolated-key-1234567"'));
   assert.ok(!stagingHtml.includes(live.appId));
   assert.ok(!stagingHtml.includes(live.apiKey));
