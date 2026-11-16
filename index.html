@@ -691,7 +691,7 @@ document.addEventListener("click",async e=>{
        await loadPublic();await loadMine();toast("تم تمييز الإعلان");render();
      }
     else if(a=="prno"){await finance("rejectPromotion",id);await loadMine();render()}
-  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":"تعذر تنفيذ العملية")}
+  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":isAdm()&&["functions/failed-precondition","functions/invalid-argument","functions/permission-denied"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
 });
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
