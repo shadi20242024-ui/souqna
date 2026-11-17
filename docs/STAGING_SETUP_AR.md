@@ -96,6 +96,35 @@ node functions/bootstrap-staging-admin.cjs --project YOUR_UNIQUE_STAGING_PROJECT
 
 عند التنفيذ تتحقق الأداة من أن البريد موجود في Firebase Auth وأن ملف Firestore يطابقه، وتسجل تغيير الدور في `bootstrapAudits` من خلال Admin SDK. وترفض أي تنفيذ على `souqna-sweida`. **لم تُنفذ الأداة على مشروع حقيقي.**
 
+## بديل موثق لإنشاء المدير إذا رفض Google Identity Toolkit بيانات gcloud
+
+قد يفشل استدعاء Firebase Admin Authentication من الكمبيوتر باستخدام بيانات دخول `gcloud auth application-default login` برسالة `Identity Toolkit API has not been used in project gen-lang-client-...`. هذه الرسالة **لا تعني أن Firebase للمشروع التجريبي غير فعال**، ولا تعالجها بتفعيل API في مشروع `gen-lang-client-...` الذي لا يخص سوقنا. تشير وثائق Firebase إلى قيود استخدام بيانات Google Cloud SDK للمستخدم النهائي مع Firebase Authentication.
+
+إذا نجح اتصال Firestore سابقاً، يتيح السكربت مسار `--uid` إضافياً يُحدّث ملف Firestore بعد تحقق المالك **يدوياً** من هوية المستخدم في Firebase Console. هذه الطريقة لا تستطيع استعلام Firebase Authentication آلياً، لذا تحقق قبل التنفيذ من:
+
+1. فتح **Firebase Console → SOUQNA Staging (souqna-staging) → Authentication → Users** ونسخ `User UID` من صف حساب المدير نفسه، مع مطابقة بريده.
+2. فتح **Firestore → Data → users → UID نفسه** والتأكد من أن `email` يطابق البريد نفسه حرفياً وأن `role` تساوي `user`. لا تستخدم Auto-ID ولا ملف مستخدم آخر.
+3. تجنب إرسال كلمة المرور أو الرموز أو ملف بيانات اعتماد Google.
+
+من داخل `C:\Users\Administrator\souqna` في PowerShell (غيّر البريد وUID إلى القيم الفعلية لحساب الاختبار):
+
+~~~powershell
+$email = "YOUR_STAGING_ADMIN_EMAIL"
+$uid = "EXACT_AUTH_USER_UID"
+node functions/bootstrap-staging-admin.cjs --project souqna-staging --email $email --uid $uid
+~~~
+
+هذا الأمر **Dry Run فقط**. بعد التحقق يدوياً من كلتا الشاشتين، يأذن صاحب الحساب لتعيين الدور باستخدام رمز تأكيد يربط المشروع والبريد والـUID معاً:
+
+~~~powershell
+$confirmation = "ADMIN:souqna-staging:{0}:{1}" -f $email,$uid
+node functions/bootstrap-staging-admin.cjs --project souqna-staging --email $email --uid $uid --verified-in-console --execute --confirm $confirmation
+~~~
+
+**هذا الأمر يعدل صلاحيات المدير في بيئة Staging فعلياً؛ لا تنفّذه إذا لم تتحقق من UID والبريد بنفسك.** يرفض السكربت أي مشروع بخلاف `souqna-staging` في هذا المسار، ويرفض غياب رمز التأكيد أو `--verified-in-console`، ويتحقق أن مستند `users/{uid}` يطابق البريد والدور المتوقع، ويكتب `bootstrapAudits` في معاملة واحدة. لا ينشر Hosting أو Cloud Functions ولا يعدل `souqna-sweida`.
+
+إذا فشل، **لا تجرّب منح دور admin بحذف قواعد Firestore أو تفعيل وصول عام**. راجع رسالة الخطأ أولاً.
+
 ## بناء واختبار نسخة Staging (من دون نشر)
 
 بعد إنشاء ملف الإعداد التجريبي:
