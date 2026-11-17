@@ -39,3 +39,32 @@ test("Initial staging administrator provisioning is dry-run only by default",()=
     "--execute","--confirm","ADMIN:souqna-staging-example:owner@example.test").status,0,
     "Missing staging credentials must not grant administrator access");
 });
+
+test("Manual staging admin UID bootstrap requires explicit owner verification and project match",()=>{
+  const admin=resolve("functions/bootstrap-staging-admin.cjs");
+  const runAdmin=(...args)=>spawnSync(process.execPath,[admin,...args],{
+    encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",FIRESTORE_EMULATOR_HOST:""}
+  });
+  const base=["--project","souqna-staging","--email","owner@example.test","--uid","firebaseExampleUID_123456"];
+  const dry=runAdmin(...base);
+  assert.equal(dry.status,0,dry.stderr);
+  assert.match(dry.stdout,/Verify UID and email/);
+  assert.match(dry.stdout,/DRY RUN ONLY/);
+  assert.notEqual(runAdmin(...base,"--execute","--confirm",
+    "ADMIN:souqna-staging:owner@example.test:firebaseExampleUID_123456").status,0,
+    "Manual UID bootstrap requires an explicit console verification flag");
+  assert.notEqual(runAdmin(...base,"--execute","--verified-in-console","--confirm",
+    "ADMIN:souqna-staging:owner@example.test:wrongUID").status,0,
+    "Manual UID bootstrap requires an exact project/email/UID confirmation");
+  assert.notEqual(runAdmin("--project","souqna-sweida","--email","owner@example.test",
+    "--uid","firebaseExampleUID_123456").status,0,
+    "Manual UID mode must never allow production");
+  assert.notEqual(runAdmin("--project","souqna-other-project","--email","owner@example.test",
+    "--uid","firebaseExampleUID_123456").status,0,
+    "Manual UID mode must be restricted to SOUQNA staging");
+  assert.notEqual(runAdmin("--project","souqna-staging","--email","owner@example.test",
+    "--uid","bad").status,0,"Short/invalid UIDs must be rejected");
+  assert.notEqual(runAdmin(...base,"--execute","--verified-in-console","--confirm",
+    "ADMIN:souqna-staging:owner@example.test:firebaseExampleUID_123456").status,0,
+    "Manual UID mode still requires explicit credentials");
+});
