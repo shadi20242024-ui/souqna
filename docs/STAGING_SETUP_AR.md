@@ -46,6 +46,30 @@ npx firebase apps:sdkconfig WEB YOUR_STAGING_FIREBASE_WEB_APP_ID --project YOUR_
 
 انسخ قيم Web SDK الست إلى ملف محلي باسم `firebase.staging.json` بجذر المستودع. احرص على استعمال بيانات المشروع التجريبي فقط: `apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`. إذا لم يُنشأ Storage bucket في مشروع الاختبار، فراجع إعدادات Firebase Console ولا تنسخ بيانات الإنتاج للتعويض.
 
+## إعداد Firebase تلقائياً من حساب Google Cloud الموجود (بدون الحافظة أو Notepad)
+
+إذا أصبح `firebase.staging.json` فارغاً أو معطوباً، **لا تُعد كتابته يدوياً**. يوجد أمر جديد يستخرج بيانات Web App المسجلة من **Firebase Management API للقراءة فقط**، ويتحقق من تطابق معرّف المشروع وApp ID وauthDomain وstorageBucket، ثم يحفظ ملف JSON محلياً، ويبني حزمة Staging ويشغّل فحص preflight:
+
+~~~powershell
+cd "$HOME\souqna"
+git pull --ff-only origin feature/news-media-2026-11-16
+node scripts/auto-staging-setup.mjs
+~~~
+
+لا يلزم نسخ أي شيء من صفحة Firebase إلى الحافظة. تستخدم الأداة تسجيل الدخول السابق عبر `gcloud.cmd auth application-default login` وملف `%APPDATA%\gcloud\application_default_credentials.json` **على جهاز المستخدم فقط**. لا تطبع مفتاح API أو رمز الدخول إلى شاشة الأوامر، ولا ترفع ملف بيانات الاتصال إلى GitHub. لا تكتب شيئاً إلى Firebase؛ فقط تقرأ Web App وتحفظ إعدادات محلية وتنشئ `dist/` بعد التحقق.
+
+إذا ظهر `Firebase Management API HTTP 403`، تأكد أن حساب Google المستخدَم يملك صلاحية قراءة إعدادات `souqna-staging`. قد يلزم ضبط مشروع حصة استخدام بيانات الدخول محلياً:
+
+~~~powershell
+gcloud.cmd auth application-default set-quota-project souqna-staging
+node scripts/auto-staging-setup.mjs
+~~~
+
+هذا الأمر لا يفعل فوترة، ولا ينشئ مشاريع أو تطبيقات أو مفاتيح. إذا فشل، أرسل **نص الخطأ فقط**، ولا تنسخ بيانات الدخول أو مفاتيح Service Account. لا تستخدم `souqna-sweida`. إذا تعددت تطبيقات Web ولم يوجد اسم `SOUQNA Staging Web` واضح، ستتوقف الأداة لتجنب بناء نسخة لتطبيق خاطئ.
+
+**علامة النجاح**:
+`SOUQNA STAGING AUTO SETUP SUCCESS. No deployment or paid service enabled.`
+
 ## تأسيس البيانات التجريبية الأساسية
 
 أُضيف سكربت آمن باسم `scripts/seed-staging.mjs` لتجهيز 24 مستنداً أساسياً تشمل: 8 أقسام للإعلانات، 4 باقات للمتاجر، 5 باقات تمييز، إعدادات الموقع والتواصل، و5 خدمات رقمية. لا ينشئ حسابات أشخاص أو أرصدة أو إيصالات دفع أو معلومات تماس حقيقية.
