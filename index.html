@@ -782,7 +782,14 @@ document.addEventListener("click",async e=>{
       const result=await retry({id:cleanupId});
       const failed=Number(result.data?.failedImages||0);
       pendingCleanupId=failed?cleanupId:"";
-      if(cleanupJobsLoaded)await fetchCleanupJobs();
+      if(cleanupJobsLoaded){
+        try{await fetchCleanupJobs()}
+        catch(error){
+          console.warn("SOUQNA cleanup queue refresh failed:",error);
+          cleanupJobsLoaded=false;
+          pendingCleanupJobs=[];
+        }
+      }
       toast(failed?"ما زال تنظيف "+failed+" صورة معلقاً":"اكتمل تنظيف الصور المتبقية");
       render()
     }
