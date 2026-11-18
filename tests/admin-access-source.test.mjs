@@ -17,6 +17,8 @@ test("administrator access requires an existing authorized profile", () => {
   assert.ok(html.includes('accountProfileMissing=!s.exists()'));
   assert.ok(html.includes('صلاحية المدير غير مفعّلة'));
   assert.ok(html.includes('ملف المستخدم غير موجود في Firestore'));
+  assert.ok(html.includes('accountProfileReadError=String(error?.code||"unknown")'));
+  assert.ok(html.includes("تعذر التحقق من صلاحيات حسابك"));
 });
 
 test("registration cannot self-assign an administrator role", () => {
