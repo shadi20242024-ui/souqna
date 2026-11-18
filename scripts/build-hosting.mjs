@@ -85,7 +85,7 @@ const environmentText=mode==="preview"
   :"🧪 بيئة اختبار سوقنا — بيانات تجريبية فقط — "+config.projectId;
 const environmentBanner='<div id="souqna-environment-banner" role="status" style="position:relative;z-index:110;padding:9px 14px;text-align:center;background:#fdf0c4;color:#1f2d48;border-bottom:2px solid #d89e25;font:700 14px system-ui,sans-serif" dir="rtl">'+environmentText+'</div>';
 const output=html.replace(original[0],()=>replacement)
-  .replace("</body>",'<script type="module" src="assets/souqna-services-ui.mjs"></script>\\n</body>')
+  .replace("</body>",'<script type="module" src="assets/souqna-services-ui.mjs"></script>\n</body>')
   .replace("</head>",'<meta name="robots" content="noindex,nofollow,noarchive">\n</head>')
   .replace("<body>","<body>\n"+environmentBanner);
 assert.ok(!output.includes(production.apiKey),"Production Firebase key leaked into staging/preview.");
