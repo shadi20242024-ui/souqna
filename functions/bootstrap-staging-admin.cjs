@@ -13,8 +13,9 @@ const verifiedInConsole=args.includes("--verified-in-console");
 
 assert.ok(typeof project==="string"&&/^[a-z][a-z0-9-]{4,40}$/.test(project),
   "Specify the isolated staging project with --project PROJECT_ID");
-assert.notEqual(project,"souqna-sweida","Production project cannot be bootstrapped with this utility");
-assert.notEqual(project,"souqna-preview-disabled","Preview project is not valid");
+assert.equal(project,"souqna-staging","Administrator bootstrap is restricted to souqna-staging only");
+assert.ok(!process.env.GCLOUD_PROJECT || process.env.GCLOUD_PROJECT===project,"GCLOUD_PROJECT mismatch");
+assert.ok(!process.env.GOOGLE_CLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT===project,"GOOGLE_CLOUD_PROJECT mismatch");
 assert.ok(typeof email==="string"&&email.length<254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
   "Specify an existing staging user account with --email EMAIL");
 assert.ok(!args.includes("--production"),"Production bootstrapping is disabled");
