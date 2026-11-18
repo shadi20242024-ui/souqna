@@ -18,7 +18,8 @@ test("trusted cleanup rejects dangerous paths and production project",()=>{
 });
 test("deletion callable checks role and owner, commits database first, then deletes objects",()=>{
   const server=readFileSync(new URL("../functions/delete-ad.js",import.meta.url),"utf8");
-  assert.match(server,/project!=="souqna-staging"/);
+  assert.match(server,/const STAGING="souqna-staging"/);
+  assert.match(server,/project!==STAGING/);
   assert.match(server,/role!=="admin"/);
   assert.match(server,/ad.ownerId!==uid/);
   assert.match(server,/extractOwnedImageObjects\(ad.images,project,ownerId\)/);
