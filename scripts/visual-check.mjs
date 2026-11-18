@@ -16,6 +16,7 @@ const MIME = {
   ".js":"text/javascript; charset=utf-8",
   ".png":"image/png",
   ".jpg":"image/jpeg",
+  ".webp":"image/webp",
   ".webmanifest":"application/manifest+json",
   ".json":"application/json; charset=utf-8"
 };
@@ -80,6 +81,12 @@ try {
       setDoc(doc(db,"categories","real_estate"),{name_ar:"العقارات",active:true,order:2}),
       setDoc(doc(db,"categories","electronics"),{name_ar:"الإلكترونيات",active:true,order:3}),
       setDoc(doc(db,"categories","furniture"),{name_ar:"الأثاث",active:true,order:4}),
+      setDoc(doc(db,"categories","jobs"),{name_ar:"الوظائف",active:true,order:5}),
+      setDoc(doc(db,"categories","services"),{name_ar:"الخدمات",active:true,order:6}),
+      setDoc(doc(db,"categories","misc"),{name_ar:"متنوعة",active:true,order:7}),
+      setDoc(doc(db,"categories","community"),{name_ar:"المجتمع",active:true,order:8}),
+      setDoc(doc(db,"categories","fashion"),{name_ar:"أزياء",active:true,order:9}),
+      setDoc(doc(db,"categories","lost_found"),{name_ar:"مفقودات",active:true,order:10}),
       setDoc(doc(db,"ads","visual-ad"),{
         title:"سيارة مستعملة للبيع",price:5000,cur:"$",cat:"cars",area:"السويداء",
         desc:"إعلان للمعاينة التجريبية",phone:"963999999999",img:"",
@@ -141,6 +148,14 @@ try {
       }
       assert.equal(await page.locator("#list .item").count(),1);
       assert.ok(await page.locator("text=السيارات").count()>=1);
+      assert.equal(await page.locator("#app .cg .photo-category").count(),10,
+        "All ten approved category tiles should appear on the homepage");
+      for(const icon of await page.locator("#app .cg .category-photo").all()){
+        await icon.scrollIntoViewIfNeeded();
+        await icon.evaluate(image=>image.decode());
+        assert.ok(await icon.evaluate(image=>image.naturalWidth>0&&image.naturalHeight>0),
+          "Approved photographic category icon must load");
+      }
       const nav=await page.locator("#nav").boundingBox();
       assert.ok(nav,"Navigation not rendered");
       if(item.mobile)assert.ok(nav.y>=item.viewport.height/2,"Mobile navigation should be at bottom");
@@ -169,6 +184,9 @@ try {
         await page.locator("#newsHost .tk").first().waitFor({timeout:4000});
         assert.ok((await page.locator("#app").innerText()).includes("متجر تجريبي"));
         await page.screenshot({path:screenshotName("desktop-stores.png"),fullPage:true,animations:"disabled"});
+        await page.locator('#sl [data-st="visual-store"]').click();
+        await page.locator("#app .store-profile-card").waitFor({timeout:7000});
+        await page.screenshot({path:screenshotName("store-detail.png"),fullPage:true,animations:"disabled"});
         console.log("PREMIUM NAVIGATION OK", "desktop search, ads and stores; global news across pages");
       }
       assert.deepEqual(errors,[],"Unexpected browser script errors");
@@ -218,6 +236,8 @@ try {
 
     await page.locator('#nav [data-v="add"]').click();
     await page.locator("#a-title").waitFor({timeout:15000});
+    await page.locator(".premium-form-box .form-page-intro").waitFor({timeout:3000});
+    await page.screenshot({path:screenshotName("create-ad.png"),fullPage:true,animations:"disabled"});
     await page.locator('#app [data-a="post"]').click();
     await page.locator(".toast").filter({hasText:"تحقق من عنوان الإعلان"}).waitFor({timeout:5000});
     await page.locator("#a-title").fill("إعلان فحص واجهة سوقنا");
@@ -230,6 +250,7 @@ try {
     await page.locator('#nav [data-v="acc"]').click();
     await page.locator('#app [data-v="mystores"]').click();
     await page.locator("#t-n").waitFor({timeout:15000});
+    await page.screenshot({path:screenshotName("create-store.png"),fullPage:true,animations:"disabled"});
     await page.locator("#t-n").fill("متجر فحص سوقنا");
     await page.locator("#t-d").fill("متجر تجريبي للنماذج");
     await page.locator("#t-p").fill("963999999999");
