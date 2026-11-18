@@ -81,3 +81,13 @@ test("Safe Hosting preflight blocks accidental production data access",t=>{
   assert.notEqual(verify("souqna-sweida").status,0,"Production preflight must be impossible");
   assert.notEqual(verify("souqna-other-qa").status,0,"Wrong staging project must be rejected");
 });
+
+test("Admin dashboard handles failed Firestore reads without hiding the entire panel",()=>{
+  const source=readFileSync(join(root,"index.html"),"utf8");
+  assert.match(source,/adminLoadWarnings/);
+  assert.match(source,/adminErrorBanner\(\)\+adminDashboardHtml\(\)/);
+  assert.match(source,/تعذر تحميل بعض بيانات الإدارة/);
+  assert.match(source,/console\.error\("SOUQNA collection read failed:"/);
+  assert.match(source,/if\(view=="admin"&&!isStaff\(\)\)view="acc"/);
+  assert.match(source,/تعذر تسجيل الدخول:/);
+});
