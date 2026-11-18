@@ -113,3 +113,27 @@ test("client uses trusted moderation endpoint", () => {
   assert.ok(client.includes('await moderate("ad",id,action)'));
   assert.ok(client.includes('await moderate("store",id,action)'));
 });
+
+test("missing moderation target rejects without writing an audit", async () => {
+  const { db, calls } = mockDb({ missing: true });
+  await assert.rejects(
+    loadModeration()(db, {})({
+      auth: { uid: "moderator-1" },
+      data: { type: "ad", id: "missing-ad", action: "approve" }
+    }),
+    error => error.code === "not-found"
+  );
+  assert.ok(!calls.some(call => call[0] === "update" || call[0] === "create"));
+});
+
+test("missing owner identifier rejects without side effects", async () => {
+  const { db, calls } = mockDb({ ownerId: "" });
+  await assert.rejects(
+    loadModeration()(db, {})({
+      auth: { uid: "moderator-1" },
+      data: { type: "store", id: "store-without-owner", action: "reject" }
+    }),
+    error => error.code === "failed-precondition"
+  );
+  assert.ok(!calls.some(call => call[0] === "update" || call[0] === "create"));
+});
