@@ -112,8 +112,10 @@ jobs:
         id: check_hosting
         continue-on-error: true
         run: |
+          set +e
           node scripts/check-staging-hosting.mjs > staging-hosting-check.txt 2>&1
           result=$?
+          set -e
           cat staging-hosting-check.txt
           if [ "$result" -ne 0 ]; then
             echo "::warning::SOUQNA staging website is not verified online. No deployment was attempted."
