@@ -1126,3 +1126,64 @@ nav button {position:relative;}
 .ad-gallery-big{width:100%;max-height:72vh;object-fit:contain;border-radius:12px;background:#eef4fa;display:block;margin:10px auto;}
 .ad-gallery-actions .btn{min-width:85px;}
 @media(max-width:600px){.ad-media-dialog{width:calc(100vw - 20px);max-height:92vh;padding:10px;}.ad-photo-thumbs img{width:73px;height:73px;}}
+
+
+/* Souqna customer services, weather, jobs and scoped owner/staff panels */
+.wx-live{min-height:64px;border:1px solid #d5e6f7;box-shadow:0 8px 19px #0c3b7712;}
+.wx-live small{color:#647b95;font-size:11px;}
+.wx-live a{color:#23619f;text-decoration:underline;}
+.wx-unavailable{height:auto;min-height:52px;color:#53677e;gap:9px;flex-wrap:wrap;padding:12px;}
+.job-news-banner{width:100%;border:1px solid #d7b474;background:linear-gradient(120deg,#0c3775,#1e61aa);color:#fff;border-radius:17px;padding:14px 18px;display:flex;gap:14px;align-items:center;text-align:right;margin:12px 0;box-shadow:0 12px 26px #0c34732b;}
+.job-news-icon{display:grid;place-items:center;flex:none;}
+.job-news-copy{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;}
+.job-news-copy b{font-size:17px;color:white;}
+.job-news-copy small{font-size:12px;color:#deebff;}
+.job-news-live{background:#f5d389;color:#112c55;border-radius:18px;padding:7px 12px;font-size:12px;font-weight:900;white-space:nowrap;animation:souqna-job-pulse 2.5s ease-in-out infinite;}
+.job-news-next{color:#f5d389;font-size:12px;font-weight:750;}
+@keyframes souqna-job-pulse{50%{box-shadow:0 0 0 7px #ffcf6830;}}
+.homepage-service-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0 18px;}
+.service-tool{border:1px solid #d4e4f6;border-radius:16px;padding:14px 18px;background:linear-gradient(130deg,#fff,#f2f8ff);font:inherit;font-weight:800;color:#194c8a;box-shadow:0 8px 22px #0d397217;cursor:pointer;}
+.service-tool:hover{border-color:#b7cfe8;background:#f6fbff;}
+.utility-page{max-width:980px;margin:auto;padding:12px 0 22px;}
+.utility-head{border-radius:21px;background:linear-gradient(120deg,#0b295e,#1a55a3);color:white;padding:20px 24px;margin-bottom:16px;}
+.utility-head b,.utility-head h2{color:#ffe2a0;font-size:23px;margin:0 0 7px;display:block;}
+.utility-head p{color:#e5ecfa;margin:0;line-height:1.85;}
+.calculator{max-width:560px;margin:auto;padding:24px;}
+.calculator label{font-weight:750;color:#1b477c;display:block;margin-bottom:7px;}
+.calculator input{font:650 22px/1.5 monospace;text-align:left;direction:ltr;min-height:60px;padding:12px;}
+.calculator output{display:block;min-height:45px;text-align:left;direction:ltr;font-weight:850;font-variant-numeric:tabular-nums;color:#153b7d;font-size:23px;margin:10px 0;padding:6px 10px;}
+.calc-keys{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+.calc-keys button{min-height:52px;font-size:19px;}
+.market-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+.market-panel,.market-official{padding:22px;}
+.market-panel h3,.market-official h3{color:#143c77;margin:0 0 15px;}
+.market-panel a,.market-official a{color:#23599d;}
+.market-value{border-bottom:1px solid #e1e9f3;padding:11px 0;color:#143e7a;font-size:17px;font-weight:850;}
+.market-panel small{display:block;margin-top:14px;color:#6d7f92;}
+.market-official{margin-top:15px;}
+.market-official .acts{display:flex;flex-wrap:wrap;gap:12px;}
+.category-manager{margin:15px 0;padding:20px;border:1px solid #dbe8f4;}
+.category-manager-form,.specialty-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:center;margin:12px 0 18px;}
+.category-manager-form label,.specialty-form label{font-size:12px;font-weight:700;color:#45617e;}
+.category-manager-form input,.category-manager-form select,.specialty-form input,.specialty-form select{min-width:0;}
+.category-manager-list{display:flex;flex-direction:column;gap:7px;}
+.category-manager-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:#f6f9fe;border:1px solid #e2ecf7;border-radius:13px;padding:9px;}
+.category-manager-row b{min-width:130px;flex:1;color:#1c417a;}
+.category-manager-row small{font-size:11px;color:#60778d;}
+.category-manager-row span{font-size:12px;color:#3d6388;}
+.category-manager-row .btn{font-size:12px;}
+.specialty-panel{border:1px solid #d0dfef;}
+.specialty-panel .mut{line-height:1.7;}
+@media(max-width:670px){
+ .market-panels{grid-template-columns:1fr;}
+ .homepage-service-tools{gap:8px;}
+ .service-tool{padding:12px 7px;font-size:12px;}
+ .job-news-banner{gap:9px;padding:11px 9px;}
+ .job-news-copy b{font-size:14px;}
+ .job-news-copy small{font-size:11px;}
+ .job-news-live{padding:6px 8px;}
+ .category-manager-form,.specialty-form{grid-template-columns:1fr;}
+ .category-manager-row b{min-width:95px;}
+ .market-panel,.market-official{padding:17px;}
+}
+@media(prefers-reduced-motion:reduce){.job-news-live{animation:none;}}
