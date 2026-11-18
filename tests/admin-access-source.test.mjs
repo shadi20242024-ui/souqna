@@ -45,3 +45,20 @@ test("sign-out clears privileged user collections", () => {
   assert.ok(html.includes("allUsers=[];allTx=[];pendStores=[]"));
   assert.ok(html.includes('adminUserQuery="";'));
 });
+
+test("moderation queue is searchable, filtered, and bounded", () => {
+  assert.ok(html.includes("function adminReviewQueue()"));
+  assert.ok(html.includes("if(!isStaff())return"));
+  assert.ok(html.includes('adminReviewType==="ads"?[]'));
+  assert.ok(html.includes('adminReviewType==="stores"?[]'));
+  assert.ok(html.includes("pendingStores.slice(0,50)"));
+  assert.ok(html.includes("pendingAds.slice(0,50)"));
+  assert.ok(html.includes('id="admin-review-search"'));
+  assert.ok(html.includes('id="admin-review-type"'));
+  assert.ok(html.includes('e.target.id==="admin-review-search"&&isStaff()'));
+  assert.ok(html.includes('e.target.id!=="admin-review-type"||!isStaff()'));
+});
+
+test("moderation search is cleared on logout", () => {
+  assert.ok(html.includes('adminReviewQuery="";adminReviewType="all";'));
+});
