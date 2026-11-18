@@ -88,7 +88,7 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,increment,runTransaction}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,increment,runTransaction}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import{getFunctions,httpsCallable,connectFunctionsEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 import{summarizeAdmin}from"./assets/admin-metrics.js";
 const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
@@ -125,6 +125,7 @@ const STAFF=["admin","moderator","accountant","editor"];
 let accountProfileMissing=false;
 let accountProfileReadError="";
 let adminUserQuery="";
+let moderationHistory=[];
 let adminReviewQuery="";
 let adminReviewType="all";
 let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
@@ -293,8 +294,14 @@ async function loadMine(){
       subs=await read("طلبات الاشتراكات",()=>q2("subs","status","pending"));
       pendingSponsorRequests=(await read("طلبات رعاية البنرات",()=>q2("sponsorRequests","status","pending"))).sort(byT);
       allUsers=await read("المستخدمون",async()=>{const s=await getDocs(collection(db,"users"));return s.docs.map(d=>({id:d.id,...d.data()}))});
+      moderationHistory=await read("سجل مراجعة المحتوى",async()=>{const s=await getDocs(query(collection(db,"moderationAudit"),orderBy("createdAt","desc"),limit(50)));return s.docs.map(d=>({id:d.id,...d.data()}))});
       allTx=await read("سجل المعاملات",async()=>{const s=await getDocs(collection(db,"transactions"));return s.docs.map(d=>({id:d.id,...d.data()}))})}}
     adminUpdatedAt=Date.now();
+}
+function adminAuditRows(){
+  if(!isAdm())return "";
+  const rows=moderationHistory.map(entry=>'<div class="row" style="align-items:center;margin-bottom:8px"><div><b>'+esc(entry.type==="ad"?"إعلان":"متجر")+' · '+esc(entry.action==="approve"?"موافقة":"رفض")+'</b><div class="mut">'+esc(entry.targetId)+' · المسؤول: '+esc(entry.actorId)+'</div><div class="mut">'+(Number.isFinite(entry.createdAt)?new Date(entry.createdAt).toLocaleString("ar-SY"):"تاريخ غير متاح")+'</div></div></div>').join("");
+  return '<div class="box"><h3>📜 سجل مراجعة الإدارة</h3><p class="mut">آخر 50 إجراء مسجل. لا يمكن تعديل السجل من الواجهة.</p>'+(rows||'<p class="mut">لا توجد إجراءات مسجلة.</p>')+'</div>';
 }
 function adminUserRows(){
   if(!isAdm())return '<p class="mut">هذه البيانات متاحة للمدير فقط.</p>';
@@ -540,7 +547,7 @@ function render(){
     <input id="p-co" placeholder="اسم الشركة"><input id="p-ti" placeholder="عنوان العرض"><input id="p-de" placeholder="تفاصيل قصيرة"><input id="p-ph" dir="ltr" placeholder="واتساب الشركة (اختياري)"><input id="p-days" type="number" placeholder="مدة الإعلان بالأيام"><input type="file" accept="image/*" data-img="sp"><button class="btn g" data-a="addsp">إضافة البانر</button></div>
     <div class="box"><h3>📋 الدليل المميز</h3>${dr.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} (${TY[x.type]||""}) ${"★".repeat(x.stars||0)}</span>${x.type=="pharmacy"?`<button class="btn ${x.onDuty?"g":"l"}" data-a="duty" data-id="${x.id}">${x.onDuty?"مناوبة اليوم":"غير مناوبة"}</button>`:""}<button class="btn r" data-a="deldir" data-id="${x.id}">حذف</button></div>`).join("")}
     <select id="d-t"><option value="pharmacy">صيدلية</option><option value="doctor">طبيب</option><option value="lawyer">محامٍ</option><option value="engineer">مهندس</option><option value="fuel">محطة وقود</option></select><input id="d-n" placeholder="الاسم"><input id="d-s" placeholder="الاختصاص"><input id="d-a" placeholder="الحي / المنطقة"><input id="d-p" dir="ltr" placeholder="رقم الهاتف"><select id="d-st"><option value="1">★</option><option value="2">★★</option><option value="3" selected>★★★</option></select><button class="btn g" data-a="adddir">إضافة</button></div>
-    <div class="box"><h3>👥 المستخدمون</h3><label for="admin-user-search" class="mut">البحث بالاسم أو البريد الإلكتروني أو الدور</label><input id="admin-user-search" type="search" autocomplete="off" placeholder="ابحث عن مستخدم..." value="${esc(adminUserQuery)}"><div id="admin-user-results">${adminUserRows()}</div></div>
+    ${adminAuditRows()}<div class="box"><h3>👥 المستخدمون</h3><label for="admin-user-search" class="mut">البحث بالاسم أو البريد الإلكتروني أو الدور</label><input id="admin-user-search" type="search" autocomplete="off" placeholder="ابحث عن مستخدم..." value="${esc(adminUserQuery)}"><div id="admin-user-results">${adminUserRows()}</div></div>
     <div class="box"><h3>🎨 الخدمات</h3>${services.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${x.price||"اتفاق"}</span><button class="btn l" data-a="svprice" data-id="${x.id}">السعر</button><button class="btn l" data-a="svtog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="svdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="sv-n" placeholder="اسم الخدمة"><input id="sv-d" placeholder="الوصف"><input id="sv-p" type="number" placeholder="السعر بالدولار (فارغ = حسب الاتفاق)"><div class="acts"><button class="btn g" data-a="svadd">إضافة</button>${services.length?"":'<button class="btn" data-a="svseed">الخدمات الافتراضية</button>'}</div></div>
     <div class="box"><h3>📣 شركاء النشر</h3>${partners.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${esc(x.platform||"")}</span><button class="btn l" data-a="pttog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="ptdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="pt-n" placeholder="اسم الصفحة / الشريك"><select id="pt-pl"><option>facebook</option><option>instagram</option><option>tiktok</option><option>other</option></select><input id="pt-r" placeholder="المنطقة (مثل: ألمانيا، الخليج)"><input id="pt-a" placeholder="الجمهور / عدد المتابعين"><input id="pt-p" type="number" placeholder="السعر بالدولار"><button class="btn g" data-a="ptadd">إضافة</button></div>
     <div class="box"><h3>💎 باقات اشتراك المتاجر</h3>${plans.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(p.name)} · ${p.stars}★ · ${p.days||"∞"} يوم · ${p.maxAds||"∞"} إعلان</span><button class="btn l" data-a="edpl" data-id="${p.id}">تعديل</button><button class="btn l" data-a="togpl" data-id="${p.id}">${p.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="delpl" data-id="${p.id}">حذف</button></div>`).join("")}${plans.length?"":'<button class="btn g" data-a="seedpl">إنشاء الباقات الافتراضية</button>'}
@@ -814,7 +821,7 @@ onAuthStateChanged(auth,async u=>{
       await loadMine();
     }else{
       adminLoadWarnings=[];
-      mine=[];favorites=[];pend=[];orders=[];promos=[];allUsers=[];allTx=[];pendStores=[];sorders=[];subs=[];pendingSponsorRequests=[];adminUserQuery="";adminReviewQuery="";adminReviewType="all";
+      mine=[];favorites=[];pend=[];orders=[];promos=[];allUsers=[];allTx=[];moderationHistory=[];pendStores=[];sorders=[];subs=[];pendingSponsorRequests=[];adminUserQuery="";adminReviewQuery="";adminReviewType="all";
     }
   }catch(error){
     console.error("SOUQNA session load failed:",error);
