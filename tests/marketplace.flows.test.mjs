@@ -178,6 +178,35 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
     assert.ok(visible.docs.some(x => x.id === userAdRef.id));
   });
 
+
+  await t.test("Scoped jobs publisher publishes jobs with audit but cannot publish cars", async()=>{
+    const pendingJobId=doc(collection(db,"ads")).id;
+    const base={title:"فرصة عمل للتجربة",price:0,cur:"$",cat:"jobs",area:"السويداء",desc:"وظيفة اختبارية",phone:"963999999999",img:"",images:[],videoUrl:""};
+    const pendingJob=await market({action:"createAd",id:pendingJobId,fields:base});
+    assert.equal(pendingJob.data.status,"pending");
+    const specialistEmail="flow-specialist-"+Date.now()+"@example.test";
+    const specialistPassword="Specialist2026!";
+    await signOut(auth);
+    const specialist=await createUserWithEmailAndPassword(auth,specialistEmail,specialistPassword);
+    await env.withSecurityRulesDisabled(async ctx=>setDoc(doc(ctx.firestore(),"users",specialist.user.uid),{
+      name:"مشرف الوظائف",email:specialistEmail,role:"specialist",specialties:["jobs"],stars:0
+    }));
+    const specialistJobId=doc(collection(db,"ads")).id;
+    const approved=await market({action:"createAd",id:specialistJobId,fields:{...base,title:"وظيفة منشورة من مشرف الوظائف",images:["data:image/webp;base64,AAAA"],img:"data:image/webp;base64,AAAA",videoUrl:"https://youtu.be/abcdefghijk"}});
+    assert.equal(approved.data.status,"approved");
+    assert.equal((await getDoc(doc(visitor,"ads",specialistJobId))).data().status,"approved");
+    const carId=doc(collection(db,"ads")).id;
+    const personalCar=await market({action:"createAd",id:carId,fields:{...base,cat:"cars",title:"سيارة للتجربة"}});
+    assert.equal(personalCar.data.status,"pending");
+    await assert.rejects(()=>moderation({type:"ad",id:carId,action:"approve"}),"Job specialist cannot approve cars");
+    const response=await moderation({type:"ad",id:pendingJobId,action:"approve"});
+    assert.equal(response.data.status,"approved");
+    const audits=await assertSucceeds(getDocs(query(collection(admin,"moderationAudit"),where("targetId","==",specialistJobId))));
+    assert.ok(audits.docs.some(d=>d.data().action==="publish-specialty"));
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth,email,password);
+  });
+
   let subscriptionRef;
 
   let topupRef;
