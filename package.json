@@ -17,7 +17,8 @@
     "setup:staging:auto": "node scripts/auto-staging-setup.mjs",
     "test:admin": "node --test tests/admin-access-source.test.mjs tests/staging-admin-diagnostic.test.mjs tests/moderation-source.test.mjs",
     "diagnose:staging:admin": "node scripts/diagnose-staging-admin.mjs",
-    "test:moderation": "node --test tests/moderation-source.test.mjs"
+    "test:moderation": "node --test tests/moderation-source.test.mjs",
+    "verify:staging": "node scripts/build-hosting.mjs staging firebase.staging.json && node scripts/preflight-staging.mjs souqna-staging"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
