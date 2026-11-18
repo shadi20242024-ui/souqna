@@ -53,6 +53,35 @@ export async function deleteUploadedGallery(app,userId,items){
   return {deleted:results.length-failures.length,failed:failures.length};
 }
 
+
+export function pathsFromGalleryUrls(urls,projectId,userId){
+  if(projectId!=="souqna-staging"||typeof userId!=="string"||
+     !/^[A-Za-z0-9_-]{1,128}$/.test(userId))throw new Error("مساحة الصور غير مسموحة");
+  const bucket=projectId+".firebasestorage.app";
+  const legacy=projectId+".appspot.com";
+  const prefix="ads/"+userId+"/";
+  const paths=[];
+  for(const raw of Array.isArray(urls)?urls:[]){
+    try{
+      const u=new URL(raw);
+      if(u.protocol!=="https:"||u.hostname!=="firebasestorage.googleapis.com")continue;
+      const match=u.pathname.match(/^\/v0\/b\/([^/]+)\/o\/([^/]+)$/);
+      if(!match)continue;
+      const b=decodeURIComponent(match[1]),path=decodeURIComponent(match[2]);
+      if((b===bucket||b===legacy)&&path.startsWith(prefix)&&
+         /^[A-Za-z0-9_-]{8,100}\.(jpg|jpeg|png|webp)$/.test(path.slice(prefix.length))&&!paths.includes(path))
+        paths.push(path);
+    }catch{}
+  }
+  return paths;
+}
+export async function deleteGalleryByUrls(app,userId,urls){
+  if(!app||app.options.projectId!=="souqna-staging")
+    throw new Error("حذف الصور محصور في مشروع الاختبار");
+  const paths=pathsFromGalleryUrls(urls,app.options.projectId,userId);
+  return deleteUploadedGallery(app,userId,paths.map(path=>({path})));
+}
+
 export function renderGallery(container,images,{videoUrl=""}={}){
   if(!(container instanceof HTMLElement))throw new Error("مكان عرض الصور غير صالح");
   container.replaceChildren();
