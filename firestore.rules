@@ -323,6 +323,8 @@ service cloud.firestore {
       allow get: if isAdmin() || isSelf(uid);
       allow list: if isAdmin();
       allow create, update: if isAdmin()
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == "moderator"
         && request.resource.data.keys().hasOnly(["active", "sectionIds", "displayName"])
         && request.resource.data.keys().hasAll(["active", "sectionIds", "displayName"])
         && request.resource.data.active is bool
