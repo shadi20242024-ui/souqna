@@ -42,7 +42,7 @@ test("administrator directory supports bounded search and safe rendering", () =>
 });
 
 test("sign-out clears privileged user collections", () => {
-  assert.ok(html.includes("allUsers=[];allTx=[];pendStores=[]"));
+  assert.ok(html.includes("allUsers=[];allTx=[];moderationHistory=[];pendStores=[]"));
   assert.ok(html.includes('adminUserQuery="";'));
 });
 
