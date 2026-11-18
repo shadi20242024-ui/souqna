@@ -48,15 +48,15 @@ test("sign-out clears privileged user collections", () => {
 
 test("moderation queue is searchable, filtered, and bounded", () => {
   assert.ok(html.includes("function adminReviewQueue()"));
-  assert.ok(html.includes("if(!isStaff())return"));
+  assert.ok(html.includes("if(!canModerate())return"));
   assert.ok(html.includes('adminReviewType==="ads"?[]'));
   assert.ok(html.includes('adminReviewType==="stores"?[]'));
   assert.ok(html.includes("pendingStores.slice(0,50)"));
   assert.ok(html.includes("pendingAds.slice(0,50)"));
   assert.ok(html.includes('id="admin-review-search"'));
   assert.ok(html.includes('id="admin-review-type"'));
-  assert.ok(html.includes('e.target.id==="admin-review-search"&&isStaff()'));
-  assert.ok(html.includes('e.target.id!=="admin-review-type"||!isStaff()'));
+  assert.ok(html.includes('e.target.id==="admin-review-search"&&canModerate()'));
+  assert.ok(html.includes('e.target.id!=="admin-review-type"||!canModerate()'));
 });
 
 test("moderation search is cleared on logout", () => {
@@ -69,4 +69,11 @@ test("moderation history is admin-only and limited to fifty entries", () => {
   assert.ok(html.includes('orderBy("createdAt","desc"),limit(50)'));
   assert.ok(html.includes('if(!isAdm())return ""'));
   assert.ok(html.includes("moderationHistory=[];pendStores=[]"));
+});
+
+test("only reviewer roles can invoke moderation from the interface", () => {
+  assert.ok(html.includes('const canModerate=()=>me&&["admin","moderator","editor"].includes(me.role)'));
+  assert.ok(html.includes('else if(a=="ok"||a=="no"){if(!canModerate())'));
+  assert.ok(html.includes('else if(a=="stok"||a=="stno"){if(!canModerate())'));
+  assert.ok(html.includes('${canModerate()?'));
 });
