@@ -14,9 +14,9 @@ assert.ok(original);
 const live=Object.fromEntries([...original[1].matchAll(/([a-zA-Z]\w*):"([^"]*)"/g)].map(m=>[m[1],m[2]]));
 const fake={
   apiKey:"test-only-isolated-key-1234567",
-  authDomain:"souqna-staging-qa.firebaseapp.com",
-  projectId:"souqna-staging-qa",
-  storageBucket:"souqna-staging-qa.firebasestorage.app",
+  authDomain:"souqna-staging.firebaseapp.com",
+  projectId:"souqna-staging",
+  storageBucket:"souqna-staging.firebasestorage.app",
   messagingSenderId:"123456789012",
   appId:"1:123456789012:web:abc123456789"
 };
@@ -63,7 +63,7 @@ test("Safe Hosting preflight blocks accidental production data access",t=>{
   const staging=run("staging",configPath);
   assert.equal(staging.status,0,staging.stderr);
   const stagingHtml=readFileSync(join(output,"index.html"),"utf8");
-  assert.ok(stagingHtml.includes('"projectId":"souqna-staging-qa"'));
+  assert.ok(stagingHtml.includes('"projectId":"souqna-staging"'));
   assert.ok(stagingHtml.includes('بيئة اختبار سوقنا'));
   assert.ok(stagingHtml.includes('id="souqna-environment-banner"'));
   assert.ok(stagingHtml.includes('name="robots" content="noindex,nofollow,noarchive"'));
@@ -76,7 +76,7 @@ test("Safe Hosting preflight blocks accidental production data access",t=>{
   const verify=project=>spawnSync(process.execPath,[preflight,project],{
     cwd:root,encoding:"utf8",env:{...process.env,SOUQNA_HOSTING_OUT:output}
   });
-  const passed=verify("souqna-staging-qa");
+  const passed=verify("souqna-staging");
   assert.equal(passed.status,0,passed.stderr);
   assert.notEqual(verify("souqna-sweida").status,0,"Production preflight must be impossible");
   assert.notEqual(verify("souqna-other-qa").status,0,"Wrong staging project must be rejected");
