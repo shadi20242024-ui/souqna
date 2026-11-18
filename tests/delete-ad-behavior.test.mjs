@@ -1,0 +1,118 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createRequire} from "node:module";
+import {readFileSync} from "node:fs";
+import Module from "node:module";
+
+const localRequire=createRequire(import.meta.url);
+const serverSource=readFileSync(new URL("../functions/delete-ad.js",import.meta.url),"utf8");
+const {extractOwnedImageObjects}=localRequire("../functions/ad-media.js");
+const image=(owner,name="image_001")=>
+  "https://firebasestorage.googleapis.com/v0/b/souqna-staging.firebasestorage.app/o/"+
+  encodeURIComponent("ads/"+owner+"/"+name+".jpg")+"?alt=media";
+
+function harness({role="user",actor="owner",owner="owner",project="souqna-staging",files=[image("owner")],failPath=""}={}){
+  const deleted=[],storageDeletes=[],logs=[];
+  const database=new Map([
+    ["users/"+actor,{role}],
+    ["ads/test_ad",{ownerId:owner,images:files}]
+  ]);
+  const db={
+    collection(name){return{
+      doc(id){const key=name+"/"+id;return{key};}
+    };},
+    async runTransaction(run){
+      const pending=[];
+      const tx={
+        async get(ref){
+          const obj=database.get(ref.key);
+          return{exists:!!obj,data:()=>obj};
+        },
+        delete(ref){pending.push(ref.key);}
+      };
+      const result=await run(tx);
+      pending.forEach(key=>{database.delete(key);deleted.push(key);});
+      return result;
+    }
+  };
+  class HttpsError extends Error{
+    constructor(code,message){super(message);this.code=code;}
+  }
+  const storage={
+    bucket(bucket){return{
+      file(path){return{
+        async delete(){storageDeletes.push({bucket,path});if(path===failPath)throw Error("simulated Storage failure");}
+      };}
+    };}
+  };
+  const mockedRequire=id=>{
+    if(id==="firebase-functions/v2/https")return{onCall:(_options,handler)=>handler,HttpsError};
+    if(id==="firebase-admin/storage")return{getStorage:()=>storage};
+    if(id==="./ad-media")return{extractOwnedImageObjects};
+    throw Error("Unexpected dependency: "+id);
+  };
+  const compiled=new Module("souqna-delete-ad-test");
+  compiled.filename="/virtual/delete-ad.js";
+  compiled.paths=[];
+  compiled.require=mockedRequire;
+  compiled._compile(serverSource,compiled.filename);
+  const callable=compiled.exports(db,{});
+  const oldProject=process.env.GCLOUD_PROJECT;
+  const oldGcp=process.env.GCP_PROJECT;
+  const oldFirebase=process.env.FIREBASE_PROJECT_ID;
+  delete process.env.GCP_PROJECT;
+  delete process.env.FIREBASE_PROJECT_ID;
+  process.env.GCLOUD_PROJECT=project;
+  return{
+    database,deleted,storageDeletes,logs,
+    async call(uid=actor,id="test_ad"){
+      try{return await callable({auth:uid?{uid}:null,data:{id}});}
+      finally{
+        if(oldProject===undefined)delete process.env.GCLOUD_PROJECT;
+        else process.env.GCLOUD_PROJECT=oldProject;
+        if(oldGcp!==undefined)process.env.GCP_PROJECT=oldGcp;
+        if(oldFirebase!==undefined)process.env.FIREBASE_PROJECT_ID=oldFirebase;
+      }
+    }
+  };
+}
+
+test("owner deletes their listing and only the scoped staging image",async()=>{
+  const h=harness();
+  const result=await h.call();
+  assert.equal(result.ok,true);
+  assert.equal(result.deletedImages,1);
+  assert.equal(result.failedImages,0);
+  assert.deepEqual(h.deleted,["ads/test_ad"]);
+  assert.deepEqual(h.storageDeletes,[{bucket:"souqna-staging.firebasestorage.app",path:"ads/owner/image_001.jpg"}]);
+});
+
+test("admin may delete another owner's listing, but cannot delete unrelated files",async()=>{
+  const h=harness({role:"admin",actor:"admin",owner:"owner",files:[image("owner"),image("other")]});
+  const result=await h.call();
+  assert.equal(result.deletedImages,1);
+  assert.equal(h.storageDeletes.length,1);
+  assert.equal(h.storageDeletes[0].path,"ads/owner/image_001.jpg");
+});
+
+test("unauthorized user cannot delete an advertisement or any files",async()=>{
+  const h=harness({actor:"other",role:"user",owner:"owner"});
+  await assert.rejects(h.call(),error=>error.code==="permission-denied");
+  assert.ok(h.database.has("ads/test_ad"));
+  assert.deepEqual(h.storageDeletes,[]);
+});
+
+test("a production project rejects the request before touching data",async()=>{
+  const h=harness({project:"souqna-sweida"});
+  await assert.rejects(h.call(),error=>error.code==="failed-precondition");
+  assert.ok(h.database.has("ads/test_ad"));
+  assert.deepEqual(h.storageDeletes,[]);
+});
+
+test("an individual image deletion failure is reported after listing deletion",async()=>{
+  const h=harness({failPath:"ads/owner/image_001.jpg"});
+  const result=await h.call();
+  assert.equal(result.deletedImages,0);
+  assert.equal(result.failedImages,1);
+  assert.equal(h.database.has("ads/test_ad"),false);
+});
