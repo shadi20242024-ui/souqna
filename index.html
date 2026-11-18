@@ -85,12 +85,14 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 <main id="app"></main>
 <nav id="nav"></nav>
 <dialog id="paymentDialog" class="payment-dialog" aria-labelledby="paymentDialogTitle"></dialog>
+<dialog id="adMediaDialog" class="ad-media-dialog" aria-label="معرض صور الإعلان"></dialog>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,increment,runTransaction}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import{getFunctions,httpsCallable,connectFunctionsEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 import{summarizeAdmin}from"./assets/admin-metrics.js";
+import{isSafeVideoUrl,validGallery,MAX_AD_PHOTOS,calculateExpression,jobFreshCount,validRatePayload,validGoldPayload,isFresh,SPECIALTIES}from"./assets/souqna-extras.js";
 const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
 const auth=getAuth(app),db=getFirestore(app),functions=getFunctions(app,"us-central1");
 const finance=async (action,id,extra={})=>{
@@ -170,6 +172,7 @@ const CRYSTAL_ICON_PATHS=Object.freeze({
 const crystalSvg=(name,cssClass="category-symbol")=>'<span class="'+cssClass+'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false">'+(CRYSTAL_ICON_PATHS[name]||CRYSTAL_ICON_PATHS.misc)+'</svg></span>';
 
 const STAFF=["admin","moderator","accountant","editor"];
+let galleryPhotos=[],activeGallery=[],galleryPosition=0;
 let accountProfileMissing=false;
 let accountProfileReadError="";
 let adminUserQuery="";
@@ -592,9 +595,16 @@ function render(){
     A.innerHTML=!me?loginBox():`<div class="box premium-form-box"><div class="form-page-intro"><img src="assets/souqna-3d-mark.webp" alt="" loading="lazy"><div><h3>أنشئ إعلاناً جديداً</h3><p>أضف الصور والمعلومات بوضوح، وسيظهر إعلانك بعد موافقة الإدارة.</p></div></div><label class="field-label" for="a-cat">القسم</label><select id="a-cat">${cats.map(c=>`<option value="${c.id}">${esc(c.name_ar)}</option>`).join("")}</select>${myStores.some(s=>s.status=="approved")?`<select id="a-st"><option value="">إعلان شخصي (بدون متجر)</option>${myStores.filter(s=>s.status=="approved").map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>`:""}
     <label class="field-label" for="a-title">عنوان الإعلان</label><input id="a-title" placeholder="مثال: سيارة للبيع بحالة ممتازة"><div class="row"><input id="a-price" type="number" placeholder="السعر"><select id="a-cur"><option>$</option><option>ل.س</option></select></div>
     <label class="field-label" for="a-area">المنطقة والتفاصيل</label><input id="a-area" placeholder="المنطقة (السويداء، شهبا، صلخد...)"><textarea id="a-desc" rows="3" placeholder="التفاصيل"></textarea>
-    <label class="field-label" for="a-phone">رقم التواصل</label><input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><input id="a-img" type="file" accept="image/jpeg,image/png,image/webp,image/avif"><img class="imgprev" id="a-preview" hidden alt="معاينة صورة الإعلان"><div class="mut">📷 صورة حتى 12 ميغابايت؛ تُضغط تلقائيًا لتوفير مساحة قاعدة البيانات.</div><button class="btn l" type="button" data-a="clearphoto">إزالة الصورة</button>
+    <label class="field-label" for="a-phone">رقم التواصل</label><input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><label class="field-label" for="a-img">صور الإعلان (حتى أربع صور)</label>
+    <input id="a-img" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
+    <div id="photo-gallery-preview" class="ad-photo-thumbs" role="status"></div>
+    <div class="mut">📷 حتى 4 صور؛ تضغط الصور تلقائياً لتناسب مساحة قاعدة البيانات.</div>
+    <button class="btn l" type="button" data-a="clearphoto">إزالة الصور</button>
+    <label class="field-label" for="a-video">رابط فيديو للإعلان (اختياري)</label>
+    <input id="a-video" type="url" dir="ltr" placeholder="https://youtu.be/... أو https://vimeo.com/...">
+    <p class="mut">YouTube أو Vimeo فقط؛ لا يتم رفع فيديو إلى سيرفر سوقنا.</p>
     <button class="btn g" style="width:100%" data-a="post">إرسال للمراجعة</button><p class="mut">يظهر إعلانك بعد موافقة الإدارة.</p></div>`;
-    const f=$("#a-img");if(f)f.onchange=()=>{photoReady=shrink(f.files[0]);};
+    const f=$("#a-img");if(f)f.onchange=()=>{photoReady=prepareGalleryPhotos(Array.from(f.files||[]));};
   }else if(view=="store"){const s=stores.find(x=>x.id==curStore)||myStores.find(x=>x.id==curStore)||{};
     A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><section class="store-profile-card"><div class="cv store-cover" style="${stImg(s,"cover")}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div></div><div class="store-profile-body"><span class="store-profile-eyebrow">متاجر سوقنا · السويداء</span><h2>${esc(s.name)} ${planTag(s)}</h2><div class="mut">${esc(s.desc||"")}</div><div class="mut">📍 ${esc(s.area||"")}</div><div class="acts">${s.phone?`<a class="btn wa" target="_blank" href="https://wa.me/${esc(s.phone)}">واتساب</a><a class="btn" href="tel:${esc(s.phone)}">اتصال</a>`:""}${safeHttpUrl(s.map)?`<a class="btn l" rel="noopener noreferrer" target="_blank" href="${esc(safeHttpUrl(s.map))}">الموقع على الخريطة</a>`:""}</div></div></section>${xHtml(s)}<div class="sec"><b>إعلانات المتجر</b></div><div class="grid">${ads.filter(a=>a.storeId==s.id).map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات للمتجر.</p>'}</div>`;
   }else if(view=="mystores"){
@@ -736,7 +746,7 @@ document.addEventListener("click",async e=>{
       }
       render();
     }
-    else if(a=="clearphoto"){photoSeq++;photo="";photoHash="";photoError="";photoReady=Promise.resolve();const f=$("#a-img"),p=$("#a-preview");if(f)f.value="";if(p){p.hidden=true;p.removeAttribute("src")}toast("أُزيلت صورة الإعلان")}
+    else if(a=="clearphoto"){photoSeq++;photo="";galleryPhotos=[];photoHash="";photoError="";photoReady=Promise.resolve();const f=$("#a-img"),p=$("#photo-gallery-preview");if(f)f.value="";if(p)p.textContent="";toast("أُزيلت صور الإعلان")}
      else if(a=="spnext"||a=="spprev"){
       const count=sp.filter(x=>x.active===true&&Number(x.from||0)<=Date.now()&&Number(x.to||0)>Date.now()).length;
       if(!count)return;
@@ -789,11 +799,13 @@ document.addEventListener("click",async e=>{
        await photoReady;
        if(photoError)return toast(photoError);
        if(photoHash&&mine.some(x=>x.imgHash===photoHash&&x.status!=="rejected"))return toast("الصورة نفسها مستخدمة في إعلان سابق. اختر صورة أخرى.");
-      const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
+      const videoUrl=val("#a-video");if(!isSafeVideoUrl(videoUrl))return toast("رابط الفيديو يجب أن يكون YouTube أو Vimeo صحيحاً");
+       if(!validGallery(photo,galleryPhotos))return toast("صور الإعلان كثيرة أو حجمها كبير");
+       const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
       if(t.length<3||t.length>150||!val("#a-price")||!Number.isFinite(+val("#a-price"))||+val("#a-price")<0||+val("#a-price")>1000000000000||p.length<9||p.length>15)return toast("تحقق من عنوان الإعلان (3–150 حرفاً)، السعر ورقم الهاتف");
       const sid=$("#a-st")?$("#a-st").value:"";if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
-      await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
-      photo="";photoHash="";photoError="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
+      await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,images:galleryPhotos,videoUrl,...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
+      photo="";galleryPhotos=[];photoHash="";photoError="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
     else if(a=="sbreq"){
        if(!need())return;
        await pickReady;
