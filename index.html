@@ -99,8 +99,7 @@ const finance=async (action,id,extra={})=>{
   const response=await call({action,...(id?{id}:{}),...extra});
   return response.data;
 };
-const marketplace=async (action,collectionName,fields)=>{
-  const id=doc(collection(db,collectionName)).id;
+const marketplace=async (action,collectionName,fields,id=doc(collection(db,collectionName)).id)=>{
   const call=httpsCallable(functions,"souqnaMarketplace");
   const response=await call({action,id,fields});
   return response.data;
@@ -660,6 +659,8 @@ document.addEventListener("click",async e=>{
       const galleryVideo=val("#a-video")?.trim()||"";
       if(galleryVideo){const {validateListingMedia}=await import("./assets/souqna-local-services.mjs");validateListingMedia({videoUrl:galleryVideo});}
       let uploadedGallery=[];
+      const adRequestId=doc(collection(db,"ads")).id;
+      let adConfirmed=false;
       if(mediaFiles.length||galleryVideo){
         if(app.options.projectId!=="souqna-staging")
           return toast("الصور المتعددة متاحة حالياً في مشروع souqna-staging فقط");
@@ -671,14 +672,34 @@ document.addEventListener("click",async e=>{
             onProgress:({completed,total})=>toast("رفع الصور "+completed+" / "+total)
           });
         }
-        await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...(uploadedGallery.length?{images:uploadedGallery.map(image=>image.url)}:{}),...(galleryVideo?{videoUrl:galleryVideo}:{}),...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
+        await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...(uploadedGallery.length?{images:uploadedGallery.map(image=>image.url)}:{}),...(galleryVideo?{videoUrl:galleryVideo}:{}),...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})},adRequestId);
+        adConfirmed=true;
       }catch(error){
-        if(uploadedGallery.length){
-          const {deleteUploadedGallery}=await import("./assets/souqna-gallery.mjs");
-          const result=await deleteUploadedGallery(app,me.uid,uploadedGallery);
-          if(result.failed)toast("تعذر حذف "+result.failed+" صورة مؤقتة؛ يلزم تنظيفها لاحقاً");
+        const confirmedFailure=["functions/invalid-argument","functions/permission-denied",
+          "functions/unauthenticated","functions/failed-precondition","functions/resource-exhausted"]
+          .includes(String(error?.code||""));
+        if(uploadedGallery.length&&!confirmedFailure){
+          try{
+            const record=await getDoc(doc(db,"ads",adRequestId));
+            adConfirmed=record.exists()&&record.data()?.ownerId===me.uid;
+          }catch(readError){
+            console.warn("Unable to reconcile ad submission:",readError);
+          }
         }
-        throw error;
+        if(adConfirmed){
+          toast("تم تسجيل الإعلان، بانتظار المراجعة");
+        }else{
+          if(uploadedGallery.length&&confirmedFailure){
+            try{
+              const {deleteUploadedGallery}=await import("./assets/souqna-gallery.mjs");
+              const result=await deleteUploadedGallery(app,me.uid,uploadedGallery);
+              if(result.failed)toast("تعذر حذف "+result.failed+" صورة مؤقتة؛ يلزم تنظيفها لاحقاً");
+            }catch(cleanupError){console.warn("Photo cleanup failed:",cleanupError);}
+          }
+          if(uploadedGallery.length&&!confirmedFailure)
+            throw new Error("تعذر تأكيد إنشاء الإعلان بسبب الاتصال؛ لم نحذف صوره حفاظاً عليها. تحقق من إعلاناتي قبل إعادة الإرسال");
+          throw error;
+        }
       }
       photo="";photoHash="";photoError="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
     else if(a=="sbreq"){
