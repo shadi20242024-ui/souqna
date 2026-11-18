@@ -23,6 +23,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Setup Java for Firebase Emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install root dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install Cloud Functions dependencies for the emulator
+        run: npm install --prefix functions --ignore-scripts --no-audit --no-fund
+      - name: Test Firestore permissions using local emulators
+        run: npm run test:rules
       - name: Check JavaScript and moderation behavior
         run: npm run test:admin
       - name: Check existing application source
