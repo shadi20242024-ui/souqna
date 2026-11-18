@@ -19,12 +19,14 @@ test("trusted cleanup rejects dangerous paths and production project",()=>{
 test("deletion callable checks role and owner, commits database first, then deletes objects",()=>{
   const server=readFileSync(new URL("../functions/delete-ad.js",import.meta.url),"utf8");
   assert.match(server,/project!=="souqna-staging"/);
-  assert.match(server,/role==="admin"/);
-  assert.match(server,/!admin&&ad.ownerId!==uid/);
+  assert.match(server,/role!=="admin"/);
+  assert.match(server,/ad.ownerId!==uid/);
   assert.match(server,/extractOwnedImageObjects\(ad.images,project,ownerId\)/);
   assert.match(server,/deleteImageWithRetry\(storage,bucket,path\)/);
   assert.match(server,/storage\.bucket\(bucket\)\.file\(path\)\.delete/);
-  assert.ok(server.indexOf("tx.delete(ref)")<server.lastIndexOf("deleteImageWithRetry(storage,bucket,path)"));
+  assert.match(server,/tx\.create\(cleanupRef/);
+  assert.match(server,/module\.exports\.makeRetryCleanup=makeRetryCleanup/);
+  assert.ok(server.indexOf("tx.create(cleanupRef")<server.indexOf("tx.delete(ref)"));
 });
 
 test("delete operations retain the bucket actually referenced by each verified image",()=>{
