@@ -145,5 +145,33 @@ function makeRetryCleanup(db,options){
     return cleanJob(db,id,data.ownerId,data.objects);
   });
 }
+function makeListCleanupJobs(db,options){
+  return onCall(options,async request=>{
+    activeProject();
+    const uid=authorizedUid(request);
+    const userSnap=await db.collection("users").doc(uid).get();
+    if(!userSnap.exists||userSnap.data()?.role!=="admin")
+      throw new HttpsError("permission-denied","عرض مهام تنظيف الصور متاح للمدير فقط");
+    try{
+      const query=await db.collection("mediaCleanupJobs")
+        .orderBy("createdAt","desc").limit(25).get();
+      return {
+        ok:true,
+        jobs:query.docs.map(snapshot=>{
+          const data=snapshot.data();
+          return {
+            id:snapshot.id,
+            failedImages:Array.isArray(data?.objects)?Math.min(data.objects.length,MAX_IMAGES):0,
+            createdAt:Number.isSafeInteger(data?.createdAt)?data.createdAt:0
+          };
+        }).filter(item=>ID.test(item.id))
+      };
+    }catch(error){
+      console.error("SOUQNA cleanup queue query failed",{adminUid:uid,error});
+      throw new HttpsError("internal","تعذّر تحميل مهام تنظيف الصور");
+    }
+  });
+}
 module.exports=makeDeleteAd;
 module.exports.makeRetryCleanup=makeRetryCleanup;
+module.exports.makeListCleanupJobs=makeListCleanupJobs;
