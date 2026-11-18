@@ -21,6 +21,8 @@ function validateImageUrls(images,projectId,uid){
   const output=images.map(value=>{
     const parsed=url(value,"رابط الصورة");
     if(!IMAGE_HOSTS.has(parsed.hostname))mediaError("مصدر الصورة غير مسموح");
+    if(parsed.hostname==="firebasestorage.googleapis.com" && parsed.searchParams.get("alt")!=="media")
+      mediaError("رابط صورة Firebase يفتقد تصريح العرض");
     let bucket="";
     let objectPath="";
     if(parsed.hostname==="firebasestorage.googleapis.com"){
