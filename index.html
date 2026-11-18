@@ -267,7 +267,7 @@ const categoryScene=id=>{
 const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس",fuel:"محطة وقود"};
 const wxTxt=c=>c==0?"صافٍ":c<4?"غائم جزئيًا":c<50?"ضباب":c<70?"أمطار":c<80?"ثلوج":c<90?"زخات مطر":"عاصفة رعدية";
 
-let weatherError="",lastWeatherPoll=0,marketFx=null,marketGold=null,marketError="",lastMarketPoll=0;
+let weatherError="",lastWeatherPoll=0,marketFx=null,marketGold=null,marketError="",lastMarketPoll=0,marketLocal=null;
 async function loadWx(){
   if(Date.now()-lastWeatherPoll<60000)return;
   lastWeatherPoll=Date.now();
@@ -315,13 +315,35 @@ function jobNewsBanner(){
 function calculatorHtml(){
   return '<div class="utility-page"><div class="utility-head"><b>🧮 الآلة الحاسبة</b><p class="mut">حساب مجاني للجمع والطرح والضرب والقسمة والأقواس.</p></div><div class="box calculator"><label for="calc-expression">اكتب العملية الحسابية</label><input type="text" dir="ltr" inputmode="decimal" autocomplete="off" id="calc-expression" placeholder="(120 + 30) * 2"><output id="calc-result" role="status">النتيجة تظهر هنا</output><div class="calc-keys">'+["7","8","9","/","4","5","6","*","1","2","3","-","0",".","(",")","C","=","+"].map(key=>'<button type="button" class="btn l" data-a="calc-key" data-key="'+key+'">'+(key==="*"? "×":key==="/"? "÷":key)+'</button>').join("")+'</div></div></div>';
 }
+
+function localMarketHtml(){
+  const data=marketLocal;
+  const okay=data&&data.currencyUnit==="new_syp"&&isFresh(Number(data.updatedAt),36*3600000)
+    &&["usd","eur","gold21","gold18"].every(k=>Number.isFinite(Number(data[k]))&&Number(data[k])>0)
+    &&String(data.source||"").startsWith("https://");
+  const line=okay
+    ?`<div class="market-panels"><div class="market-value">الدولار: ${fmtNumber(data.usd)} ل.س جديدة</div><div class="market-value">اليورو: ${fmtNumber(data.eur)} ل.س جديدة</div><div class="market-value">غرام الذهب عيار 21: ${fmtNumber(data.gold21)} ل.س جديدة</div><div class="market-value">غرام الذهب عيار 18: ${fmtNumber(data.gold18)} ل.س جديدة</div></div><p class="mut">آخر تحديث: ${new Date(data.updatedAt).toLocaleString("ar-SY")}</p><a class="btn l" target="_blank" rel="noopener noreferrer" href="${esc(data.source)}">راجع النشرة الأصلية</a>`
+    :'<p class="mut">لم تنشر الإدارة نشرة سورية حديثة موثّقة. لا تُعرض أسعار محلية غير مؤكدة.</p>';
+  return `<section class="box market-local"><h3>🇸🇾 نشرة سورية موثّقة من إدارة سوقنا</h3><p class="mut">القيم بالليرة السورية الجديدة فقط، وفق المصدر المدخل من الإدارة. السعر قابل للتغيير، ويجب التأكد من المصدر قبل المعاملة.</p>${line}</section>`;
+}
+function adminLocalMarketPanel(){
+  if(!isAdm())return "";
+  return `<section class="box"><h3>نشرة الأسعار السورية (يضيفها المالك)</h3><p class="mut">أدخل أسعاراً من مصدر سوري موثوق بعد التحقق منها. النشرة تُخفى تلقائياً بعد 36 ساعة من آخر تحديث.</p>
+    <label for="rate-usd">الدولار / ليرة سورية جديدة</label><input id="rate-usd" type="number" min="0.01" step="any" value="${Number(marketLocal?.usd)||""}">
+    <label for="rate-eur">اليورو / ليرة سورية جديدة</label><input id="rate-eur" type="number" min="0.01" step="any" value="${Number(marketLocal?.eur)||""}">
+    <label for="rate-gold21">غرام ذهب عيار 21 / ليرة جديدة</label><input id="rate-gold21" type="number" min="0.01" step="any" value="${Number(marketLocal?.gold21)||""}">
+    <label for="rate-gold18">غرام ذهب عيار 18 / ليرة جديدة</label><input id="rate-gold18" type="number" min="0.01" step="any" value="${Number(marketLocal?.gold18)||""}">
+    <label for="rate-source">رابط النشرة المصدرية https</label><input id="rate-source" type="url" dir="ltr" value="${esc(marketLocal?.source||"")}" placeholder="https://pma.sy/... أو https://www.cb.gov.sy/...">
+    <button class="btn g" data-a="market-save">نشر أسعار النشرة بعد التحقق</button>
+  </section>`;
+}
 function marketsHtml(){
   const freshFx=marketFx&&isFresh(marketFx.timestamp,48*3600000);
   const freshGold=marketGold&&isFresh(marketGold.timestamp,30*60000);
   const fxRows=freshFx?'<div class="market-value">USD ↔ SYP: '+fmtNumber(marketFx.syp)+' ل.س / USD</div><div class="market-value">EUR ↔ SYP: '+fmtNumber(marketFx.syp/marketFx.eur)+' ل.س / EUR</div><div class="market-value">TRY ↔ SYP: '+fmtNumber(marketFx.syp/marketFx.tryRate)+' ل.س / TRY</div><small>تحديث المرجع: '+new Date(marketFx.timestamp).toLocaleString("ar-SY")+'</small>':'<p class="mut">أسعار مرجعية غير متاحة أو قديمة؛ لا تُعرض أرقام غير مؤكدة.</p>';
   const goldRows=freshGold?'<div class="market-value">'+fmtNumber(marketGold.usdPerOunce)+' USD / أونصة الذهب العالمية</div><small>تحديث المؤشر: '+new Date(marketGold.timestamp).toLocaleString("ar-SY")+'</small>':'<p class="mut">مؤشر الذهب العالمي غير متاح أو قديم.</p>';
   return `<div class="utility-page"><div class="utility-head"><h2>💱 أسعار العملات والذهب</h2><p>مؤشرات عالمية تُحدَّث تلقائياً عند فتح الصفحة، وليست أسعار الصرافة أو الصاغة المعتمدة في سورية.</p></div>
-  <div class="market-panels"><section class="box market-panel"><h3>أسعار صرف مرجعية مقابل الليرة السورية</h3>${fxRows}<p class="mut">سعر مرجعي دولي: قد يختلف كثيراً عن نشرة مصرف سورية المركزي أو سعر السوق المحلية، خصوصاً مع اختلاف فئات العملة الجديدة والقديمة.</p><a href="https://www.exchangerate-api.com/" rel="noopener noreferrer" target="_blank">المصدر: ExchangeRate-API</a></section>
+  ${localMarketHtml()}<div class="market-panels"><section class="box market-panel"><h3>أسعار صرف مرجعية مقابل الليرة السورية</h3>${fxRows}<p class="mut">سعر مرجعي دولي: قد يختلف كثيراً عن نشرة مصرف سورية المركزي أو سعر السوق المحلية، خصوصاً مع اختلاف فئات العملة الجديدة والقديمة.</p><a href="https://www.exchangerate-api.com/" rel="noopener noreferrer" target="_blank">المصدر: ExchangeRate-API</a></section>
   <section class="box market-panel"><h3>الذهب العالمي</h3>${goldRows}<p class="mut">سعر الأونصة بالدولار عالمياً؛ لا يمثل سعر غرام 21 أو 18 قيراطاً في محلات الصاغة السورية.</p><a href="https://gold-api.com/" target="_blank" rel="noopener noreferrer">المصدر: Gold-API</a></section></div>
   <section class="box market-official"><h3>الأسعار الرسمية في سورية</h3><p>للتسعيرة المحلية المعتمدة يرجى مراجعة الجهات الرسمية مباشرة، ولا ننشر أسعاراً محلية غير موثقة.</p><div class="acts"><a class="btn l" target="_blank" rel="noopener noreferrer" href="https://www.cb.gov.sy/">مصرف سورية المركزي</a><a class="btn l" target="_blank" rel="noopener noreferrer" href="https://pma.sy/">الهيئة العامة لإدارة المعادن الثمينة</a><button class="btn" data-a="markets-refresh">تحديث المؤشرات الآن</button></div></section>${marketError?'<p class="mut" role="status">'+esc(marketError)+'</p>':""}</div>`;
 }
@@ -391,9 +413,10 @@ ${me&&me.uid!=s.ownerId?`<select id="rv-s" style="margin-top:8px">${[5,4,3,2,1].
 ${stx.r.slice(0,5).map(r=>`<div class="mut" style="margin-top:6px"><b>${esc(r.userName)}</b> ${"★".repeat(r.stars)} ${esc(r.text||"")}</div>`).join("")}</div>`}
 const storeList=()=>[...stores].filter(s=>!sq||(s.name+(s.desc||"")+(s.area||"")).includes(sq)).sort((x,y)=>(planOf(y)?.order||0)-(planOf(x)?.order||0)).map(s=>`<button class="dr" data-st="${s.id}" style="width:100%;border:0;text-align:right;font:inherit"><div class="stl" style="${stImg(s,"logo")};margin:0;flex:none;width:52px;height:52px">${s.logo?"":esc((s.name||"?")[0])}</div><div style="flex:1"><b>${esc(s.name)}</b> ${planTag(s)}<div class="mut">${esc(s.area||"")}</div></div></button>`).join("")||'<p class="mut">لا نتائج.</p>';
 async function loadPublic(){
-  const sf=x=>x.catch(()=>null);const [c,a,s,p,st,sps,drs,sts,pls,svs,pts]=await Promise.all([getDocs(collection(db,"categories")),q2("ads","status","approved"),getDoc(doc(db,"settings","contact")),getDocs(collection(db,"packages")),sf(getDoc(doc(db,"settings","site"))),sf(getDocs(collection(db,"sponsors"))),sf(getDocs(collection(db,"directory"))),sf(getDocs(query(collection(db,"stores"),where("status","==","approved")))),sf(getDocs(collection(db,"plans"))),sf(getDocs(collection(db,"services"))),sf(getDocs(collection(db,"partners")))]);
+  const sf=x=>x.catch(()=>null);const [c,a,s,p,st,sps,drs,sts,pls,svs,pts,mrates]=await Promise.all([getDocs(collection(db,"categories")),q2("ads","status","approved"),getDoc(doc(db,"settings","contact")),getDocs(collection(db,"packages")),sf(getDoc(doc(db,"settings","site"))),sf(getDocs(collection(db,"sponsors"))),sf(getDocs(collection(db,"directory"))),sf(getDocs(query(collection(db,"stores"),where("status","==","approved")))),sf(getDocs(collection(db,"plans"))),sf(getDocs(collection(db,"services"))),sf(getDocs(collection(db,"partners"))),sf(getDoc(doc(db,"settings","marketRates")))]);
   allCategoryRecords=c.docs.map(d=>({id:d.id,...d.data()}));
   cats=allCategoryRecords.filter(x=>x.active===true).sort((x,y)=>(Number(x.order)||0)-(Number(y.order)||0));
+  marketLocal=mrates&&mrates.exists()?mrates.data():null;
   ads=a;wa=s.exists()?(s.data().whatsapp||""):"";site=st&&st.exists()?st.data():{};sp=sps?sps.docs.map(d=>({id:d.id,...d.data()})):[];dr=drs?drs.docs.map(d=>({id:d.id,...d.data()})):[];stores=sts?sts.docs.map(d=>({id:d.id,...d.data()})):[];plans=pls?pls.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(x.order||0)-(y.order||0)):[];services=svs?svs.docs.map(d=>({id:d.id,...d.data()})):[];partners=pts?pts.docs.map(d=>({id:d.id,...d.data()})):[];initAds();
   pk=p.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.active!==false).sort((x,y)=>x.stars-y.stars||x.days-y.days);
 }
@@ -744,7 +767,7 @@ function render(){
     <h3>🚀 باقات تمييز الإعلان</h3>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
-    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+adminCategoryReadiness()+adminCategoryManager()+specialistDirectoryPanel()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
+    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+adminCategoryReadiness()+adminCategoryManager()+specialistDirectoryPanel()+adminLocalMarketPanel()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
     <div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label class="mut">أخبار الشريط العاجل (سطر لكل خبر)</label><textarea id="s-tk" rows="3">${esc(site.ticker||"")}</textarea><label class="mut">شريط الخدمات والوقود أسفل البنر (خبر في كل سطر)</label><textarea id="s-tk2" rows="3">${esc(site.tickerSecondary||"")}</textarea>
@@ -1019,6 +1042,17 @@ else if(a==="category-add"){
       if(name.trim().length<2||name.trim().length>60||!Number.isSafeInteger(number)||number<1||number>999)return toast("الاسم أو الترتيب غير صالح");
       await updateDoc(doc(db,"categories",id),{name_ar:name.trim(),order:number});
       await loadPublic();render();
+    }
+    
+else if(a==="market-save"){
+      if(!isAdm())return toast("غير مصرح");
+      const input={usd:Number(val("#rate-usd")),eur:Number(val("#rate-eur")),gold21:Number(val("#rate-gold21")),gold18:Number(val("#rate-gold18"))};
+      if(!Object.values(input).every(v=>Number.isFinite(v)&&v>0&&v<1e12))return toast("يرجى إدخال أسعار صحيحة موجبة");
+      const source=val("#rate-source");
+      if(!source.startsWith("https://")||!safeHttpUrl(source)||source.length>500)return toast("رابط النشرة الرسمية غير صالح");
+      if(!confirm("هل تحققت من المصدر والتاريخ، وأن الأسعار بالليرة الجديدة؟"))return;
+      await setDoc(doc(db,"settings","marketRates"),{...input,source,currencyUnit:"new_syp",updatedAt:Date.now()});
+      await loadPublic();render();toast("تم نشر النشرة المحلية مع التاريخ والمصدر");
     }
     else if(a=="savewa"){const n=val("#s-wa").replace(/\D/g,"");await setDoc(doc(db,"settings","contact"),{whatsapp:n});wa=n;toast("تم الحفظ")}
     else if(a=="seed"){for(const [s,d] of [[5,15],[10,30],[15,30],[20,30],[25,30]])await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
