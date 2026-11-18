@@ -21,8 +21,9 @@ css.textContent=`
 `;
 document.head.append(css);
 const root=document.createElement("section");root.id="sq-staff-panel";root.dir="rtl";
-const mount=document.querySelector("main")||document.body;
-mount.append(root);
+const mount=document.querySelector("main");
+if(mount)mount.after(root);
+else document.body.append(root);
 const escapeText=(v)=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const titleFor=id=>SECTION_OPTIONS.find(x=>x[0]===id)?.[1]??id;
 let db,identity,role,assigned=[];
