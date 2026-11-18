@@ -91,7 +91,7 @@ service cloud.firestore {
       // Trusted souqnaMarketplace callable enforces quotas and submission validation.
       allow create: if false;
       allow update: if (isAdmin()
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["featuredUntil", "status"]));
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["featuredUntil", "status", "ownerId", "createdAt"]));
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
 
@@ -102,7 +102,7 @@ service cloud.firestore {
       // Trusted souqnaMarketplace callable enforces quotas and submission validation.
       allow create: if false;
       allow update: if (isAdmin()
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["plan", "planUntil", "status"]))
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["plan", "planUntil", "status", "ownerId", "createdAt"]))
         || (signedIn() && resource.data.ownerId == request.auth.uid
           && changedOnly(["name", "desc", "phone", "area", "map", "logo", "cover"]));
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
