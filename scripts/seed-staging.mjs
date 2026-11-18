@@ -11,8 +11,9 @@ const execute=args.includes("--execute");
 const confirmation=arg("--confirm");
 assert.ok(typeof project==="string"&&/^[a-z][a-z0-9-]{4,40}$/.test(project),
   "Provide an explicit --project STAGING_PROJECT_ID.");
-assert.notEqual(project,"souqna-sweida","Production Firebase project is permanently blocked.");
-assert.notEqual(project,"souqna-preview-disabled","Disconnected preview is not a staging project.");
+assert.equal(project,"souqna-staging","Only the existing souqna-staging project is allowed.");
+assert.ok(!process.env.GCLOUD_PROJECT || process.env.GCLOUD_PROJECT===project,"GCLOUD_PROJECT differs from the staging target.");
+assert.ok(!process.env.GOOGLE_CLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT===project,"GOOGLE_CLOUD_PROJECT differs from the staging target.");
 assert.ok(!args.includes("--production"),"Production bootstrap is disabled.");
 
 const now=Date.now();
@@ -58,6 +59,11 @@ assert.ok(
   process.env.FIRESTORE_EMULATOR_HOST || process.env.GOOGLE_APPLICATION_CREDENTIALS,
   "An emulator or explicit Google Application Credentials are required for execution."
 );
+if(process.env.FIRESTORE_EMULATOR_HOST){
+  assert.ok(process.env.FIRESTORE_EMULATOR_HOST.startsWith("127.0.0.1:")||
+    process.env.FIRESTORE_EMULATOR_HOST.startsWith("localhost:"),
+    "Seed emulator must be local.");
+}
 const require=createRequire(new URL("../functions/index.js",import.meta.url));
 const {initializeApp,applicationDefault,getApps}=require("firebase-admin/app");
 const {getFirestore}=require("firebase-admin/firestore");
