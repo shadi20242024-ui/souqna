@@ -386,6 +386,24 @@ try {
     await page.screenshot({path:screenshotName("admin-approved.png"),fullPage:true,animations:"disabled"});
     await page.locator('#nav [data-v="admin"]').click();
     await page.locator("#adminDashboard .admin-stat").first().waitFor({timeout:15000});
+    await page.locator(".category-audit-score").filter({hasText:"10 / 10"}).waitFor({timeout:12000});
+    assert.equal(await page.locator(".category-audit-item").count(),10,
+      "Admin must see all ten approved photo categories");
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await setDoc(doc(ctx.firestore(),"categories","fashion"),{active:false},{merge:true});
+    });
+    await page.locator("#refreshAdmin").click();
+    await page.locator(".category-audit-score").filter({hasText:"9 / 10"}).waitFor({timeout:15000});
+    assert.ok((await page.locator(".category-audit").innerText()).includes("أزياء"),
+      "Inactive category must be listed to the owner");
+    await page.screenshot({path:screenshotName("admin-category-inactive.png"),fullPage:true,animations:"disabled"});
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await setDoc(doc(ctx.firestore(),"categories","fashion"),{active:true},{merge:true});
+    });
+    await page.locator("#refreshAdmin").click();
+    await page.locator(".category-audit-score").filter({hasText:"10 / 10"}).waitFor({timeout:15000});
+    await page.screenshot({path:screenshotName("admin-category-ready.png"),fullPage:true,animations:"disabled"});
+    console.log("UI ADMIN CATEGORIES OK","10/10 active, 9/10 when category disabled, 10/10 restored");
     const metric=name=>page.locator("#adminDashboard .admin-stat").filter({hasText:name}).first();
     assert.equal(await metric("الإعلانات المنشورة").getAttribute("data-value"),"2");
     assert.equal(await metric("المتاجر المنشورة").getAttribute("data-value"),"2");
@@ -440,6 +458,8 @@ try {
     await page.locator('#nav [data-v="admin"]').waitFor({timeout:15000});
     await page.locator('#nav [data-v="admin"]').click();
     await page.locator("#adminDashboard").waitFor({timeout:15000});
+    assert.equal(await page.locator(".category-audit").count(),0,
+      "Moderator cannot view owner-only category readiness");
     assert.equal(await page.locator('#adminDashboard .admin-stat').filter({hasText:"الحسابات المسجلة"}).count(),0);
     assert.equal(await page.locator('#adminDashboard .admin-stat').filter({hasText:"نجوم في المحافظ"}).count(),0);
     assert.equal(await page.locator('#adminDashboard .admin-stat').filter({hasText:"طلبات مالية معلّقة"}).count(),0);
