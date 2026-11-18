@@ -295,7 +295,7 @@ function card(a,m){
   return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":IC[a.cat]||"🛍️"}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
-  ${Array.isArray(a.images)&&a.images.length?`<div class="acts" style="margin-top:8px">${a.images.filter(u=>safeHttpUrl(u)).slice(0,12).map((u,i)=>`<a href="${esc(safeHttpUrl(u))}" target="_blank" rel="noopener noreferrer" aria-label="صورة الإعلان ${i+1}">📷 ${i+1}</a>`).join(" ")}</div>`:""}
+  ${Array.isArray(a.images)&&a.images.length?`<details style="margin-top:8px"><summary style="cursor:pointer;color:#1747b8">📷 معرض الصور (${a.images.length})</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${a.images.filter(u=>safeHttpUrl(u)).slice(0,12).map((u,i)=>`<a href="${esc(safeHttpUrl(u))}" target="_blank" rel="noopener noreferrer" aria-label="فتح صورة الإعلان ${i+1}"><img src="${esc(safeHttpUrl(u))}" loading="lazy" alt="صورة الإعلان ${i+1}" style="width:74px;height:74px;object-fit:cover;border-radius:9px"></a>`).join("")}</div></details>`:""}
   ${a.videoUrl&&safeHttpUrl(a.videoUrl)?`<div><a href="${esc(safeHttpUrl(a.videoUrl))}" target="_blank" rel="noopener noreferrer">▶ فيديو الإعلان</a></div>`:""}
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
   :m=="mine"?`<button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
@@ -657,6 +657,7 @@ document.addEventListener("click",async e=>{
       const sid=$("#a-st")?$("#a-st").value:"";if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
       const mediaFiles=Array.from($("#a-gallery")?.files||[]);
       const galleryVideo=val("#a-video")?.trim()||"";
+      if(galleryVideo){const {validateListingMedia}=await import("./assets/souqna-local-services.mjs");validateListingMedia({videoUrl:galleryVideo});}
       let galleryImages=[];
       if(mediaFiles.length||galleryVideo){
         if(app.options.projectId==="souqna-sweida"||app.options.projectId==="souqna-preview-disabled")
