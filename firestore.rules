@@ -26,7 +26,6 @@ service cloud.firestore {
 
     function isStaff() {
       return hasRole("admin")
-        || hasRole("moderator")
         || hasRole("accountant")
         || hasRole("editor");
     }
