@@ -25,7 +25,7 @@ jobs:
       - name: Install test dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Check media validation
-        run: node --test tests/ad-media.test.mjs
+        run: node --test tests/ad-media.test.mjs tests/staging-guards.test.mjs
       - name: Check safe hosting build
         run: npm run test:build-isolation && npm run build:hosting
       - name: Validate scoped Firestore permissions in local emulator
