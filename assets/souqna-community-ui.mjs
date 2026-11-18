@@ -118,7 +118,7 @@ function bootCommunity(){
 if(getApps().length){
   const app=getApp();
   if(app.options.projectId==="souqna-staging"){
-    db=getFirestore(app);ready=true;
+    db=getFirestore(app);ready=true;root.hidden=false;
     onAuthStateChanged(getAuth(app),async user=>{
       try{
         admin=false;
