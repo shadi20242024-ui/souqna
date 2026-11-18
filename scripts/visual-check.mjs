@@ -160,6 +160,9 @@ try {
       assert.ok(nav,"Navigation not rendered");
       if(item.mobile)assert.ok(nav.y>=item.viewport.height/2,"Mobile navigation should be at bottom");
       else assert.ok(nav.x>item.viewport.width/2,"Desktop navigation should be on the side");
+      await page.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
+      await page.waitForTimeout(120);
+      await page.screenshot({path:screenshotName(item.name+"-viewport.png"),fullPage:false,animations:"disabled"});
       await page.screenshot({path:screenshotName(item.name+".png"),fullPage:true,animations:"disabled"});
       await page.locator("#newsHost .tk").first().waitFor({timeout:5000});
       const sponsorTitle=page.locator("#spw .premium-banner h3");
