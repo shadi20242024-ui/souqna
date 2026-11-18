@@ -118,6 +118,7 @@ const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furnitur
 const STAFF=["admin","moderator","accountant","editor"];
 let accountProfileMissing=false;
 let accountProfileReadError="";
+let adminUserQuery="";
 let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
@@ -286,6 +287,14 @@ async function loadMine(){
       allUsers=await read("المستخدمون",async()=>{const s=await getDocs(collection(db,"users"));return s.docs.map(d=>({id:d.id,...d.data()}))});
       allTx=await read("سجل المعاملات",async()=>{const s=await getDocs(collection(db,"transactions"));return s.docs.map(d=>({id:d.id,...d.data()}))})}}
     adminUpdatedAt=Date.now();
+}
+function adminUserRows(){
+  if(!isAdm())return '<p class="mut">هذه البيانات متاحة للمدير فقط.</p>';
+  const term=adminUserQuery.trim().toLocaleLowerCase();
+  const filtered=allUsers.filter(u=>[u.name,u.email,u.role].some(value=>String(value||"").toLocaleLowerCase().includes(term)));
+  const visible=filtered.slice(0,100);
+  return '<p class="mut" role="status">النتائج: '+filtered.length+' من '+allUsers.length+(filtered.length>100?' · يظهر أول 100 نتيجة':'')+'</p>'+
+    (visible.map(u=>'<div class="row" style="align-items:center;margin-bottom:6px"><span>'+esc(u.name||"بدون اسم")+' · '+esc(u.email||"")+' · '+esc(u.role||"user")+' · ⭐'+Number(u.stars||0)+'</span><button class="btn l" data-a="ustars" data-id="'+esc(u.id)+'">± نجوم</button><button class="btn l" data-a="urole" data-id="'+esc(u.id)+'">الدور</button></div>').join("")||'<p class="mut">لا توجد نتائج مطابقة.</p>');
 }
 const adminErrorBanner=()=>adminLoadWarnings.length?
   '<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تعذر تحميل بعض بيانات الإدارة</b><p>تأكد من نشر قواعد Firestore الصحيحة لمشروع souqna-staging. لا تعدّل الصلاحيات أو قواعد الحماية لتجاوز الخطأ.</p><ul>'+
@@ -511,7 +520,7 @@ function render(){
     <input id="p-co" placeholder="اسم الشركة"><input id="p-ti" placeholder="عنوان العرض"><input id="p-de" placeholder="تفاصيل قصيرة"><input id="p-ph" dir="ltr" placeholder="واتساب الشركة (اختياري)"><input id="p-days" type="number" placeholder="مدة الإعلان بالأيام"><input type="file" accept="image/*" data-img="sp"><button class="btn g" data-a="addsp">إضافة البانر</button></div>
     <div class="box"><h3>📋 الدليل المميز</h3>${dr.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} (${TY[x.type]||""}) ${"★".repeat(x.stars||0)}</span>${x.type=="pharmacy"?`<button class="btn ${x.onDuty?"g":"l"}" data-a="duty" data-id="${x.id}">${x.onDuty?"مناوبة اليوم":"غير مناوبة"}</button>`:""}<button class="btn r" data-a="deldir" data-id="${x.id}">حذف</button></div>`).join("")}
     <select id="d-t"><option value="pharmacy">صيدلية</option><option value="doctor">طبيب</option><option value="lawyer">محامٍ</option><option value="engineer">مهندس</option><option value="fuel">محطة وقود</option></select><input id="d-n" placeholder="الاسم"><input id="d-s" placeholder="الاختصاص"><input id="d-a" placeholder="الحي / المنطقة"><input id="d-p" dir="ltr" placeholder="رقم الهاتف"><select id="d-st"><option value="1">★</option><option value="2">★★</option><option value="3" selected>★★★</option></select><button class="btn g" data-a="adddir">إضافة</button></div>
-    <div class="box"><h3>👥 المستخدمون</h3>${allUsers.slice(0,60).map(u=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(u.name)} · ${esc(u.role)} · ⭐${u.stars||0}</span><button class="btn l" data-a="ustars" data-id="${u.id}">± نجوم</button><button class="btn l" data-a="urole" data-id="${u.id}">الدور</button></div>`).join("")}</div>
+    <div class="box"><h3>👥 المستخدمون</h3><label for="admin-user-search" class="mut">البحث بالاسم أو البريد الإلكتروني أو الدور</label><input id="admin-user-search" type="search" autocomplete="off" placeholder="ابحث عن مستخدم..." value="${esc(adminUserQuery)}"><div id="admin-user-results">${adminUserRows()}</div></div>
     <div class="box"><h3>🎨 الخدمات</h3>${services.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${x.price||"اتفاق"}</span><button class="btn l" data-a="svprice" data-id="${x.id}">السعر</button><button class="btn l" data-a="svtog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="svdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="sv-n" placeholder="اسم الخدمة"><input id="sv-d" placeholder="الوصف"><input id="sv-p" type="number" placeholder="السعر بالدولار (فارغ = حسب الاتفاق)"><div class="acts"><button class="btn g" data-a="svadd">إضافة</button>${services.length?"":'<button class="btn" data-a="svseed">الخدمات الافتراضية</button>'}</div></div>
     <div class="box"><h3>📣 شركاء النشر</h3>${partners.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${esc(x.platform||"")}</span><button class="btn l" data-a="pttog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="ptdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="pt-n" placeholder="اسم الصفحة / الشريك"><select id="pt-pl"><option>facebook</option><option>instagram</option><option>tiktok</option><option>other</option></select><input id="pt-r" placeholder="المنطقة (مثل: ألمانيا، الخليج)"><input id="pt-a" placeholder="الجمهور / عدد المتابعين"><input id="pt-p" type="number" placeholder="السعر بالدولار"><button class="btn g" data-a="ptadd">إضافة</button></div>
     <div class="box"><h3>💎 باقات اشتراك المتاجر</h3>${plans.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(p.name)} · ${p.stars}★ · ${p.days||"∞"} يوم · ${p.maxAds||"∞"} إعلان</span><button class="btn l" data-a="edpl" data-id="${p.id}">تعديل</button><button class="btn l" data-a="togpl" data-id="${p.id}">${p.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="delpl" data-id="${p.id}">حذف</button></div>`).join("")}${plans.length?"":'<button class="btn g" data-a="seedpl">إنشاء الباقات الافتراضية</button>'}
@@ -759,6 +768,7 @@ document.addEventListener("click",async e=>{
     else if(a=="prno"){await finance("rejectPromotion",id);await loadMine();render()}
   }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?authErrorText(err):["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
 });
+document.addEventListener("input",e=>{if(e.target.id!=="admin-user-search"||!isAdm())return;adminUserQuery=e.target.value;const target=$("#admin-user-results");if(target)target.innerHTML=adminUserRows();});
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
 onAuthStateChanged(auth,async u=>{
@@ -773,7 +783,7 @@ onAuthStateChanged(auth,async u=>{
       await loadMine();
     }else{
       adminLoadWarnings=[];
-      mine=[];favorites=[];pend=[];orders=[];promos=[];
+      mine=[];favorites=[];pend=[];orders=[];promos=[];allUsers=[];allTx=[];pendStores=[];sorders=[];subs=[];pendingSponsorRequests=[];adminUserQuery="";
     }
   }catch(error){
     console.error("SOUQNA session load failed:",error);
