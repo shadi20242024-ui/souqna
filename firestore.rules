@@ -359,6 +359,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /mediaCleanupJobs/{id} {
+      allow read, write: if false;
+    }
+
     match /notifs/{id} {
       // Financial and personal notifications remain private to owner and administrator.
       allow read: if isAdmin()
