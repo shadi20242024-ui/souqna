@@ -34,6 +34,8 @@ jobs:
         run: npm run test:storage
       - name: Validate scoped Firestore permissions in local emulator
         run: npm run test:rules
+      - name: Verify staging-only trusted ad deletion rules
+        run: npm run test:staging-rules
       - name: Print emulator diagnostics on failure
         if: failure()
         run: |
