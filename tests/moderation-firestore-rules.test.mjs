@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { after, before, test } from "node:test";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
 const projectId = "demo-souqna-rules";
 const rules = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
@@ -72,4 +72,17 @@ test("even administrators cannot forge or modify audit records", async () => {
     actorId: "admin-1", targetId: "pending-ad", action: "approve"
   }));
   await assertFails(updateDoc(doc(db, "moderationAudit", "audit-1"), { action: "reject" }));
+});
+
+test("administrators cannot bypass moderation by deleting another user's content", async () => {
+  const adminDb = environment.authenticatedContext("admin-1").firestore();
+  const moderatorDb = environment.authenticatedContext("moderator-1").firestore();
+  await assertFails(deleteDoc(doc(adminDb, "ads", "pending-ad")));
+  await assertFails(deleteDoc(doc(moderatorDb, "stores", "pending-store")));
+});
+
+test("the content owner retains deletion rights", async () => {
+  const db = environment.authenticatedContext("user-1").firestore();
+  await assertSucceeds(deleteDoc(doc(db, "ads", "pending-ad")));
+  await assertSucceeds(deleteDoc(doc(db, "stores", "pending-store")));
 });
