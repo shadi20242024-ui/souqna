@@ -371,12 +371,12 @@ try {
     await env.withSecurityRulesDisabled(async ctx=>{
       assert.equal((await getDoc(doc(ctx.firestore(),"ads",pendingAdId))).data().status,"approved");
     });
-    const pendingStore=page.locator("#app .box").filter({hasText:"متجر فحص سوقنا"});
-    await pendingStore.locator('[data-a="stok"]').waitFor({timeout:20000});
-    const pendingStoreId=await pendingStore.locator('[data-a="stok"]').getAttribute("data-id");
+    const pendingStoreButton=page.locator('#app [data-a="stok"][data-id]');
+    await pendingStoreButton.waitFor({timeout:20000});
+    const pendingStoreId=await pendingStoreButton.getAttribute("data-id");
     assert.ok(pendingStoreId,"Pending store ID is missing");
-    await pendingStore.locator('[data-a="stok"]').click();
-    await pendingStore.waitFor({state:"detached",timeout:25000});
+    await pendingStoreButton.click();
+    await pendingStoreButton.waitFor({state:"detached",timeout:25000});
     await env.withSecurityRulesDisabled(async ctx=>{
       assert.equal((await getDoc(doc(ctx.firestore(),"stores",pendingStoreId))).data().status,"approved");
     });
