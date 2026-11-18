@@ -86,3 +86,10 @@ test("the content owner retains deletion rights", async () => {
   await assertSucceeds(deleteDoc(doc(db, "ads", "pending-ad")));
   await assertSucceeds(deleteDoc(doc(db, "stores", "pending-store")));
 });
+
+test("administrators cannot reassign content ownership to bypass audited review", async () => {
+  const db = environment.authenticatedContext("admin-1").firestore();
+  await assertFails(updateDoc(doc(db, "ads", "pending-ad"), { ownerId: "admin-1" }));
+  await assertFails(updateDoc(doc(db, "stores", "pending-store"), { ownerId: "admin-1" }));
+  await assertFails(updateDoc(doc(db, "ads", "pending-ad"), { createdAt: 0 }));
+});
