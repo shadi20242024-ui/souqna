@@ -61,6 +61,11 @@ if (-not $SkipCloudCheck) {
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "Staging cloud functions are not verified. The local site can open, but approvals and payments may fail."
     }
+    Write-Host "SOUQNA: checking all ten approved categories (read only)..."
+    & npm.cmd run check:staging:categories
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Ten active categories are not verified on real Staging. Check the administrator readiness panel."
+    }
     Write-Host "SOUQNA: checking public staging Hosting (read only)..."
     & npm.cmd run check:staging:hosting
     if ($LASTEXITCODE -ne 0) {
