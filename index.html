@@ -126,6 +126,8 @@ let accountProfileMissing=false;
 let accountProfileReadError="";
 let adminUserQuery="";
 let moderationHistory=[];
+let sessionVersion=0;
+const ensureSession=(version,uid)=>{if(version!==sessionVersion||!me||me.uid!==uid)throw new Error("souqna/session-changed");};
 let adminReviewQuery="";
 let adminReviewType="all";
 let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
@@ -269,16 +271,18 @@ async function loadPublic(){
 }
 async function loadMine(){
   if(!me)return;
+  const expectedVersion=sessionVersion,expectedUid=me.uid;
   adminLoadWarnings=[];
   const read=async(label,run)=>{
-    try{return await run()}
+    try{const result=await run();ensureSession(expectedVersion,expectedUid);return result}
     catch(error){
+      ensureSession(expectedVersion,expectedUid);
       console.error("SOUQNA collection read failed:",label,error);
       adminLoadWarnings.push(label+" ("+(error?.code||"unknown")+")");
       return [];
     }
   };
-  const u=await getDoc(doc(db,"users",me.uid));if(u.exists())Object.assign(me,u.data());
+  const u=await getDoc(doc(db,"users",expectedUid));ensureSession(expectedVersion,expectedUid);if(u.exists())Object.assign(me,u.data());
   mine=(await read("إعلاناتي",()=>q2("ads","ownerId",me.uid))).sort((x,y)=>y.createdAt-x.createdAt);
   favorites=await read("المفضلة",()=>q2("favorites","userId",me.uid));
   myStores=await read("متاجري",()=>q2("stores","ownerId",me.uid));
@@ -811,6 +815,7 @@ document.addEventListener("change",e=>{
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
 onAuthStateChanged(auth,async u=>{
+  const expectedVersion=++sessionVersion;
   me=null;
   accountProfileMissing=false;
   accountProfileReadError="";
@@ -819,17 +824,20 @@ onAuthStateChanged(auth,async u=>{
   try{
     if(u){
       const s=await getDoc(doc(db,"users",u.uid));
+      if(expectedVersion!==sessionVersion)return;
       accountProfileMissing=!s.exists();
       me=s.exists()?{uid:u.uid,...s.data()}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0};
       await loadMine();
     }
   }catch(error){
+    if(expectedVersion!==sessionVersion)return;
     console.error("SOUQNA session load failed:",error);
     accountProfileReadError=String(error?.code||"unknown").replace(/[^a-z0-9/-]/gi,"").slice(0,80);
     adminLoadWarnings=["تعذر قراءة بيانات الحساب ("+accountProfileReadError+")"];
     if(!me&&u)me={uid:u.uid,name:u.email||"مستخدم",email:u.email,role:"user",stars:0};
     toast("خطأ في قراءة صلاحية الحساب: "+(error?.code||"unknown"));
   }
+  if(expectedVersion!==sessionVersion)return;
   if(view=="admin"&&!isStaff())view="acc";
   render();
 },error=>{
