@@ -171,10 +171,17 @@ module.exports=function makeMarketplace(db,options){
           const count=await tx.get(db.collection("ads").where("ownerId","==",uid));
           if(count.size>=300)reject("الحد الأقصى لإعلانات الحساب 300","resource-exhausted");
         }
+        const approvedJob=fields.cat==="jobs"&&userSnap.data().role==="specialist"
+          &&Array.isArray(userSnap.data().specialties)&&userSnap.data().specialties.includes("jobs");
         tx.update(lockedRef,{adQuotaRevision:FieldValue.increment(1)});
         tx.create(targetRef,{
-          ...fields,ownerId:uid,ownerName,status:"pending",createdAt:now
+          ...fields,ownerId:uid,ownerName,status:approvedJob?"approved":"pending",createdAt:now
         });
+        if(approvedJob)tx.create(db.collection("moderationAudit").doc(),{
+          type:"ad",targetId:id,action:"publish-specialty",fromStatus:"new",
+          toStatus:"approved",actorId:uid,ownerId:uid,createdAt:now
+        });
+        return {id,status:approvedJob?"approved":"pending"};
       }
       return {id,status:"pending"};
     });
