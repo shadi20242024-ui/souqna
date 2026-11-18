@@ -36,6 +36,23 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
           },
           async delete(){database.delete(key);}
         };
+      },
+      orderBy(field,direction){
+        assert.equal(name,"mediaCleanupJobs");
+        assert.equal(field,"createdAt");
+        assert.equal(direction,"desc");
+        return{
+          limit(count){return{
+            async get(){
+              const docs=[...database.entries()]
+                .filter(([key])=>key.startsWith("mediaCleanupJobs/"))
+                .sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0))
+                .slice(0,count)
+                .map(([key,value])=>({id:key.slice("mediaCleanupJobs/".length),data:()=>value}));
+              return{docs};
+            }
+          };}
+        };
       }
     };},
     async runTransaction(run){
@@ -91,9 +108,27 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
   compiled._compile(serverSource,compiled.filename);
   const callable=compiled.exports(db,{});
   const retry=compiled.exports.makeRetryCleanup(db,{});
+  const listCleanup=compiled.exports.makeListCleanupJobs(db,{});
   return{
     database,deleted,storageDeletes,logs,
     restoreStorage(){activeFailPath="";},
+    async listJobs(uid=actor){
+      const oldProject=process.env.GCLOUD_PROJECT;
+      const oldGcp=process.env.GCP_PROJECT;
+      const oldFirebase=process.env.FIREBASE_PROJECT_ID;
+      delete process.env.GCP_PROJECT;
+      delete process.env.FIREBASE_PROJECT_ID;
+      process.env.GCLOUD_PROJECT=project;
+      try{return await listCleanup({auth:uid?{uid}:null,data:{}});}
+      finally{
+        if(oldProject===undefined)delete process.env.GCLOUD_PROJECT;
+        else process.env.GCLOUD_PROJECT=oldProject;
+        if(oldGcp===undefined)delete process.env.GCP_PROJECT;
+        else process.env.GCP_PROJECT=oldGcp;
+        if(oldFirebase===undefined)delete process.env.FIREBASE_PROJECT_ID;
+        else process.env.FIREBASE_PROJECT_ID=oldFirebase;
+      }
+    },
     async call(uid=actor,id="test_ad",retryOnly=false){
       const oldProject=process.env.GCLOUD_PROJECT;
       const oldGcp=process.env.GCP_PROJECT;
@@ -233,4 +268,34 @@ test("unrelated users cannot retry someone else's media cleanup",async()=>{
   h.database.set("users/intruder",{role:"user"});
   await assert.rejects(h.call("intruder","test_ad",true),error=>error.code==="permission-denied");
   assert.ok(h.database.has("mediaCleanupJobs/test_ad"));
+});
+
+test("admin can list pending cleanup jobs without receiving file locations or owner IDs",async()=>{
+  const h=harness({role:"admin",actor:"admin",owner:"owner",failPath:"ads/owner/image_001.jpg"});
+  await h.call();
+  const result=await h.listJobs("admin");
+  assert.equal(result.ok,true);
+  assert.equal(result.jobs.length,1);
+  assert.deepEqual(Object.keys(result.jobs[0]).sort(),["createdAt","failedImages","id"]);
+  assert.equal(result.jobs[0].id,"test_ad");
+  assert.equal(result.jobs[0].failedImages,1);
+  assert.equal(result.jobs[0].createdAt>0,true);
+});
+
+test("non-admin and unauthenticated accounts cannot list cleanup jobs",async()=>{
+  const h=harness({failPath:"ads/owner/image_001.jpg"});
+  await h.call();
+  await assert.rejects(h.listJobs("owner"),error=>error.code==="permission-denied");
+  await assert.rejects(h.listJobs(null),error=>error.code==="unauthenticated");
+  assert.ok(h.database.has("mediaCleanupJobs/test_ad"));
+});
+
+test("admin cleanup list becomes empty after successful retry",async()=>{
+  const h=harness({role:"admin",actor:"admin",owner:"owner",failPath:"ads/owner/image_001.jpg"});
+  await h.call();
+  assert.equal((await h.listJobs()).jobs.length,1);
+  h.restoreStorage();
+  const retry=await h.call("admin","test_ad",true);
+  assert.equal(retry.failedImages,0);
+  assert.deepEqual((await h.listJobs()).jobs,[]);
 });
