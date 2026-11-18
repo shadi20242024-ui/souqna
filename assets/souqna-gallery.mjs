@@ -2,7 +2,7 @@ import {getStorage,ref,uploadBytes,getDownloadURL} from "https://www.gstatic.com
 
 const ALLOWED_TYPES=new Set(["image/jpeg","image/png","image/webp"]);
 const EXTENSIONS={"image/jpeg":"jpg","image/png":"png","image/webp":"webp"};
-const MAX_IMAGES=12;
+const MAX_IMAGES=11;
 const MAX_BYTES=5*1024*1024;
 function verifyFile(file){
   if(!file||!ALLOWED_TYPES.has(file.type))throw new Error("الصورة يجب أن تكون JPG أو PNG أو WebP");
@@ -19,7 +19,7 @@ export async function uploadGallery(app,userId,files,{onProgress=()=>{}}={}){
   if(!userId||!/^[A-Za-z0-9_-]{1,128}$/.test(userId))
     throw new Error("معرّف المستخدم غير صحيح");
   const selected=Array.from(files??[]);
-  if(!selected.length||selected.length>MAX_IMAGES)throw new Error("اختر من 1 إلى 12 صورة");
+  if(!selected.length||selected.length>MAX_IMAGES)throw new Error("اختر من 1 إلى 11 صورة إضافية");
   selected.forEach(verifyFile);
   const storage=getStorage(app);
   const uploaded=[];
