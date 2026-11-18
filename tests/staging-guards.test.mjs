@@ -8,7 +8,7 @@ function source(path){return readFileSync(new URL(path,root),"utf8");}
 test("gallery upload and cleanup explicitly require souqna-staging",()=>{
   const code=source("assets/souqna-gallery.mjs");
   const gates=code.match(/app\.options\.projectId!=="souqna-staging"/g)||[];
-  assert.equal(gates.length,2,"Both uploading and deleting must reject non-staging Firebase projects");
+  assert.equal(gates.length,3,"Upload, cleanup by paths, and cleanup by URLs must reject non-staging Firebase projects");
   assert.match(code,/Promise\.allSettled\(uploaded\.map\(item=>deleteObject/);
 });
 
