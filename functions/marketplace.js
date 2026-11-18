@@ -37,10 +37,10 @@ function safeVideoUrl(value){
   }
   const host=url.hostname.toLowerCase();
   const path=url.pathname;
-  if(host==="vimeo.com"&&!/^\\/[0-9]{5,12}$/.test(path))reject("رابط Vimeo غير صالح");
-  if((host==="youtu.be"||host==="www.youtu.be")&&!/^\\/[A-Za-z0-9_-]{11}$/.test(path))reject("رابط YouTube غير صالح");
+  if(host==="vimeo.com"&&!new RegExp("^/[0-9]{5,12}$").test(path))reject("رابط Vimeo غير صالح");
+  if((host==="youtu.be"||host==="www.youtu.be")&&!new RegExp("^/[A-Za-z0-9_-]{11}$").test(path))reject("رابط YouTube غير صالح");
   if(!["vimeo.com","youtu.be","www.youtu.be"].includes(host) &&
-    !(/^\\/(?:shorts\\/[A-Za-z0-9_-]{11}|embed\\/[A-Za-z0-9_-]{11})$/.test(path)||
+    !(new RegExp("^/(?:shorts/[A-Za-z0-9_-]{11}|embed/[A-Za-z0-9_-]{11})$").test(path)||
       (path==="/watch"&&/^[A-Za-z0-9_-]{11}$/.test(url.searchParams.get("v")||""))))reject("رابط YouTube غير صالح");
   return url.toString();
 }
