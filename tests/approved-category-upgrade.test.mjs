@@ -25,8 +25,8 @@ test("category upgrade only creates missing items and activates inactive ones",(
 test("dry-run is staging-only and never requires credentials",()=>{
   assert.deepEqual(parseOptions(["--project","souqna-staging"]),{execute:false,inspect:false,project:"souqna-staging"});
   assert.throws(()=>parseOptions(["--project","souqna-sweida"]),/Only/);
-  assert.throws(()=>parseOptions(["--project","souqna-staging","--execute"]),/confirmation/i);
-  assert.throws(()=>parseOptions(["--project","souqna-staging","--execute","--confirm","wrong"]),/confirmation/i);
+  assert.throws(()=>parseOptions(["--project","souqna-staging","--execute"]),/--confirm/);
+  assert.throws(()=>parseOptions(["--project","souqna-staging","--execute","--confirm","wrong"]),/--confirm/);
   assert.deepEqual(parseOptions(["--project","souqna-staging","--execute","--confirm","ACTIVATE-CATEGORIES:souqna-staging"]).execute,true);
   const result=spawnSync(process.execPath,["scripts/upgrade-staging-categories.mjs","--project","souqna-staging"],{
     encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",GCLOUD_PROJECT:"",GOOGLE_CLOUD_PROJECT:""}
