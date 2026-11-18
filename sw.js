@@ -1,4 +1,52 @@
-const C="souqna-v1",F=["./","index.html","ui.jpg","logo.png","icon-192.png","manifest.webmanifest"];
-self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F)).catch(()=>{}));self.skipWaiting()});
-self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!=C).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",e=>{if(e.request.method!="GET"||new URL(e.request.url).origin!=location.origin)return;e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(C).then(x=>x.put(e.request,c));return r}).catch(()=>caches.match(e.request)))});
+const CACHE="souqna-v13-syrian-market";
+const STATIC=["./","index.html","assets/responsive.css","assets/admin-metrics.js","assets/souqna-extras.js","assets/souqna-media.js","assets/syrian-market.js","assets/category-photos/furniture.webp","assets/category-photos/furniture-scene.webp","assets/category-photos/electronics.webp","assets/category-photos/electronics-scene.webp","assets/category-photos/jobs.webp","assets/category-photos/jobs-scene.webp","assets/category-photos/cars.webp","assets/category-photos/cars-scene.webp","assets/category-photos/real_estate.webp","assets/category-photos/real_estate-scene.webp","assets/category-photos/misc.webp","assets/category-photos/misc-scene.webp","assets/category-photos/lost_found.webp","assets/category-photos/lost_found-scene.webp","assets/category-photos/fashion.webp","assets/category-photos/fashion-scene.webp","assets/category-photos/community.webp","assets/category-photos/community-scene.webp","assets/category-photos/services.webp","assets/category-photos/services-scene.webp","assets/souqna-approved-logo.jpg","assets/souqna-3d-mark.webp","logo.png","icon-192.png","icon-512.png","manifest.webmanifest"];
+const ALLOWED=new Set(STATIC.filter(path=>path!=="./").map(path=>new URL(path,self.registration.scope).pathname));
+const OFFLINE=new URL("index.html",self.registration.scope).pathname;
+
+self.addEventListener("install",event=>{
+  event.waitUntil(caches.open(CACHE).then(async cache=>{
+    for(const path of STATIC){
+      try{
+        const response=await fetch(new URL(path,self.registration.scope),{cache:"reload"});
+        if(response.ok&&response.type==="basic")await cache.put(new URL(path,self.registration.scope),response);
+      }catch(error){console.warn("SOUQNA precache skipped",path,error);}
+    }
+  }));
+  self.skipWaiting();
+});
+self.addEventListener("activate",event=>{
+  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith("souqna-")&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));
+});
+self.addEventListener("fetch",event=>{
+  const request=event.request;
+  if(request.method!=="GET")return;
+  const url=new URL(request.url);
+  if(url.origin!==self.location.origin)return;
+  if(request.mode==="navigate"){
+    event.respondWith(fetch(request).then(response=>{
+      if(response.ok&&response.type==="basic"){
+        const clone=response.clone();
+        event.waitUntil(caches.open(CACHE).then(cache=>cache.put(new URL(OFFLINE,self.registration.scope),clone)));
+      }
+      return response;
+    }).catch(async()=>{
+      const cache=await caches.open(CACHE);
+      return (await cache.match(new URL(OFFLINE,self.registration.scope)))||
+        new Response("SOUQNA offline. Please reconnect.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8"}});
+    }));
+    return;
+  }
+  // Only cache versioned, public application assets. Never cache arbitrary paths,
+  // authenticated responses, API endpoints, or private documents.
+  if(!ALLOWED.has(url.pathname)||url.search)return;
+  event.respondWith(caches.open(CACHE).then(async cache=>{
+    const cached=await cache.match(request);
+    const refresh=fetch(request).then(async response=>{
+      if(response.ok&&response.type==="basic"&&!response.headers.has("set-cookie"))
+        await cache.put(request,response.clone());
+      return response;
+    });
+    if(cached){event.waitUntil(refresh.catch(()=>{}));return cached;}
+    return refresh.catch(()=>new Response("Offline",{status:503}));
+  }));
+});

@@ -1,0 +1,256 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { readFileSync } from "node:fs";
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth, connectAuthEmulator, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  getFirestore, connectFirestoreEmulator, collection, addDoc, doc, getDoc, getDocs,
+  setDoc, updateDoc, query, where, runTransaction, increment
+} from "firebase/firestore";
+import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
+import { getFunctions, connectFunctionsEmulator, httpsCallable } from "firebase/functions";
+
+const PROJECT_ID = "demo-souqna-rules";
+
+test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => {
+  const env = await initializeTestEnvironment({
+    projectId: PROJECT_ID,
+    firestore: { rules: readFileSync("firestore.rules", "utf8") }
+  });
+  const app = initializeApp({
+    apiKey: "fake-api-key-for-emulator-only",
+    authDomain: PROJECT_ID + ".firebaseapp.com",
+    projectId: PROJECT_ID
+  }, "souqna-lifecycle-" + Date.now());
+  const auth = getAuth(app);
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  const db = getFirestore(app);
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  const functions = getFunctions(app, "us-central1");
+  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+  const finance = httpsCallable(functions, "souqnaFinance");
+  const market = httpsCallable(functions, "souqnaMarketplace");
+  const moderation = httpsCallable(functions, "souqnaModeration");
+
+  t.after(async () => {
+    await signOut(auth).catch(() => {});
+    await deleteApp(app);
+    await env.cleanup();
+  });
+
+  await env.withSecurityRulesDisabled(async ctx => {
+    const seed = ctx.firestore();
+    await Promise.all([
+      setDoc(doc(seed, "users", "flow-admin"), { name: "المدير", email: "admin@example.test", role: "admin", stars: 0 }),
+      setDoc(doc(seed, "users", "flow-other"), { name: "مستخدم آخر", email: "other@example.test", role: "user", stars: 0 }),
+      setDoc(doc(seed, "stores", "flow-other-store"), { ownerId: "flow-other", name: "متجر مستخدم آخر", status: "approved" }),
+      setDoc(doc(seed, "plans", "flow-gold"), { name: "ذهبية", stars: 20, days: 30, maxAds: 50, active: true, order: 2 }),
+      setDoc(doc(seed, "settings", "site"), { maxStores: 2 }),
+      setDoc(doc(seed, "plans", "free"), { name: "مجانية", stars: 0, days: 0, maxAds: 5, active: true, order: 0 })
+    ]);
+  });
+
+  const admin = env.authenticatedContext("flow-admin").firestore();
+  const visitor = env.unauthenticatedContext().firestore();
+
+  const adminEmail = "flow-owner-" + Date.now() + "@example.test";
+  const adminPassword = "FlowAdmin2026!";
+  const newAdmin = await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=local-emulator", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: adminEmail, password: adminPassword, returnSecureToken: true })
+  });
+  const adminInfo = await newAdmin.json();
+  assert.ok(newAdmin.ok && adminInfo.localId, "Admin test identity creation failed");
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "users", adminInfo.localId), {
+      name: "مدير سوقنا للاختبار", email: adminEmail, role: "admin", stars: 0
+    });
+  });
+
+  const email = "flow-" + Date.now() + "@example.test";
+  const password = "FlowTest2026!";
+
+  await t.test("Registration creates a real Auth-emulator identity and default profile", async () => {
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = credential.user.uid;
+    assert.ok(uid && uid.length > 5);
+    await credential.user.getIdToken();
+    await assertSucceeds(setDoc(doc(db, "users", uid), {
+      name: "زبون تجريبي", email, role: "user", stars: 0
+    }));
+    const profile = await getDoc(doc(db, "users", uid));
+    assert.equal(profile.data().role, "user");
+    assert.equal(profile.data().stars, 0);
+    await assertFails(updateDoc(doc(db, "users", uid), { stars: 999 }));
+    await assertFails(updateDoc(doc(db, "users", uid), { role: "admin" }));
+    await signOut(auth);
+    const login = await signInWithEmailAndPassword(auth, email, password);
+    assert.equal(login.user.uid, uid, "Sign in should restore the same account");
+  });
+
+  const uid = auth.currentUser.uid;
+  let firstStoreRef, secondStoreRef;
+  await t.test("A user can create two independent stores; only staff can approve them", async () => {
+    const store = { name: "متجرنا الأول", desc: "مستلزمات", area: "السويداء", map: "",
+      logo: "", cover: "", phone: "963999999999", ownerId: uid,
+      ownerName: "زبون تجريبي", status: "pending", createdAt: Date.now() };
+    await assertFails(addDoc(collection(db, "stores"),store));
+    const {ownerId,ownerName,status,createdAt,...fields}=store;
+    const createStore=async data=>{
+      const id=doc(collection(db,"stores")).id;
+      const response=await market({action:"createStore",id,fields:data});
+      assert.equal(response.data.ok,true);
+      return doc(db,"stores",response.data.id);
+    };
+    firstStoreRef=await createStore(fields);
+    secondStoreRef=await createStore({...fields,name:"المتجر الثاني"});
+    await assert.rejects(()=>createStore({...fields,name:"متجر ثالث"}),"Third store must exceed server quota");
+    await assert.rejects(()=>market({action:"createStore",id:doc(collection(db,"stores")).id,fields:{...fields,role:"admin"}}));
+    await env.withSecurityRulesDisabled(async ctx=>
+      setDoc(doc(ctx.firestore(),"settings","site"),{maxStores:3})
+    );
+    const competing=await Promise.allSettled([
+      createStore({...fields,name:"متجر متزامن أول"}),
+      createStore({...fields,name:"متجر متزامن ثان"})
+    ]);
+    assert.equal(competing.filter(x=>x.status==="fulfilled").length,1,
+      "Concurrent attempts to fill one store slot must create exactly one store");
+    await env.withSecurityRulesDisabled(async ctx=>
+      setDoc(doc(ctx.firestore(),"settings","site"),{maxStores:2})
+    );
+    await assertFails(updateDoc(firstStoreRef, { status: "approved" }));
+    await assertFails(getDoc(doc(visitor, "stores", firstStoreRef.id)));
+    const queue = await assertSucceeds(getDocs(query(collection(admin, "stores"), where("status", "==", "pending"))));
+    assert.ok(queue.docs.some(x => x.id === firstStoreRef.id));
+    await assertFails(updateDoc(doc(admin, "stores", firstStoreRef.id), { status: "approved" }));
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+    assert.equal((await moderation({type:"store",id:firstStoreRef.id,action:"approve"})).data.status,"approved");
+    assert.equal((await moderation({type:"store",id:secondStoreRef.id,action:"approve"})).data.status,"approved");
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, email, password);
+    const published = await assertSucceeds(getDocs(query(collection(visitor, "stores"), where("status", "==", "approved"))));
+    assert.ok(published.docs.some(x => x.id === firstStoreRef.id));
+    await assertFails(updateDoc(firstStoreRef, { plan: "flow-gold", planUntil: Date.now() + 86400000 }));
+  });
+
+  let userAdRef;
+  await t.test("A user posts an ad; moderation gates visibility and store ownership", async () => {
+    const ad = {
+      ownerId: uid, ownerName: "زبون تجريبي", title: "سيارة للبيع",
+      price: 2500, cur: "$", cat: "cars", area: "السويداء", desc: "تفاصيل الإعلان",
+      phone: "963999999999", img: "", status: "pending", createdAt: Date.now(),
+      storeId: firstStoreRef.id
+    };
+    await assertFails(addDoc(collection(db, "ads"),ad));
+    const {ownerId,ownerName,status,createdAt,...fields}=ad;
+    const createAd=async data=>{
+      const id=doc(collection(db,"ads")).id;
+      const response=await market({action:"createAd",id,fields:data});
+      assert.equal(response.data.ok,true);
+      return doc(db,"ads",response.data.id);
+    };
+    userAdRef=await createAd(fields);
+    await assertFails(updateDoc(userAdRef, { status: "approved" }));
+    await assertFails(getDoc(doc(visitor, "ads", userAdRef.id)));
+    await assert.rejects(()=>createAd({...fields,storeId:"flow-other-store"}));
+    await assert.rejects(()=>createAd({...fields,price:-100}));
+    await assert.rejects(()=>createAd({...fields,ownerId:uid}));
+    for(let index=0;index<3;index++)await createAd({...fields,title:"إعلان باقة مجاني رقم "+index});
+    const concurrentAds=await Promise.allSettled([
+      createAd({...fields,title:"الإعلان الخامس أ"}),
+      createAd({...fields,title:"الإعلان الخامس ب"})
+    ]);
+    assert.equal(concurrentAds.filter(x=>x.status==="fulfilled").length,1,
+      "Concurrent ad submissions cannot bypass the five-ad store limit");
+    await assert.rejects(()=>createAd({...fields,title:"تجاوز حصة المتجر"}),"Free store plan should limit to five ads");
+    const {storeId,...personal}=fields;
+    await createAd({...personal,title:"إعلان شخصي مستقل"});
+    const awaiting = await assertSucceeds(getDocs(query(collection(admin, "ads"), where("status", "==", "pending"))));
+    assert.ok(awaiting.docs.some(x => x.id === userAdRef.id));
+    await assertFails(updateDoc(doc(admin, "ads", userAdRef.id), { status: "approved" }));
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+    assert.equal((await moderation({type:"ad",id:userAdRef.id,action:"approve"})).data.status,"approved");
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, email, password);
+    const visible = await assertSucceeds(getDocs(query(collection(visitor, "ads"), where("status", "==", "approved"))));
+    assert.ok(visible.docs.some(x => x.id === userAdRef.id));
+  });
+
+
+  await t.test("Scoped jobs publisher publishes jobs with audit but cannot publish cars", async()=>{
+    const pendingJobId=doc(collection(db,"ads")).id;
+    const base={title:"فرصة عمل للتجربة",price:0,cur:"$",cat:"jobs",area:"السويداء",desc:"وظيفة اختبارية",phone:"963999999999",img:"",images:[],videoUrl:""};
+    const pendingJob=await market({action:"createAd",id:pendingJobId,fields:base});
+    assert.equal(pendingJob.data.status,"pending");
+    const specialistEmail="flow-specialist-"+Date.now()+"@example.test";
+    const specialistPassword="Specialist2026!";
+    await signOut(auth);
+    const specialist=await createUserWithEmailAndPassword(auth,specialistEmail,specialistPassword);
+    await env.withSecurityRulesDisabled(async ctx=>setDoc(doc(ctx.firestore(),"users",specialist.user.uid),{
+      name:"مشرف الوظائف",email:specialistEmail,role:"specialist",specialties:["jobs"],stars:0
+    }));
+    const specialistJobId=doc(collection(db,"ads")).id;
+    const approved=await market({action:"createAd",id:specialistJobId,fields:{...base,title:"وظيفة منشورة من مشرف الوظائف",images:["data:image/webp;base64,AAAA"],img:"data:image/webp;base64,AAAA",videoUrl:"https://youtu.be/abcdefghijk"}});
+    assert.equal(approved.data.status,"approved");
+    assert.equal((await getDoc(doc(visitor,"ads",specialistJobId))).data().status,"approved");
+    const carId=doc(collection(db,"ads")).id;
+    const personalCar=await market({action:"createAd",id:carId,fields:{...base,cat:"cars",title:"سيارة للتجربة"}});
+    assert.equal(personalCar.data.status,"pending");
+    await assert.rejects(()=>moderation({type:"ad",id:carId,action:"approve"}),"Job specialist cannot approve cars");
+    const response=await moderation({type:"ad",id:pendingJobId,action:"approve"});
+    assert.equal(response.data.status,"approved");
+    const audits=await assertSucceeds(getDocs(query(collection(admin,"moderationAudit"),where("targetId","==",specialistJobId))));
+    assert.ok(audits.docs.some(d=>d.data().action==="publish-specialty"));
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth,email,password);
+  });
+
+  let subscriptionRef;
+
+  let topupRef;
+  await t.test("Customer requests stars and subscription; admin finance callable handles billing", async () => {
+    topupRef = await addDoc(collection(db, "starOrders"), {
+      userId: uid, userName: "زبون تجريبي", stars: 30, status: "pending", createdAt: Date.now()
+    });
+    await assertFails(updateDoc(doc(db, "starOrders", topupRef.id), { status: "done" }));
+    await assert.rejects(() => finance({action:"approveTopup",id:topupRef.id,payment:{method:"bank_transfer",reference:"FLOW-TOPUP-0001",amount:30,currency:"USD"}}),
+      "Non-admin may not credit their own stars");
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+    assert.equal((await finance({action:"approveTopup",id:topupRef.id,payment:{method:"bank_transfer",reference:"FLOW-TOPUP-0001",amount:30,currency:"USD"}})).data.ok, true);
+    await assert.rejects(() => finance({action:"approveTopup",id:topupRef.id,payment:{method:"bank_transfer",reference:"FLOW-TOPUP-0001",amount:30,currency:"USD"}}),
+      "Top-up must be idempotent");
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, email, password);
+    assert.equal((await getDoc(doc(db,"users",uid))).data().stars,30);
+    subscriptionRef = await addDoc(collection(db, "subs"), {
+      userId: uid, userName: "زبون تجريبي", storeId: firstStoreRef.id,
+      storeName: "متجرنا الأول", planId: "flow-gold", planName: "ذهبية",
+      stars: 20, days: 30, status: "pending", createdAt: Date.now()
+    });
+    await assertFails(addDoc(collection(db, "subs"), {
+      userId:uid,userName:"زبون تجريبي",storeId:"flow-other-store",
+      planId:"flow-gold",status:"pending",createdAt:Date.now()
+    }));
+    await assertFails(updateDoc(doc(db,"subs",subscriptionRef.id), { status:"done" }));
+  });
+
+  await t.test("Server subscription charges only the selected store once", async () => {
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+    const approval=()=>finance({action:"approveSubscription",id:subscriptionRef.id});
+    const results=await Promise.allSettled([approval(),approval()]);
+    assert.equal(results.filter(r=>r.status==="fulfilled").length,1);
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, email, password);
+    assert.equal((await getDoc(doc(db,"users",uid))).data().stars,10);
+    const first=(await getDoc(firstStoreRef)).data(),second=(await getDoc(secondStoreRef)).data();
+    assert.equal(first.plan,"flow-gold");
+    assert.ok(first.planUntil>Date.now());
+    assert.ok(!second.plan,"Second store subscription must be independent");
+    assert.equal((await getDoc(doc(admin,"subs",subscriptionRef.id))).data().status,"done");
+    assert.equal((await getDoc(doc(admin,"transactions","sub_"+subscriptionRef.id))).data().amount,-20);
+  });
+});

@@ -1,0 +1,131 @@
+name: SOUQNA Source Validation
+
+on:
+  push:
+    branches:
+      - fix/admin-login-diagnostics-2026-11-18
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Setup Java for Firebase Emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install root dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install Cloud Functions dependencies for the emulator
+        run: npm install --prefix functions --ignore-scripts --no-audit --no-fund
+      - name: Test Firestore permissions using local emulators
+        run: npm run test:rules
+      - name: Check JavaScript and moderation behavior
+        run: npm run test:admin
+      - name: Check existing application source
+        run: npm run test:source
+      - name: Test staging and production isolation
+        run: npm run test:build-isolation
+      - name: Build isolated offline preview
+        run: npm run build:hosting
+      - name: Validate preview has no production Firebase project
+        run: |
+          node --input-type=module -e 'import {readFileSync} from "node:fs";import assert from "node:assert/strict";const html=readFileSync("dist/index.html","utf8");assert.ok(html.includes("souqna-preview-disabled"));assert.ok(!html.includes("souqna-sweida.firebaseapp.com"));console.log("Isolated preview verified")'
+      - name: Validate Firebase Functions JavaScript
+        run: |
+          node --check functions/index.js
+          node --check functions/moderation.js
+          node --check functions/marketplace.js
+      - name: Validate Firebase staging diagnostic JavaScript
+        run: |
+          node --check scripts/diagnose-staging-admin.mjs
+          node --check tests/moderation-source.test.mjs
+      - name: Verify real browser UI against local Firebase emulators
+        run: SOUQNA_USE_SYSTEM_CHROME=1 npx firebase emulators:exec --project demo-souqna-rules --only auth,firestore,functions "node scripts/visual-check.mjs"
+      - name: Upload desktop and mobile verification screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUQNA-browser-screenshots
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Publish verified preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUQNA-verified-preview
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish complete source and Windows launcher
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUQNA-verified-source
+          path: |
+            index.html
+            assets/
+            functions/index.js
+            functions/marketplace.js
+            functions/moderation.js
+            functions/package.json
+            scripts/
+            tests/
+            firebase.json
+            firebase.staging.config.json
+            firestore.rules
+            package.json
+            sw.js
+            manifest.webmanifest
+            logo.png
+            icon-192.png
+            icon-512.png
+            Start-SOUQNA.cmd
+          if-no-files-found: error
+          retention-days: 14
+
+  remote-staging-hosting:
+    name: Check actual staging website (read-only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Inspect actual public Firebase staging URLs
+        id: check_hosting
+        continue-on-error: true
+        run: |
+          set +e
+          node scripts/check-staging-hosting.mjs > staging-hosting-check.txt 2>&1
+          result=$?
+          set -e
+          cat staging-hosting-check.txt
+          if [ "$result" -ne 0 ]; then
+            echo "::warning::SOUQNA staging website is not verified online. No deployment was attempted."
+          fi
+          exit "$result"
+      - name: Upload staging availability result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUQNA-remote-staging-hosting-check
+          path: staging-hosting-check.txt
+          if-no-files-found: ignore
+          retention-days: 7

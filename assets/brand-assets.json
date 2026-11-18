@@ -1,0 +1,24 @@
+{
+  "approved_source_images": {
+    "logo": "assets/souqna-approved-logo.jpg",
+    "category_sheet": "assets/souqna-original-categories.jpg"
+  },
+  "icons": {
+    "furniture": "assets/category-photos/furniture.webp",
+    "electronics": "assets/category-photos/electronics.webp",
+    "jobs": "assets/category-photos/jobs.webp",
+    "cars": "assets/category-photos/cars.webp",
+    "real_estate": "assets/category-photos/real_estate.webp",
+    "misc": "assets/category-photos/misc.webp",
+    "lost_found": "assets/category-photos/lost_found.webp",
+    "fashion": "assets/category-photos/fashion.webp",
+    "community": "assets/category-photos/community.webp",
+    "services": "assets/category-photos/services.webp"
+  },
+  "full_logo": "assets/souqna-approved-logo.jpg",
+  "mark": "assets/souqna-3d-mark.webp",
+  "pwa_icons": {
+    "192": "icon-192.png",
+    "512": "icon-512.png"
+  }
+}
