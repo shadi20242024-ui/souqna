@@ -30,14 +30,15 @@ test("Initial staging administrator provisioning is dry-run only by default",()=
   const attempt=(...args)=>spawnSync(process.execPath,[admin,...args],{
     encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",FIRESTORE_EMULATOR_HOST:""}
   });
-  const dry=attempt("--project","souqna-staging-example","--email","owner@example.test");
+  const dry=attempt("--project","souqna-staging","--email","owner@example.test");
   assert.equal(dry.status,0,dry.stderr);
   assert.ok(dry.stdout.includes("DRY RUN ONLY"));
   assert.notEqual(attempt("--project","souqna-sweida","--email","owner@example.test").status,0);
-  assert.notEqual(attempt("--project","souqna-staging-example","--email","owner@example.test",
+  assert.notEqual(attempt("--project","souqna-staging-example","--email","owner@example.test").status,0,"Wrong staging target must be refused even in dry run");
+  assert.notEqual(attempt("--project","souqna-staging","--email","owner@example.test",
     "--execute","--confirm","ADMIN:wrong-project:owner@example.test").status,0);
-  assert.notEqual(attempt("--project","souqna-staging-example","--email","owner@example.test",
-    "--execute","--confirm","ADMIN:souqna-staging-example:owner@example.test").status,0,
+  assert.notEqual(attempt("--project","souqna-staging","--email","owner@example.test",
+    "--execute","--confirm","ADMIN:souqna-staging:owner@example.test").status,0,
     "Missing staging credentials must not grant administrator access");
 });
 
