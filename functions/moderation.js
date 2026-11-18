@@ -1,5 +1,4 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { FieldValue } = require("firebase-admin/firestore");
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const TARGETS = Object.freeze({ ad: "ads", store: "stores" });
