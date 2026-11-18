@@ -951,3 +951,63 @@ nav button.on .nav-symbol {background:linear-gradient(150deg,rgba(255,220,141,.3
   .category-symbol,.cc,.item,.btn,.gold {transition:none!important;}
   .cc:hover,.item:hover,.cc:hover .category-symbol {transform:none!important;}
 }
+
+/* Reuse the same icon language in search, listing placeholders and utility actions. */
+.item .img .category-symbol { width:73px;height:73px;border-radius:22px;box-shadow:inset 0 2px 3px #ffffffa0,0 13px 30px rgba(22,69,122,.2); }
+.item .img .category-symbol svg {width:37px;height:37px;}
+.search-symbol {
+  flex:none;
+  display:inline-grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  color:#24559a;
+}
+.search-symbol svg {width:21px;height:21px;}
+.qt {gap:10px;}
+.qt >* {
+  display:flex;
+  min-height:107px;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:10px;
+  border:1px solid rgba(135,197,240,.34);
+  border-radius:18px;
+  background:linear-gradient(145deg,#0e3976,#145bb2);
+  box-shadow:0 11px 23px rgba(12,59,117,.14);
+  font-weight:800;
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+.qt >*:hover { transform:translateY(-3px);box-shadow:0 15px 29px rgba(12,59,117,.19); }
+.quick-symbol {
+  display:grid;
+  place-items:center;
+  width:44px;
+  height:44px;
+  border:1px solid rgba(255,255,255,.35);
+  border-radius:14px;
+  background:linear-gradient(145deg,rgba(255,255,255,.3),rgba(255,255,255,.08));
+  box-shadow:inset 0 1px rgba(255,255,255,.5),0 7px 16px rgba(7,30,72,.14);
+}
+.quick-symbol svg {width:24px;height:24px;}
+nav button {position:relative;}
+.nav-unread {
+  position:absolute;
+  top:4px;
+  right:16px;
+  color:#b53748;
+  font-size:14px;
+  line-height:1;
+  pointer-events:none;
+}
+@media (max-width:600px){
+  .qt {gap:7px;}
+  .qt >* {min-height:93px;padding:12px 5px;font-size:11px;line-height:1.45;border-radius:14px;}
+  .quick-symbol {width:37px;height:37px;border-radius:12px;}
+  .quick-symbol svg {width:20px;height:20px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .qt >* {transition:none;}
+  .qt >*:hover {transform:none;}
+}
