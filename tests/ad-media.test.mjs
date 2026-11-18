@@ -7,7 +7,7 @@ const project="souqna-staging",uid="user_123";
 const image=n=>"https://firebasestorage.googleapis.com/v0/b/"+project+".firebasestorage.app/o/ads%2F"+uid+"%2Fimage"+n+".jpg?alt=media";
 test("accept up to 11 additional images stored within user's Firebase upload folder",()=>{
   const validated=validateImageUrls(Array.from({length:MAX_IMAGES},(_,i)=>image(i)),project,uid);
-  assert.equal(validated.length,12);
+  assert.equal(validated.length,MAX_IMAGES);
 });
 test("reject over-limit images, duplicates and unsafe sources",()=>{
   assert.throws(()=>validateImageUrls(Array.from({length:12},(_,i)=>image(i)),project,uid),/11/);
