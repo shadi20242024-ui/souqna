@@ -284,6 +284,7 @@ try {
     const page=await adminContext.newPage();
     const errors=[];
     page.on("pageerror",e=>errors.push(e.message));
+    page.on("dialog",dialog=>dialog.accept());
     await page.goto("http://127.0.0.1:4173/",{waitUntil:"domcontentloaded"});
     await page.locator("#list .item").first().waitFor({timeout:20000});
     await page.locator('#nav [data-v="acc"]').click();
