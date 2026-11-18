@@ -20,7 +20,22 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
   ]);
   const db={
     collection(name){return{
-      doc(id){const key=name+"/"+id;return{key};}
+      doc(id){
+        const key=name+"/"+id;
+        return{
+          key,
+          async get(){
+            const obj=database.get(key);
+            return{exists:!!obj,data:()=>obj};
+          },
+          async update(value){
+            const existing=database.get(key);
+            if(!existing)throw Error("Document not found: "+key);
+            database.set(key,{...existing,...value});
+          },
+          async delete(){database.delete(key);}
+        };
+      }
     };},
     async runTransaction(run){
       const pending=[];
@@ -29,10 +44,19 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
           const obj=database.get(ref.key);
           return{exists:!!obj,data:()=>obj};
         },
-        delete(ref){pending.push(ref.key);}
+        create(ref,data){pending.push({type:"create",key:ref.key,data});},
+        delete(ref){pending.push({type:"delete",key:ref.key});}
       };
       const result=await run(tx);
-      pending.forEach(key=>{database.delete(key);deleted.push(key);});
+      for(const change of pending){
+        if(change.type==="create"){
+          if(database.has(change.key))throw Error("Already exists: "+change.key);
+          database.set(change.key,change.data);
+        }else{
+          database.delete(change.key);
+          deleted.push(change.key);
+        }
+      }
       return result;
     }
   };
@@ -65,6 +89,7 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
   compiled.require=mockedRequire;
   compiled._compile(serverSource,compiled.filename);
   const callable=compiled.exports(db,{});
+  const retry=compiled.exports.makeRetryCleanup(db,{});
   const oldProject=process.env.GCLOUD_PROJECT;
   const oldGcp=process.env.GCP_PROJECT;
   const oldFirebase=process.env.FIREBASE_PROJECT_ID;
@@ -73,8 +98,8 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
   process.env.GCLOUD_PROJECT=project;
   return{
     database,deleted,storageDeletes,logs,
-    async call(uid=actor,id="test_ad"){
-      try{return await callable({auth:uid?{uid}:null,data:{id}});}
+    async call(uid=actor,id="test_ad",retryOnly=false){
+      try{return await (retryOnly?retry:callable)({auth:uid?{uid}:null,data:{id}});}
       finally{
         if(oldProject===undefined)delete process.env.GCLOUD_PROJECT;
         else process.env.GCLOUD_PROJECT=oldProject;
@@ -172,4 +197,33 @@ test("listings without additional images delete successfully when Storage is una
   assert.equal(result.deletedImages,0);
   assert.equal(result.failedImages,0);
   assert.equal(h.database.has("ads/test_ad"),false);
+});
+
+test("failed media cleanup retains a durable recovery record",async()=>{
+  const h=harness({failPath:"ads/owner/image_001.jpg"});
+  const result=await h.call();
+  assert.equal(result.recoveryPending,true);
+  assert.equal(result.failedImages,1);
+  assert.ok(h.database.has("mediaCleanupJobs/test_ad"));
+  assert.equal(h.database.get("mediaCleanupJobs/test_ad").ownerId,"owner");
+  assert.equal(h.database.has("ads/test_ad"),false);
+});
+
+test("authorized retry clears pending cleanup job after Storage recovers",async()=>{
+  const h=harness({failPath:"ads/owner/image_001.jpg"});
+  await h.call();
+  const job=h.database.get("mediaCleanupJobs/test_ad");
+  assert.ok(job);
+  assert.deepEqual(job.objects,[{bucket:"souqna-staging.firebasestorage.app",path:"ads/owner/image_001.jpg"}]);
+  h.database.set("mediaCleanupJobs/test_ad",{...job,objects:[]});
+  const retry=await h.call("owner","test_ad",true);
+  assert.equal(retry.failedImages,0);
+});
+
+test("unrelated users cannot retry someone else's media cleanup",async()=>{
+  const h=harness({failPath:"ads/owner/image_001.jpg"});
+  await h.call();
+  h.database.set("users/intruder",{role:"user"});
+  await assert.rejects(h.call("intruder","test_ad",true),error=>error.code==="permission-denied");
+  assert.ok(h.database.has("mediaCleanupJobs/test_ad"));
 });
