@@ -74,3 +74,11 @@ test("only active local service categories accept postings",async()=>{
   await assertFails(setDoc(doc(userDb("owner"),"localPosts","closed-post"),payload("closed_service","owner")));
   await assertSucceeds(setDoc(doc(userDb("owner"),"localPosts","volunteer-post"),payload("volunteer","owner")));
 });
+
+test("browser clients cannot read or modify server-managed media cleanup jobs",async()=>{
+  const uid="owner";
+  const job=doc(userDb(uid),"mediaCleanupJobs","sample");
+  await assertFails(getDoc(job));
+  await assertFails(setDoc(job,{ownerId:uid,status:"pending",objects:[]}));
+  await assertFails(updateDoc(job,{status:"done"}));
+});
