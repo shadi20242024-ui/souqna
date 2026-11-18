@@ -322,7 +322,7 @@ function adminReviewQueue(){
   const matching=(item)=>[item.name,item.title,item.ownerName,item.area,item.desc].some(value=>String(value||"").toLocaleLowerCase().includes(queryText));
   const pendingStores=adminReviewType==="ads"?[]:pendStores.filter(matching);
   const pendingAds=adminReviewType==="stores"?[]:pend.filter(matching);
-  const storeCards=pendingStores.slice(0,50).map(store=>'<div class="box"><b>'+esc(store.name)+'</b> · '+esc(store.ownerName||"")+'<div class="mut">'+esc(store.desc||"")+'</div><div class="acts"><button class="btn" data-a="stok" data-id="'+esc(store.id)+'">قبول</button><button class="btn l" data-a="stno" data-id="'+esc(store.id)+'">رفض</button><button class="btn r" data-a="delst" data-id="'+esc(store.id)+'">حذف</button></div></div>').join("");
+  const storeCards=pendingStores.slice(0,50).map(store=>'<div class="box"><b>'+esc(store.name)+'</b> · '+esc(store.ownerName||"")+'<div class="mut">'+esc(store.desc||"")+'</div><div class="acts"><button class="btn" data-a="stok" data-id="'+esc(store.id)+'">قبول</button><button class="btn l" data-a="stno" data-id="'+esc(store.id)+'">رفض</button></div></div>').join("");
   const adCards=pendingAds.slice(0,50).map(ad=>card(ad,"pend")).join("");
   return '<p class="mut" role="status">متاجر: '+pendingStores.length+' · إعلانات: '+pendingAds.length+' · تظهر أول 50 نتيجة من كل نوع</p>'+
     (adminReviewType==="ads"?"":'<h3>متاجر بانتظار المراجعة ('+pendingStores.length+')</h3>'+(storeCards||'<p class="mut">لا توجد متاجر مطابقة.</p>'))+
@@ -338,7 +338,7 @@ function card(a,m){
   return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":IC[a.cat]||"🛍️"}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
-  <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
+  <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button>`
   :m=="mine"?`<button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
   :`<button class="favorite-button ${favorites.some(f=>f.adId===a.id)?"saved":""}" data-a="toggleFav" data-id="${esc(a.id)}" aria-label="${favorites.some(f=>f.adId===a.id)?"إزالة الإعلان من المفضلة":"حفظ الإعلان في المفضلة"}" aria-pressed="${favorites.some(f=>f.adId===a.id)}">${favorites.some(f=>f.adId===a.id)?"♥":"♡"} <span>${favorites.some(f=>f.adId===a.id)?"محفوظ":"حفظ"}</span></button><a class="btn wa" rel="noopener noreferrer" target="_blank" href="https://wa.me/${esc(a.phone)}?text=${encodeURIComponent(msg)}">واتساب</a>`}</div></div></div>`}
 
