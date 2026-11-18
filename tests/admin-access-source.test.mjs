@@ -38,7 +38,7 @@ test("administrator directory supports bounded search and safe rendering", () =>
   assert.ok(html.includes("filtered.slice(0,100)"));
   assert.ok(html.includes("esc(u.email||"));
   assert.ok(html.includes('id="admin-user-search"'));
-  assert.ok(html.includes('e.target.id!=="admin-user-search"'));
+  assert.ok(html.includes('e.target.id==="admin-user-search"&&isAdm()'));
 });
 
 test("sign-out clears privileged user collections", () => {
