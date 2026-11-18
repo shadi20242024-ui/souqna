@@ -94,6 +94,7 @@ import{getFunctions,httpsCallable,connectFunctionsEmulator}from"https://www.gsta
 import{summarizeAdmin}from"./assets/admin-metrics.js";
 import{isSafeVideoUrl,validGallery,MAX_AD_PHOTOS,calculateExpression,jobFreshCount,validRatePayload,validGoldPayload,isFresh,SPECIALTIES}from"./assets/souqna-extras.js";
 import{compressAdPhotos}from"./assets/souqna-media.js";
+import{fetchSyrianMarketRates,SYRIAN_MARKET_SOURCE}from"./assets/syrian-market.js";
 const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
 const auth=getAuth(app),db=getFirestore(app),functions=getFunctions(app,"us-central1");
 const finance=async (action,id,extra={})=>{
@@ -267,7 +268,7 @@ const categoryScene=id=>{
 const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس",fuel:"محطة وقود"};
 const wxTxt=c=>c==0?"صافٍ":c<4?"غائم جزئيًا":c<50?"ضباب":c<70?"أمطار":c<80?"ثلوج":c<90?"زخات مطر":"عاصفة رعدية";
 
-let weatherError="",lastWeatherPoll=0,marketFx=null,marketGold=null,marketError="",lastMarketPoll=0,marketLocal=null;
+let weatherError="",lastWeatherPoll=0,marketFx=null,marketGold=null,marketError="",lastMarketPoll=0,marketLocal=null,syrianFx=null,syrianFxError="",lastSyrianPoll=0;
 async function loadWx(){
   if(Date.now()-lastWeatherPoll<60000)return;
   lastWeatherPoll=Date.now();
@@ -301,6 +302,30 @@ async function loadMarketData(force=false){
   marketGold=results[1].status==="fulfilled"?validGoldPayload(results[1].value):null;
   marketError=marketFx||marketGold?"":"تعذر استرداد أحدث المؤشرات من مزودي الخدمة.";
   if(view==="markets")render();
+}
+async function loadSyrianRates(force=false){
+  if(!force&&Date.now()-lastSyrianPoll<6*3600000)return;
+  lastSyrianPoll=Date.now();
+  try{
+    syrianFx=await fetchSyrianMarketRates();
+    syrianFxError="";
+  }catch(error){
+    syrianFx=null;
+    syrianFxError=error?.message||"تعذر جلب الأسعار السورية";
+    console.warn("SOUQNA Syrian market feed unavailable",error);
+  }
+  if(view==="markets")render();
+}
+function syrianMarketHtml(){
+  const quotes=syrianFx;
+  const live=quotes&&isFresh(quotes.updatedAt,6*3600000);
+  if(!live)return `<section class="box market-panel"><h3>🇸🇾 سعر صرف السوق السورية</h3><p class="mut" role="status">لا تتوفر الآن أسعار سورية تلقائية موثوقة${syrianFxError?" · "+esc(syrianFxError):""}. لن نعرض أسعاراً تقديرية على أنها أسعار محلية.</p><a target="_blank" rel="noopener noreferrer" href="${SYRIAN_MARKET_SOURCE}">راجع مصدر البيانات</a></section>`;
+  const row=(name,q)=>`<div class="market-value">${name}: شراء ${fmtNumber(q.buy)} · مبيع ${fmtNumber(q.sell)} ل.س حسب المصدر</div>`;
+  return `<section class="box market-panel"><h3>🇸🇾 أسعار السوق السورية — مصدر مستقل</h3>
+    ${row("الدولار",quotes.usd)}${row("اليورو",quotes.eur)}
+    <small>وقت تحديث المصدر: ${new Date(quotes.updatedAt).toLocaleString("ar-SY")}</small>
+    <p class="mut">أسعار شراء وبيع من مصدر مستقل وليست تسعيرة رسمية. تُنقل بالقيمة المنشورة في المصدر؛ تأكد هل هي بالليرة السورية الجديدة قبل المعاملة.</p>
+    <a href="${SYRIAN_MARKET_SOURCE}" target="_blank" rel="noopener noreferrer">المصدر: LiraScope</a></section>`;
 }
 const fmtNumber=n=>Number(n).toLocaleString("ar-SY",{maximumFractionDigits:2});
 
@@ -343,7 +368,7 @@ function marketsHtml(){
   const fxRows=freshFx?'<div class="market-value">USD ↔ SYP: '+fmtNumber(marketFx.syp)+' ل.س / USD</div><div class="market-value">EUR ↔ SYP: '+fmtNumber(marketFx.syp/marketFx.eur)+' ل.س / EUR</div><div class="market-value">TRY ↔ SYP: '+fmtNumber(marketFx.syp/marketFx.tryRate)+' ل.س / TRY</div><small>تحديث المرجع: '+new Date(marketFx.timestamp).toLocaleString("ar-SY")+'</small>':'<p class="mut">أسعار مرجعية غير متاحة أو قديمة؛ لا تُعرض أرقام غير مؤكدة.</p>';
   const goldRows=freshGold?'<div class="market-value">'+fmtNumber(marketGold.usdPerOunce)+' USD / أونصة الذهب العالمية</div><small>تحديث المؤشر: '+new Date(marketGold.timestamp).toLocaleString("ar-SY")+'</small>':'<p class="mut">مؤشر الذهب العالمي غير متاح أو قديم.</p>';
   return `<div class="utility-page"><div class="utility-head"><h2>💱 أسعار العملات والذهب</h2><p>مؤشرات عالمية تُحدَّث تلقائياً عند فتح الصفحة، وليست أسعار الصرافة أو الصاغة المعتمدة في سورية.</p></div>
-  ${localMarketHtml()}<div class="market-panels"><section class="box market-panel"><h3>أسعار صرف مرجعية مقابل الليرة السورية</h3>${fxRows}<p class="mut">سعر مرجعي دولي: قد يختلف كثيراً عن نشرة مصرف سورية المركزي أو سعر السوق المحلية، خصوصاً مع اختلاف فئات العملة الجديدة والقديمة.</p><a href="https://www.exchangerate-api.com/" rel="noopener noreferrer" target="_blank">المصدر: ExchangeRate-API</a></section>
+  ${syrianMarketHtml()}${localMarketHtml()}<div class="market-panels"><section class="box market-panel"><h3>أسعار صرف مرجعية مقابل الليرة السورية</h3>${fxRows}<p class="mut">سعر مرجعي دولي: قد يختلف كثيراً عن نشرة مصرف سورية المركزي أو سعر السوق المحلية، خصوصاً مع اختلاف فئات العملة الجديدة والقديمة.</p><a href="https://www.exchangerate-api.com/" rel="noopener noreferrer" target="_blank">المصدر: ExchangeRate-API</a></section>
   <section class="box market-panel"><h3>الذهب العالمي</h3>${goldRows}<p class="mut">سعر الأونصة بالدولار عالمياً؛ لا يمثل سعر غرام 21 أو 18 قيراطاً في محلات الصاغة السورية.</p><a href="https://gold-api.com/" target="_blank" rel="noopener noreferrer">المصدر: Gold-API</a></section></div>
   <section class="box market-official"><h3>الأسعار الرسمية في سورية</h3><p>للتسعيرة المحلية المعتمدة يرجى مراجعة الجهات الرسمية مباشرة، ولا ننشر أسعاراً محلية غير موثقة.</p><div class="acts"><a class="btn l" target="_blank" rel="noopener noreferrer" href="https://www.cb.gov.sy/">مصرف سورية المركزي</a><a class="btn l" target="_blank" rel="noopener noreferrer" href="https://pma.sy/">الهيئة العامة لإدارة المعادن الثمينة</a><button class="btn" data-a="markets-refresh">تحديث المؤشرات الآن</button></div></section>${marketError?'<p class="mut" role="status">'+esc(marketError)+'</p>':""}</div>`;
 }
@@ -704,7 +729,7 @@ function render(){
   }else if(view=="calculator"){
     A.innerHTML=calculatorHtml();
   }else if(view=="markets"){
-    A.innerHTML=marketsHtml();if(!lastMarketPoll)loadMarketData();
+    A.innerHTML=marketsHtml();if(!lastMarketPoll)loadMarketData();if(!lastSyrianPoll)loadSyrianRates();
   }else if(view=="ads"){
     A.innerHTML=`<div class="desktop-page-title premium-page-heading"><div class="page-heading-row"><img src="assets/souqna-3d-mark.webp" class="page-brand-icon" alt="" loading="lazy"><div><h2>سوق الإعلانات</h2><p>اكتشف العروض الجديدة في السويداء ومناطقها</p></div></div></div>
       <div class="filter-chips photo-filter-chips"><button class="${cur==="all"?"on":""}" data-c="all" aria-pressed="${cur==="all"}">جميع الأقسام</button>${cats.map(c=>`<button class="${cur===c.id?"on":""}" data-c="${esc(c.id)}" aria-pressed="${cur===c.id}">${categoryPhoto(c.id)?`<img class="filter-category-photo" src="assets/category-photos/${categoryPhoto(c.id)}-scene.webp" alt="" loading="lazy">`:crystalSvg(c.id,"filter-symbol")}${esc(c.name_ar)}</button>`).join("")}</div>
@@ -900,7 +925,7 @@ document.addEventListener("click",async e=>{
   const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view=view==="ads"?"ads":"home";feat=false;render();return scrollTo(0,0)}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   if(a==="calc-key"){const input=$("#calc-expression"),out=$("#calc-result");if(!input||!out)return;const key=b.dataset.key;if(key==="C"){input.value="";out.textContent="النتيجة تظهر هنا";return;}if(key==="="){try{out.textContent=fmtNumber(calculateExpression(input.value));}catch(error){out.textContent=error.message;}return;}input.value+=key;input.focus();return;}
-  if(a==="markets-refresh"){lastMarketPoll=0;loadMarketData(true);return;}
+  if(a==="markets-refresh"){lastMarketPoll=0;lastSyrianPoll=0;loadMarketData(true);loadSyrianRates(true);return;}
   try{
     if(a=="gallery"){showAdGallery(id);return;}
     if(a=="gallery-close"){$("#adMediaDialog")?.close();return;}
@@ -1172,7 +1197,7 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();setInterval(loadWx,15*60000);
-setInterval(()=>{if(view==="markets")loadMarketData();},30*60000);
+setInterval(()=>{if(view==="markets"){loadMarketData();loadSyrianRates();}},30*60000);
 onAuthStateChanged(auth,async u=>{
   const expectedVersion=++sessionVersion;
   me=null;
