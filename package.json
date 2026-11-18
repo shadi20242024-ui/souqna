@@ -15,8 +15,9 @@
     "preflight:staging": "node scripts/preflight-staging.mjs",
     "seed:staging": "node scripts/seed-staging.mjs",
     "setup:staging:auto": "node scripts/auto-staging-setup.mjs",
-    "test:admin": "node --test tests/admin-access-source.test.mjs tests/staging-admin-diagnostic.test.mjs",
-    "diagnose:staging:admin": "node scripts/diagnose-staging-admin.mjs"
+    "test:admin": "node --test tests/admin-access-source.test.mjs tests/staging-admin-diagnostic.test.mjs tests/moderation-source.test.mjs",
+    "diagnose:staging:admin": "node scripts/diagnose-staging-admin.mjs",
+    "test:moderation": "node --test tests/moderation-source.test.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
