@@ -57,5 +57,7 @@ test("production rules are kept separate from staging-only delete restriction",(
   const staging=readFileSync(new URL("../firestore.staging.rules",import.meta.url),"utf8");
   assert.match(regular,/allow delete: if isMarketplaceEditor\(\)/);
   assert.match(staging,/match \/ads\/\{id\} \{[\s\S]*?allow delete: if false;/);
-  assert.notEqual(regular,staging);
+  const originalRule="      allow delete: if isMarketplaceEditor()\n        || (signedIn() && resource.data.ownerId == request.auth.uid);";
+  assert.ok(regular.includes(originalRule));
+  assert.equal(staging,regular.replace(originalRule,"      allow delete: if false;"));
 });
