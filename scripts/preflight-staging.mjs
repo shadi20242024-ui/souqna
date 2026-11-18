@@ -26,6 +26,12 @@ assert.ok(!html.includes("نسخة معاينة معزولة"),"Disconnected pre
 assert.ok(!html.includes('projectId:"souqna-sweida"'),"Production Firebase project still present.");
 const firebase=JSON.parse(readFileSync(join(root,"firebase.json"),"utf8"));
 assert.equal(firebase.hosting.public,"dist","Firebase Hosting must publish the audited dist folder.");
+const stagingFirebase=JSON.parse(readFileSync(join(root,"firebase.staging.json"),"utf8"));
+assert.equal(stagingFirebase.hosting.public,"dist","Staging Hosting must publish audited dist.");
+assert.equal(stagingFirebase.firestore.rules,"firestore.staging.rules","Staging must use rules that require trusted ad deletion.");
+assert.equal(stagingFirebase.storage.rules,"storage.rules","Staging Storage rules must be enforced.");
+const stagingRules=readFileSync(join(root,"firestore.staging.rules"),"utf8");
+assert.match(stagingRules,/match \/ads\/\{id\} \{[\s\S]*?allow delete: if false;/,"Staging browser clients must not delete listings directly.");
 for(const f of ["index.html","sw.js","assets/responsive.css","assets/admin-metrics.js"]){
   assert.ok(existsSync(join(folder,f)),"Missing Hosting output: "+f);
 }
