@@ -13,7 +13,7 @@ test("Firebase application script parses", () => {
 
 test("administrator access requires an existing authorized profile", () => {
   assert.ok(html.includes('const isStaff=()=>me&&STAFF.includes(me.role)'));
-  assert.ok(html.includes('const isAdm=()=>me&&me.role=="admin"'));
+  assert.ok(html.includes('isAdm=()=>me&&me.role=="admin"'));
   assert.ok(html.includes('accountProfileMissing=!s.exists()'));
   assert.ok(html.includes('صلاحية المدير غير مفعّلة'));
   assert.ok(html.includes('ملف المستخدم غير موجود في Firestore'));
