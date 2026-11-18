@@ -62,3 +62,11 @@ test("moderation queue is searchable, filtered, and bounded", () => {
 test("moderation search is cleared on logout", () => {
   assert.ok(html.includes('adminReviewQuery="";adminReviewType="all";'));
 });
+
+test("moderation history is admin-only and limited to fifty entries", () => {
+  assert.ok(html.includes("function adminAuditRows()"));
+  assert.ok(html.includes('moderationHistory=await read("سجل مراجعة المحتوى"'));
+  assert.ok(html.includes('orderBy("createdAt","desc"),limit(50)'));
+  assert.ok(html.includes('if(!isAdm())return ""'));
+  assert.ok(html.includes("moderationHistory=[];pendStores=[]"));
+});
