@@ -3,7 +3,8 @@
 const MAX_IMAGES=11;
 const MAX_URL_LENGTH=2048;
 const VIDEO_HOSTS=new Set(["youtube.com","www.youtube.com","m.youtube.com","youtu.be","www.youtu.be","vimeo.com","www.vimeo.com"]);
-const IMAGE_HOSTS=new Set(["firebasestorage.googleapis.com","storage.googleapis.com"]);
+const IMAGE_HOSTS=new Set(["firebasestorage.googleapis.com"]);
+const IMAGE_FILE_RE=/^[A-Za-z0-9_-]{8,100}\.(jpg|jpeg|png|webp)$/;
 
 function mediaError(message){throw new Error(message);}
 function url(value,label){
@@ -17,7 +18,9 @@ function validateImageUrls(images,projectId,uid){
   if(!Array.isArray(images)||images.length>MAX_IMAGES)mediaError("عدد صور الإعلان يتجاوز 11 صورة إضافية");
   if(typeof projectId!=="string"||!/^[a-z][a-z0-9-]{4,40}$/.test(projectId))mediaError("معرف مشروع التخزين غير صحيح");
   if(typeof uid!=="string"||!/^[A-Za-z0-9_-]{1,128}$/.test(uid))mediaError("معرّف صاحب الإعلان غير صحيح");
+  if(projectId!=="souqna-staging")mediaError("معرض الصور مخصص لبيئة الاختبار فقط");
   const bucketNames=new Set([projectId+".firebasestorage.app",projectId+".appspot.com"]);
+  const seenFiles=new Set();
   const output=images.map(value=>{
     const parsed=url(value,"رابط الصورة");
     if(!IMAGE_HOSTS.has(parsed.hostname))mediaError("مصدر الصورة غير مسموح");
@@ -36,11 +39,14 @@ function validateImageUrls(images,projectId,uid){
       bucket=decodeURIComponent(match[1]);
       objectPath=decodeURIComponent(match[2]);
     }
-    if(!bucketNames.has(bucket)||!objectPath.startsWith("ads/"+uid+"/")||objectPath.includes(".."))
+    const prefix="ads/"+uid+"/";
+    if(!bucketNames.has(bucket)||!objectPath.startsWith(prefix)||!IMAGE_FILE_RE.test(objectPath.slice(prefix.length)))
       mediaError("الصورة ليست من مساحة إعلانات المشروع");
+    const key=bucket+"/"+objectPath;
+    if(seenFiles.has(key))mediaError("رابط صورة مكرر");
+    seenFiles.add(key);
     return parsed.href;
   });
-  if(new Set(output).size!==output.length)mediaError("رابط صورة مكرر");
   return output;
 }
 function validateVideoUrl(videoUrl){
@@ -76,7 +82,7 @@ function extractOwnedImageObjects(images,projectId,uid){
       if(!expectedBuckets.has(bucket))continue;
       const path=decodeURIComponent(match[2]);
       const filename=path.startsWith(prefix)?path.slice(prefix.length):"";
-      if(!/^[A-Za-z0-9_-]{8,100}\.(jpg|jpeg|png|webp)$/.test(filename))continue;
+      if(!IMAGE_FILE_RE.test(filename))continue;
       const key=bucket+"/"+path;
       if(!seen.has(key)){
         seen.add(key);
