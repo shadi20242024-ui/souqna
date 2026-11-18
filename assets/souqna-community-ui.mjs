@@ -114,6 +114,7 @@ async function createSection(event){
   }catch(error){status.textContent="تعذر إنشاء القسم: "+error.message;}
   finally{submit.disabled=false;}
 }
+function bootCommunity(){
 if(getApps().length){
   const app=getApp();
   if(app.options.projectId==="souqna-staging"){
@@ -129,4 +130,9 @@ if(getApps().length){
       await loadSections();render();
     });
   }else root.hidden=true;
-}else root.hidden=true;
+ }else{
+  root.hidden=true;
+  window.addEventListener("souqna:firebase-ready",bootCommunity,{once:true});
+ }
+}
+bootCommunity();
