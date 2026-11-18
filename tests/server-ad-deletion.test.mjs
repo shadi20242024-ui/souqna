@@ -22,8 +22,9 @@ test("deletion callable checks role and owner, commits database first, then dele
   assert.match(server,/role==="admin"/);
   assert.match(server,/!admin&&ad.ownerId!==uid/);
   assert.match(server,/extractOwnedImageObjects\(ad.images,project,ownerId\)/);
-  assert.match(server,/getStorage\(\)\.bucket\(bucket\)\.file\(path\)\.delete/);
-  assert.ok(server.indexOf("tx.delete(ref)")<server.indexOf("getStorage().bucket(bucket).file(path).delete"));
+  assert.match(server,/deleteImageWithRetry\(storage,bucket,path\)/);
+  assert.match(server,/storage\.bucket\(bucket\)\.file\(path\)\.delete/);
+  assert.ok(server.indexOf("tx.delete(ref)")<server.indexOf("deleteImageWithRetry(storage,bucket,path)"));
 });
 
 test("delete operations retain the bucket actually referenced by each verified image",()=>{
