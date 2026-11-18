@@ -277,3 +277,4 @@ exports.souqnaFinance = onCall(OPTIONS, async request => {
 // All user listing/store creation is enforced by server-side quotas and ownership checks.
 exports.souqnaMarketplace=require("./marketplace")(db,OPTIONS);
 exports.souqnaDeleteAd=require("./delete-ad")(db,OPTIONS);
+exports.souqnaRetryAdCleanup=require("./delete-ad").makeRetryCleanup(db,OPTIONS);
