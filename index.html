@@ -660,8 +660,8 @@ document.addEventListener("click",async e=>{
       if(galleryVideo){const {validateListingMedia}=await import("./assets/souqna-local-services.mjs");validateListingMedia({videoUrl:galleryVideo});}
       let uploadedGallery=[];
       if(mediaFiles.length||galleryVideo){
-        if(app.options.projectId==="souqna-sweida"||app.options.projectId==="souqna-preview-disabled")
-          return toast("الصور المتعددة متاحة حالياً في بيئة الاختبار فقط");
+        if(app.options.projectId!=="souqna-staging")
+          return toast("الصور المتعددة متاحة حالياً في مشروع souqna-staging فقط");
       }
       try{
         if(mediaFiles.length){
