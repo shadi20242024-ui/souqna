@@ -1032,3 +1032,64 @@ nav button {position:relative;}
 @media(max-width:700px){.cg{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.cc.photo-category{border-radius:14px;min-height:0!important;font-size:inherit}.bn .hero-brand-logo{width:90px;height:90px;border-radius:15px}}
 @media(max-width:380px){.cg{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.cc.photo-category{border-radius:11px}.bn .hero-brand-logo{width:74px;height:74px}}
 @media(prefers-reduced-motion:reduce){.cc.photo-category{transition:none}.cc.photo-category:hover{transform:none}}
+
+/* SOUQNA interior pages — approved 3D brand and photoreal category artwork. */
+.category-count{font-size:12px;color:#687b95;font-weight:800;white-space:nowrap}
+.premium-page-heading{border-radius:20px;margin:5px 0 17px}
+.page-heading-row{display:flex;align-items:center;gap:17px}
+.page-brand-icon{display:block;flex:none;width:67px;height:67px;object-fit:cover;border-radius:16px;border:1px solid #fff6;box-shadow:0 7px 20px #061b4830}
+.page-heading-row h2{margin:0 0 5px;font-size:clamp(21px,2.5vw,27px);color:#f5d994}
+.page-heading-row p{margin:0;color:#edf3ff;font-size:13px;line-height:1.75}
+.photo-filter-chips{margin:12px 0 20px;gap:9px}
+.photo-filter-chips button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:46px;background:#fff;border-color:#d9e5f4;font-weight:750;box-shadow:0 4px 10px #1739680a}
+.photo-filter-chips button:hover{border-color:#a8c6e7;background:#f3f8ff}
+.photo-filter-chips button.on,.photo-filter-chips button.on:hover{background:#123d87;color:#fff;border-color:#d3aa5c}
+.photo-filter-chips button .filter-category-photo{display:block;flex:none;width:30px;height:30px;border-radius:8px;object-fit:cover;border:1px solid #d9e7fa}
+.photo-filter-chips button .filter-symbol{display:inline-grid;place-items:center;width:28px;height:28px;color:inherit}
+.photo-filter-chips button .filter-symbol svg{width:22px;height:22px}
+.premium-form-box{max-width:830px;margin:12px auto 20px;padding:clamp(17px,3vw,28px);border-color:#dce8f7}
+.form-page-intro{display:flex;align-items:center;gap:16px;padding:13px 14px;margin:0 0 20px;border:1px solid #d9e7f6;border-radius:17px;background:linear-gradient(105deg,#f7fbff,#ebf3fe)}
+.form-page-intro img{flex:none;width:79px;height:79px;object-fit:cover;border:1px solid #e3c98c;border-radius:18px;box-shadow:0 6px 16px #122e6425}
+.form-page-intro h3{font-size:22px;color:#12386c;margin:0 0 6px}
+.form-page-intro p{font-size:13px;color:#536b88;margin:0;line-height:1.8}
+.field-label{display:block;color:#1c406f;font-size:13px;font-weight:800;margin:12px 2px 7px}
+.premium-form-box input:not([type="checkbox"]),.premium-form-box select,.premium-form-box textarea{
+  border-radius:12px;border-color:#d1dfef;background:#fff;padding:12px;min-height:44px;transition:border-color .15s ease,box-shadow .15s ease;
+}
+.premium-form-box input:focus,.premium-form-box select:focus,.premium-form-box textarea:focus{
+  border-color:#8db5e2;box-shadow:0 0 0 3px #bfdafa70;outline:none;
+}
+.premium-form-box input[type="file"]{padding:10px;font-size:12px}
+.premium-form-box .imgprev{border:1px solid #d9e5f4;border-radius:16px}
+.store-profile-card{margin:14px 0 20px;padding:0 0 17px;background:#fff;border:1px solid #deebf5;border-radius:22px;box-shadow:0 12px 30px #152d5910;overflow:hidden}
+.store-profile-card .store-cover{height:clamp(158px,22vw,224px);margin:0 0 47px;border-radius:0;background:linear-gradient(118deg,#081f51,#145bb1);background-position:center;background-size:cover}
+.store-profile-card .store-cover .stl{right:22px;bottom:-36px;border:3px solid #edc972;box-shadow:0 6px 19px #14356222}
+.store-profile-body{padding:8px clamp(17px,3vw,27px) 6px}
+.store-profile-eyebrow{font-size:11px;color:#2860a0;font-weight:850;letter-spacing:.2px}
+.store-profile-body h2{font-size:clamp(22px,3vw,30px);margin:6px 0 11px;color:#132f5e}
+.store-profile-body .mut{line-height:1.8}
+.store-profile-body .acts{margin-top:14px}
+.store-search-shell{border-radius:15px;background:#fff;border:1px solid #dbe6f2;padding:6px 11px;margin-bottom:19px;box-shadow:0 6px 18px #122b5110}
+.store-search-shell:focus-within{border-color:#c1a05e;box-shadow:0 0 0 3px #ecce9140}
+.store-search-shell input{border:0;margin:0;outline:0!important;min-height:39px;box-shadow:none}
+.store-directory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
+.store-directory-list .dr{min-width:0;min-height:91px;border:1px solid #dfe8f4;border-radius:17px;box-shadow:0 8px 24px #123a6c10;transition:transform .2s ease,box-shadow .2s ease}
+.store-directory-list .dr:hover{transform:translateY(-2px);box-shadow:0 13px 29px #123a6c20}
+.store-directory-list .dr .stl{border-radius:14px}
+.store-directory-list .dr b{font-size:15px}
+.store-directory-list .dr .mut{margin-top:5px}
+@media(min-width:1024px){.premium-page-heading{margin-top:0}.store-profile-card{margin-top:8px}}
+@media(max-width:700px){
+ .page-heading-row{gap:12px}
+ .page-brand-icon{width:53px;height:53px;border-radius:13px}
+ .page-heading-row h2{font-size:21px}
+ .photo-filter-chips{gap:6px}
+ .photo-filter-chips button{font-size:12px;padding:6px 8px;min-height:40px}
+ .photo-filter-chips button .filter-category-photo{width:27px;height:27px}
+ .form-page-intro{gap:12px;padding:10px}
+ .form-page-intro img{width:61px;height:61px;border-radius:13px}
+ .form-page-intro h3{font-size:18px}
+ .form-page-intro p{font-size:12px}
+ .store-directory-list{grid-template-columns:minmax(0,1fr);gap:3px}
+}
+@media(prefers-reduced-motion:reduce){.store-directory-list .dr,.premium-form-box input,.premium-form-box select,.premium-form-box textarea{transition:none}.store-directory-list .dr:hover{transform:none}}
