@@ -295,6 +295,8 @@ function card(a,m){
   return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":IC[a.cat]||"🛍️"}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
+  ${Array.isArray(a.images)&&a.images.length?`<div class="acts" style="margin-top:8px">${a.images.filter(u=>safeHttpUrl(u)).slice(0,12).map((u,i)=>`<a href="${esc(safeHttpUrl(u))}" target="_blank" rel="noopener noreferrer" aria-label="صورة الإعلان ${i+1}">📷 ${i+1}</a>`).join(" ")}</div>`:""}
+  ${a.videoUrl&&safeHttpUrl(a.videoUrl)?`<div><a href="${esc(safeHttpUrl(a.videoUrl))}" target="_blank" rel="noopener noreferrer">▶ فيديو الإعلان</a></div>`:""}
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
   :m=="mine"?`<button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
   :`<button class="favorite-button ${favorites.some(f=>f.adId===a.id)?"saved":""}" data-a="toggleFav" data-id="${esc(a.id)}" aria-label="${favorites.some(f=>f.adId===a.id)?"إزالة الإعلان من المفضلة":"حفظ الإعلان في المفضلة"}" aria-pressed="${favorites.some(f=>f.adId===a.id)}">${favorites.some(f=>f.adId===a.id)?"♥":"♡"} <span>${favorites.some(f=>f.adId===a.id)?"محفوظ":"حفظ"}</span></button><a class="btn wa" rel="noopener noreferrer" target="_blank" href="https://wa.me/${esc(a.phone)}?text=${encodeURIComponent(msg)}">واتساب</a>`}</div></div></div>`}
@@ -454,7 +456,7 @@ function render(){
     A.innerHTML=!me?loginBox():`<div class="box"><h3>➕ أضف إعلانك</h3><select id="a-cat">${cats.map(c=>`<option value="${c.id}">${esc(c.name_ar)}</option>`).join("")}</select>${myStores.some(s=>s.status=="approved")?`<select id="a-st"><option value="">إعلان شخصي (بدون متجر)</option>${myStores.filter(s=>s.status=="approved").map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>`:""}
     <input id="a-title" placeholder="عنوان الإعلان"><div class="row"><input id="a-price" type="number" placeholder="السعر"><select id="a-cur"><option>$</option><option>ل.س</option></select></div>
     <input id="a-area" placeholder="المنطقة (السويداء، شهبا، صلخد...)"><textarea id="a-desc" rows="3" placeholder="التفاصيل"></textarea>
-    <input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><input id="a-img" type="file" accept="image/jpeg,image/png,image/webp,image/avif"><img class="imgprev" id="a-preview" hidden alt="معاينة صورة الإعلان"><div class="mut">📷 صورة حتى 12 ميغابايت؛ تُضغط تلقائيًا لتوفير مساحة قاعدة البيانات.</div><button class="btn l" type="button" data-a="clearphoto">إزالة الصورة</button>
+    <input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><input id="a-img" type="file" accept="image/jpeg,image/png,image/webp,image/avif"><label for="a-gallery">صور إضافية (حتى 12 صورة، كل منها أقل من 5 ميغابايت)</label><input id="a-gallery" type="file" accept="image/jpeg,image/png,image/webp" multiple><input id="a-video" type="url" dir="ltr" placeholder="رابط فيديو YouTube أو Vimeo (اختياري)"><img class="imgprev" id="a-preview" hidden alt="معاينة صورة الإعلان"><div class="mut">📷 صورة حتى 12 ميغابايت؛ تُضغط تلقائيًا لتوفير مساحة قاعدة البيانات.</div><button class="btn l" type="button" data-a="clearphoto">إزالة الصورة</button>
     <button class="btn g" style="width:100%" data-a="post">إرسال للمراجعة</button><p class="mut">يظهر إعلانك بعد موافقة الإدارة.</p></div>`;
     const f=$("#a-img");if(f)f.onchange=()=>{photoReady=shrink(f.files[0]);};
   }else if(view=="store"){const s=stores.find(x=>x.id==curStore)||myStores.find(x=>x.id==curStore)||{};
@@ -653,7 +655,20 @@ document.addEventListener("click",async e=>{
       const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
       if(t.length<3||t.length>150||!val("#a-price")||!Number.isFinite(+val("#a-price"))||+val("#a-price")<0||+val("#a-price")>1000000000000||p.length<9||p.length>15)return toast("تحقق من عنوان الإعلان (3–150 حرفاً)، السعر ورقم الهاتف");
       const sid=$("#a-st")?$("#a-st").value:"";if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
-      await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
+      const mediaFiles=Array.from($("#a-gallery")?.files||[]);
+      const galleryVideo=val("#a-video")?.trim()||"";
+      let galleryImages=[];
+      if(mediaFiles.length||galleryVideo){
+        if(app.options.projectId==="souqna-sweida"||app.options.projectId==="souqna-preview-disabled")
+          return toast("الصور المتعددة متاحة حالياً في بيئة الاختبار فقط");
+        if(mediaFiles.length){
+          const {uploadGallery}=await import("./assets/souqna-gallery.mjs");
+          galleryImages=(await uploadGallery(app,me.uid,mediaFiles,{
+            onProgress:({completed,total})=>toast("رفع الصور "+completed+" / "+total)
+          })).map(image=>image.url);
+        }
+      }
+      await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...(galleryImages.length?{images:galleryImages}:{}),...(galleryVideo?{videoUrl:galleryVideo}:{}),...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
       photo="";photoHash="";photoError="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
     else if(a=="sbreq"){
        if(!need())return;
