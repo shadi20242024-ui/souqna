@@ -501,7 +501,7 @@ function adminCategoryManager(){
 }
 function adminAuditRows(){
   if(!isAdm())return "";
-  const rows=moderationHistory.map(entry=>'<div class="row" style="align-items:center;margin-bottom:8px"><div><b>'+esc(entry.type==="ad"?"إعلان":"متجر")+' · '+esc(entry.action==="approve"?"موافقة":"رفض")+'</b><div class="mut">'+esc(entry.targetId)+' · المسؤول: '+esc(entry.actorId)+'</div><div class="mut">'+(Number.isFinite(entry.createdAt)?new Date(entry.createdAt).toLocaleString("ar-SY"):"تاريخ غير متاح")+'</div></div></div>').join("");
+  const rows=moderationHistory.map(entry=>'<div class="row" style="align-items:center;margin-bottom:8px"><div><b>'+esc(entry.type==="ad"?"إعلان":"متجر")+' · '+esc(entry.action==="approve"?"موافقة":entry.action==="publish-specialty"?"نشر اختصاصي":"رفض")+'</b><div class="mut">'+esc(entry.targetId)+' · المسؤول: '+esc(entry.actorId)+'</div><div class="mut">'+(Number.isFinite(entry.createdAt)?new Date(entry.createdAt).toLocaleString("ar-SY"):"تاريخ غير متاح")+'</div></div></div>').join("");
   return '<div class="box"><h3>📜 سجل مراجعة الإدارة</h3><p class="mut">آخر 50 إجراء مسجل. لا يمكن تعديل السجل من الواجهة.</p>'+(rows||'<p class="mut">لا توجد إجراءات مسجلة.</p>')+'</div>';
 }
 
@@ -979,8 +979,8 @@ document.addEventListener("click",async e=>{
        const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
       if(t.length<3||t.length>150||!val("#a-price")||!Number.isFinite(+val("#a-price"))||+val("#a-price")<0||+val("#a-price")>1000000000000||p.length<9||p.length>15)return toast("تحقق من عنوان الإعلان (3–150 حرفاً)، السعر ورقم الهاتف");
       const sid=$("#a-st")?$("#a-st").value:"";if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
-      await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,images:galleryPhotos,videoUrl,...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
-      photo="";galleryPhotos=[];photoHash="";photoError="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
+      const createdAd=await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,images:galleryPhotos,videoUrl,...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
+      photo="";galleryPhotos=[];photoHash="";photoError="";toast(createdAd?.status==="approved"?"نُشر إعلان الوظيفة وسُجلت العملية في سجل الإدارة":"تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
     else if(a=="sbreq"){
        if(!need())return;
        await pickReady;
