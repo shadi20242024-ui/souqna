@@ -117,6 +117,7 @@ const bgImage=raw=>{const safe=safeImage(raw);return safe?`background-image:url(
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
 let accountProfileMissing=false;
+let accountProfileReadError="";
 let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
@@ -522,7 +523,7 @@ function render(){
     `<h3>طلبات الخدمات (${sorders.filter(x=>x.status=="new"||x.status=="progress").length})</h3>${sorders.filter(x=>x.status=="new"||x.status=="progress").map(x=>`<div class="box"><b>${esc(x.userName)}</b> · ${esc(x.serviceName)}${x.partnerName?" · "+esc(x.partnerName):""} <span class="tag g">${SL[x.status]}</span><div class="mut">${esc(x.details)}</div><div class="acts"><button class="btn" data-a="sost" data-s="progress" data-id="${x.id}">قيد التنفيذ</button><button class="btn g" data-a="sost" data-s="done" data-id="${x.id}">مكتمل</button><button class="btn l" data-a="sost" data-s="rejected" data-id="${x.id}">رفض</button></div></div>`).join("")}
     <h3>متاجر بانتظار المراجعة (${pendStores.length})</h3>${pendStores.map(s=>`<div class="box"><b>${esc(s.name)}</b> · ${esc(s.ownerName)}<div class="mut">${esc(s.desc||"")}</div><div class="acts"><button class="btn" data-a="stok" data-id="${s.id}">قبول</button><button class="btn l" data-a="stno" data-id="${s.id}">رفض</button><button class="btn r" data-a="delst" data-id="${s.id}">حذف</button></div></div>`).join("")||'<p class="mut">لا توجد متاجر بانتظار المراجعة.</p>'}<h3>إعلانات بانتظار المراجعة (${pend.length})</h3><div class="grid">${pend.map(a=>card(a,"pend")).join("")||'<p class="mut">لا شيء بانتظار المراجعة.</p>'}</div>`;
   }else{
-    A.innerHTML=!me?loginBox():`${!accountProfileMissing&&!isStaff()?'<div class="box" role="status" style="border:1px solid #c58e2f"><b>حسابك مسجّل، لكن صلاحية المدير غير مفعّلة.</b><p>الاسم وكلمة المرور لا يحددان صلاحيات المدير. يتطلب الوصول إلى لوحة الإدارة وجود ملف مستخدم مرتبط بحسابك وrole يساوي admin في Firestore؛ لا يمكن منح هذا الدور من داخل المتصفح.</p></div>':""}${accountProfileMissing?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تم تسجيل الدخول لكن ملف المستخدم غير موجود في Firestore.</b><p>لا يمكن تفعيل صلاحيات المدير من المتصفح. يجب مراجعة مسار users/UID وقيمة role بواسطة مالك Firebase المخوّل. لا تشارك كلمة المرور ولا تنشئ مديراً من المتصفح.</p></div>':""}<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="favorites">♥ المفضلة (${favorites.length})</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="sponsor">📢 حجوزات البنر</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
+    A.innerHTML=!me?loginBox():`${accountProfileReadError?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تعذر التحقق من صلاحيات حسابك.</b><p>فشلت قراءة ملف المستخدم من Firestore. لا يمكن السماح بإدارة الموقع قبل نجاح التحقق. راجع إعدادات الاتصال وقواعد Firestore لمشروع الاختبار.</p></div>':""}${!accountProfileMissing&&!accountProfileReadError&&!isStaff()?'<div class="box" role="status" style="border:1px solid #c58e2f"><b>حسابك مسجّل، لكن صلاحية المدير غير مفعّلة.</b><p>الاسم وكلمة المرور لا يحددان صلاحيات المدير. يتطلب الوصول إلى لوحة الإدارة وجود ملف مستخدم مرتبط بحسابك وrole يساوي admin في Firestore؛ لا يمكن منح هذا الدور من داخل المتصفح.</p></div>':""}${accountProfileMissing?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تم تسجيل الدخول لكن ملف المستخدم غير موجود في Firestore.</b><p>لا يمكن تفعيل صلاحيات المدير من المتصفح. يجب مراجعة مسار users/UID وقيمة role بواسطة مالك Firebase المخوّل. لا تشارك كلمة المرور ولا تنشئ مديراً من المتصفح.</p></div>':""}<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="favorites">♥ المفضلة (${favorites.length})</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="sponsor">📢 حجوزات البنر</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
   }
 }
 async function shrink(file){
@@ -763,6 +764,7 @@ setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx
 onAuthStateChanged(auth,async u=>{
   me=null;
   accountProfileMissing=false;
+  accountProfileReadError="";
   try{
     if(u){
       const s=await getDoc(doc(db,"users",u.uid));
@@ -775,7 +777,8 @@ onAuthStateChanged(auth,async u=>{
     }
   }catch(error){
     console.error("SOUQNA session load failed:",error);
-    adminLoadWarnings=["تعذر قراءة بيانات الحساب ("+(error?.code||"unknown")+")"];
+    accountProfileReadError=String(error?.code||"unknown").replace(/[^a-z0-9/-]/gi,"").slice(0,80);
+    adminLoadWarnings=["تعذر قراءة بيانات الحساب ("+accountProfileReadError+")"];
     if(!me&&u)me={uid:u.uid,name:u.email||"مستخدم",email:u.email,role:"user",stars:0};
     toast("خطأ في قراءة صلاحية الحساب: "+(error?.code||"unknown"));
   }
