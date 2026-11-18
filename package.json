@@ -7,7 +7,7 @@
   "scripts": {
     "test:source": "node scripts/check-souqna.mjs",
     "test:rules": "firebase emulators:exec --project demo-souqna-rules --only auth,firestore \"node --test tests/scoped-moderators.test.mjs\"",
-    "test": "npm run test:source && npm run test:unit && npm run test:rules && npm run test:storage",
+    "test": "npm run test:source && npm run test:unit && npm run test:rules && npm run test:storage && npm run test:staging-rules",
     "build:hosting": "node scripts/build-hosting.mjs",
     "test:release": "npm run test:source && npm run test:build-isolation && npm run build:hosting",
     "test:build-isolation": "node --test tests/staging-build.test.mjs",
