@@ -82,7 +82,7 @@ jobs:
       - name: Build isolated QA staging bundle
         run: |
           npm run build:staging -- ./tests/fixtures/firebase.staging.emulator.json
-          npm run preflight:staging -- demo-souqna-rules
+          node --input-type=module -e 'import assert from "node:assert/strict"; import {readFileSync,existsSync} from "node:fs"; const h=readFileSync("dist/index.html","utf8"); assert.ok(h.includes("demo-souqna-rules.firebaseapp.com")); assert.ok(h.includes("demo-souqna-rules")); assert.ok(h.includes("بيئة اختبار سوقنا")); assert.ok(!h.includes("souqna-sweida.firebaseapp.com")); assert.ok(!existsSync("dist/functions")); assert.ok(!existsSync("dist/firestore.rules")); console.log("Isolated QA emulator Hosting bundle verified; no deployment.");'
       - name: Browser-test the actual staging Hosting bundle
         env:
           SOUQNA_VISUAL_STAGING: '1'
