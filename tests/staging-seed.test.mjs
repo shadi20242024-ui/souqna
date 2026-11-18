@@ -9,18 +9,19 @@ const run=(...args)=>spawnSync(process.execPath,[script,...args],{
 });
 
 test("Staging bootstrap defaults to dry run and never allows production",()=>{
-  const dry=run("--project","souqna-staging-example");
+  const dry=run("--project","souqna-staging");
   assert.equal(dry.status,0,dry.stderr);
   assert.ok(dry.stdout.includes("DRY RUN ONLY"));
   assert.ok(dry.stdout.includes("24"));
   assert.ok(!dry.stdout.includes("SEED COMPLETED"));
   assert.notEqual(run("--project","souqna-sweida").status,0);
+  assert.notEqual(run("--project","souqna-staging-example").status,0,"Incorrect staging project must be refused even in dry run");
   assert.notEqual(run("--project","souqna-sweida","--execute",
     "--confirm","SEED:souqna-sweida").status,0);
-  assert.notEqual(run("--project","souqna-staging-example","--execute",
+  assert.notEqual(run("--project","souqna-staging","--execute",
     "--confirm","SEED:wrong-project").status,0);
-  assert.notEqual(run("--project","souqna-staging-example","--execute",
-    "--confirm","SEED:souqna-staging-example").status,0,
+  assert.notEqual(run("--project","souqna-staging","--execute",
+    "--confirm","SEED:souqna-staging").status,0,
     "Execution with no explicit application credentials must fail");
 });
 
