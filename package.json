@@ -23,7 +23,8 @@
     "start:staging:windows": "powershell.exe -NoProfile -File scripts/start-staging.ps1",
     "check:staging:hosting": "node scripts/check-staging-hosting.mjs",
     "check:staging:readiness": "node scripts/staging-readiness.mjs",
-    "upgrade:staging:categories": "node scripts/upgrade-staging-categories.mjs --project souqna-staging"
+    "upgrade:staging:categories": "node scripts/upgrade-staging-categories.mjs --project souqna-staging",
+    "check:staging:categories": "node scripts/check-staging-categories.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
