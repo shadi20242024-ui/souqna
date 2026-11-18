@@ -91,22 +91,24 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
   compiled._compile(serverSource,compiled.filename);
   const callable=compiled.exports(db,{});
   const retry=compiled.exports.makeRetryCleanup(db,{});
-  const oldProject=process.env.GCLOUD_PROJECT;
-  const oldGcp=process.env.GCP_PROJECT;
-  const oldFirebase=process.env.FIREBASE_PROJECT_ID;
-  delete process.env.GCP_PROJECT;
-  delete process.env.FIREBASE_PROJECT_ID;
-  process.env.GCLOUD_PROJECT=project;
   return{
     database,deleted,storageDeletes,logs,
     restoreStorage(){activeFailPath="";},
     async call(uid=actor,id="test_ad",retryOnly=false){
+      const oldProject=process.env.GCLOUD_PROJECT;
+      const oldGcp=process.env.GCP_PROJECT;
+      const oldFirebase=process.env.FIREBASE_PROJECT_ID;
+      delete process.env.GCP_PROJECT;
+      delete process.env.FIREBASE_PROJECT_ID;
+      process.env.GCLOUD_PROJECT=project;
       try{return await (retryOnly?retry:callable)({auth:uid?{uid}:null,data:{id}});}
       finally{
         if(oldProject===undefined)delete process.env.GCLOUD_PROJECT;
         else process.env.GCLOUD_PROJECT=oldProject;
-        if(oldGcp!==undefined)process.env.GCP_PROJECT=oldGcp;
-        if(oldFirebase!==undefined)process.env.FIREBASE_PROJECT_ID=oldFirebase;
+        if(oldGcp===undefined)delete process.env.GCP_PROJECT;
+        else process.env.GCP_PROJECT=oldGcp;
+        if(oldFirebase===undefined)delete process.env.FIREBASE_PROJECT_ID;
+        else process.env.FIREBASE_PROJECT_ID=oldFirebase;
       }
     }
   };
