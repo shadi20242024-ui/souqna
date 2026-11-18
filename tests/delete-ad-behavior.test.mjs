@@ -14,6 +14,7 @@ const image=(owner,name="image_001")=>
 function harness({role="user",actor="owner",owner="owner",project="souqna-staging",files=[image("owner")],failPath="",transientFailures=0,failStorageInit=false}={}){
   const deleted=[],storageDeletes=[],logs=[];
   let remainingTransientFailures=transientFailures;
+  let activeFailPath=failPath;
   const database=new Map([
     ["users/"+actor,{role}],
     ["ads/test_ad",{ownerId:owner,images:files}]
@@ -68,7 +69,7 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
       file(path){return{
         async delete(){
           storageDeletes.push({bucket,path});
-          if(path===failPath)throw Object.assign(Error("simulated Storage failure"),{code:403});
+          if(path===activeFailPath)throw Object.assign(Error("simulated Storage failure"),{code:403});
           if(remainingTransientFailures>0){
             remainingTransientFailures--;
             throw Object.assign(Error("temporary storage outage"),{code:503});
@@ -98,6 +99,7 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
   process.env.GCLOUD_PROJECT=project;
   return{
     database,deleted,storageDeletes,logs,
+    restoreStorage(){activeFailPath="";},
     async call(uid=actor,id="test_ad",retryOnly=false){
       try{return await (retryOnly?retry:callable)({auth:uid?{uid}:null,data:{id}});}
       finally{
@@ -215,9 +217,12 @@ test("authorized retry clears pending cleanup job after Storage recovers",async(
   const job=h.database.get("mediaCleanupJobs/test_ad");
   assert.ok(job);
   assert.deepEqual(job.objects,[{bucket:"souqna-staging.firebasestorage.app",path:"ads/owner/image_001.jpg"}]);
-  h.database.set("mediaCleanupJobs/test_ad",{...job,objects:[]});
+  h.restoreStorage();
   const retry=await h.call("owner","test_ad",true);
   assert.equal(retry.failedImages,0);
+  assert.equal(retry.deletedImages,1);
+  assert.equal(retry.recoveryPending,false);
+  assert.equal(h.database.has("mediaCleanupJobs/test_ad"),false);
 });
 
 test("unrelated users cannot retry someone else's media cleanup",async()=>{
