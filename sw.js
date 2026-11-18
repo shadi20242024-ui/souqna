@@ -1,4 +1,4 @@
-const CACHE="souqna-v9";
+const CACHE="souqna-v10";
 const STATIC=["./","index.html","assets/responsive.css","assets/admin-metrics.js","logo.png","icon-192.png","icon-512.png","manifest.webmanifest"];
 const ALLOWED=new Set(STATIC.filter(path=>path!=="./").map(path=>new URL(path,self.registration.scope).pathname));
 const OFFLINE=new URL("index.html",self.registration.scope).pathname;
