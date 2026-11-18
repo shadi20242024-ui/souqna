@@ -814,15 +814,14 @@ onAuthStateChanged(auth,async u=>{
   me=null;
   accountProfileMissing=false;
   accountProfileReadError="";
+  adminLoadWarnings=[];
+  mine=[];favorites=[];pend=[];orders=[];promos=[];allUsers=[];allTx=[];moderationHistory=[];pendStores=[];sorders=[];subs=[];pendingSponsorRequests=[];adminUserQuery="";adminReviewQuery="";adminReviewType="all";
   try{
     if(u){
       const s=await getDoc(doc(db,"users",u.uid));
       accountProfileMissing=!s.exists();
       me=s.exists()?{uid:u.uid,...s.data()}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0};
       await loadMine();
-    }else{
-      adminLoadWarnings=[];
-      mine=[];favorites=[];pend=[];orders=[];promos=[];allUsers=[];allTx=[];moderationHistory=[];pendStores=[];sorders=[];subs=[];pendingSponsorRequests=[];adminUserQuery="";adminReviewQuery="";adminReviewType="all";
     }
   }catch(error){
     console.error("SOUQNA session load failed:",error);
