@@ -30,6 +30,7 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
   const finance = httpsCallable(functions, "souqnaFinance");
   const market = httpsCallable(functions, "souqnaMarketplace");
+  const moderation = httpsCallable(functions, "souqnaModeration");
 
   t.after(async () => {
     await signOut(auth).catch(() => {});
@@ -121,8 +122,13 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
     await assertFails(getDoc(doc(visitor, "stores", firstStoreRef.id)));
     const queue = await assertSucceeds(getDocs(query(collection(admin, "stores"), where("status", "==", "pending"))));
     assert.ok(queue.docs.some(x => x.id === firstStoreRef.id));
-    await assertSucceeds(updateDoc(doc(admin, "stores", firstStoreRef.id), { status: "approved" }));
-    await assertSucceeds(updateDoc(doc(admin, "stores", secondStoreRef.id), { status: "approved" }));
+    await assertFails(updateDoc(doc(admin, "stores", firstStoreRef.id), { status: "approved" }));
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+    assert.equal((await moderation({type:"store",id:firstStoreRef.id,action:"approve"})).data.status,"approved");
+    assert.equal((await moderation({type:"store",id:secondStoreRef.id,action:"approve"})).data.status,"approved");
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, email, password);
     const published = await assertSucceeds(getDocs(query(collection(visitor, "stores"), where("status", "==", "approved"))));
     assert.ok(published.docs.some(x => x.id === firstStoreRef.id));
     await assertFails(updateDoc(firstStoreRef, { plan: "flow-gold", planUntil: Date.now() + 86400000 }));
@@ -162,7 +168,12 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
     await createAd({...personal,title:"إعلان شخصي مستقل"});
     const awaiting = await assertSucceeds(getDocs(query(collection(admin, "ads"), where("status", "==", "pending"))));
     assert.ok(awaiting.docs.some(x => x.id === userAdRef.id));
-    await assertSucceeds(updateDoc(doc(admin, "ads", userAdRef.id), { status: "approved" }));
+    await assertFails(updateDoc(doc(admin, "ads", userAdRef.id), { status: "approved" }));
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+    assert.equal((await moderation({type:"ad",id:userAdRef.id,action:"approve"})).data.status,"approved");
+    await signOut(auth);
+    await signInWithEmailAndPassword(auth, email, password);
     const visible = await assertSucceeds(getDocs(query(collection(visitor, "ads"), where("status", "==", "approved"))));
     assert.ok(visible.docs.some(x => x.id === userAdRef.id));
   });
