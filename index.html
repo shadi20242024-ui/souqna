@@ -253,13 +253,13 @@ const PHOTO_CATEGORIES=Object.freeze({
 });
 const categoryPhoto=id=>PHOTO_CATEGORIES[id]||null;
 const categoryTile=c=>{
-  const photo=categoryPhoto(c.id);
+  const photo=categoryPhoto(c.iconCategory||c.id);
   return photo
     ? `<img class="category-photo" src="assets/category-photos/${photo}.webp" alt="" loading="lazy" decoding="async"><span class="sr-only">${esc(c.name_ar)}</span>`
     : `${crystalSvg(c.id)}<span class="category-fallback-label">${esc(c.name_ar)}</span>`;
 };
 const categoryScene=id=>{
-  const photo=categoryPhoto(id);
+  const photo=categoryPhoto(cats.find(c=>c.id===id)?.iconCategory||id);
   return photo?`<img class="listing-category-art" src="assets/category-photos/${photo}-scene.webp" alt="" loading="lazy" decoding="async">`:crystalSvg(id);
 };
 const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس",fuel:"محطة وقود"};
@@ -301,6 +301,15 @@ async function loadMarketData(force=false){
   if(view==="markets")render();
 }
 const fmtNumber=n=>Number(n).toLocaleString("ar-SY",{maximumFractionDigits:2});
+
+function jobNewsBanner(){
+  const count=jobFreshCount(ads);
+  return `<button class="job-news-banner" type="button" data-c="jobs" aria-label="تصفح الوظائف الجديدة في السويداء">
+    <span class="job-news-icon">${crystalSvg("jobs","quick-symbol")}</span>
+    <span class="job-news-copy"><b>${count?"وظائف جديدة في السويداء":"بوابة وظائف السويداء"}</b><small>${count?"أُضيفت "+count+" وظائف خلال آخر 72 ساعة":"اطّلع على فرص العمل والإعلانات الوظيفية المتاحة"}</small></span>
+    ${count?'<span class="job-news-live">جديد · '+count+'</span>':'<span class="job-news-next">تصفح الوظائف ‹</span>'}
+  </button>`;
+}
 function calculatorHtml(){
   return '<div class="utility-page"><div class="utility-head"><b>🧮 الآلة الحاسبة</b><p class="mut">حساب مجاني للجمع والطرح والضرب والقسمة والأقواس.</p></div><div class="box calculator"><label for="calc-expression">اكتب العملية الحسابية</label><input type="text" dir="ltr" inputmode="decimal" autocomplete="off" id="calc-expression" placeholder="(120 + 30) * 2"><output id="calc-result" role="status">النتيجة تظهر هنا</output><div class="calc-keys">'+["7","8","9","/","4","5","6","*","1","2","3","-","0",".","(",")","C","=","+"].map(key=>'<button type="button" class="btn l" data-a="calc-key" data-key="'+key+'">'+(key==="*"? "×":key==="/"? "÷":key)+'</button>').join("")+'</div></div></div>';
 }
@@ -627,7 +636,7 @@ function render(){
   if(view=="home"){
     A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>safeImage(a.img)).slice(0,8).map(a=>`<button class="sc" data-c="${esc(a.cat)}" aria-label="${esc(a.title)}" style="${bgImage(a.img)}"></button>`).join("")}</div>
     ${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div class="hero-copy" style="flex:1"><span class="hero-eyebrow">سوق السويداء • من أهل البلد ولأهلها</span><b>كل ما تحتاجه .. في مكان واحد</b><p class="hero-subtitle">اكتشف السيارات والعقارات والمتاجر والخدمات في مكان يجمع أهل السويداء.</p><button class="gold" data-c="all">استكشف الإعلانات ‹</button></div><img class="hero-brand-logo" src="assets/souqna-approved-logo.jpg" alt="شعار سوقنا ثلاثي الأبعاد" loading="lazy"><em>📍 السويداء</em></div>`}
-    ${wxHtml()}<div id="spw">${spHtml()}</div>${tkHtml(true)}${storesHtml()}
+    ${wxHtml()}${jobNewsBanner()}<div class="homepage-service-tools"><button type="button" class="service-tool" data-v="calculator">🧮 حاسبة الزبائن</button><button type="button" class="service-tool" data-v="markets">💱 العملات والذهب</button></div><div id="spw">${spHtml()}</div>${tkHtml(true)}${storesHtml()}
     <div class="sec"><b>الأقسام</b>${cats.length>10?`<a data-a="more">${more?"أقل":"المزيد"} ‹</a>`:`<span class="category-count">${cats.length} أقسام</span>`}</div>
     <div class="cg">${(more?cats:cats.slice(0,10)).map(c=>`<button class="cc ${categoryPhoto(c.id)?"photo-category":""} ${cur==c.id?"on":""}" data-c="${esc(c.id)}" aria-label="${esc(c.name_ar)}" title="${esc(c.name_ar)}">${categoryTile(c)}</button>`).join("")}</div>${adHtml()}
     <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"],["fuel","محطات الوقود"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
