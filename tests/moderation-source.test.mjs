@@ -104,8 +104,8 @@ test("rejecting a store produces a server-authored rejection record", async () =
 
 test("client writes to moderation audit are prohibited by rules", () => {
   assert.match(rules, /match \/moderationAudit\/\{id\} \{\s*allow read: if isAdmin\(\);\s*allow create, update, delete: if false;/);
-  assert.match(rules, /hasAny\(\["featuredUntil", "status"\]\)/);
-  assert.match(rules, /hasAny\(\["plan", "planUntil", "status"\]\)/);
+  assert.match(rules, /hasAny\(\["featuredUntil", "status", "ownerId", "createdAt"\]\)/);
+  assert.match(rules, /hasAny\(\["plan", "planUntil", "status", "ownerId", "createdAt"\]\)/);
 });
 
 test("client uses trusted moderation endpoint", () => {
