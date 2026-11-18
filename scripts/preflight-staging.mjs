@@ -8,14 +8,14 @@ const folder=resolve(process.env.SOUQNA_HOSTING_OUT||join(root,"dist"));
 const target=process.argv[2];
 assert.ok(typeof target==="string"&&/^[a-z][a-z0-9-]{4,40}$/.test(target),
   "Usage: node scripts/preflight-staging.mjs <EXACT_STAGING_PROJECT_ID>");
-assert.notEqual(target,"souqna-sweida","Production project is not an eligible staging target.");
+assert.equal(target,"souqna-staging","Staging preflight is pinned to souqna-staging; other projects are forbidden.");
 const htmlPath=join(folder,"index.html");
 assert.ok(existsSync(htmlPath),"No Hosting build found. Run build:staging with explicit config first.");
 const html=readFileSync(htmlPath,"utf8");
 const app=html.match(/const app=initializeApp\((\{[^\n;]*\})\);/);
 assert.ok(app,"Firebase client configuration missing.");
 const config=JSON.parse(app[1]);
-assert.equal(config.projectId,target,"Hosting Firebase project differs from proposed staging deploy target.");
+assert.equal(config.projectId,"souqna-staging","Hosting Firebase project must be souqna-staging.");
 assert.notEqual(config.projectId,"souqna-preview-disabled","Preview builds are not deployable as working staging.");
 assert.notEqual(config.authDomain,"souqna-sweida.firebaseapp.com","Production Firebase Auth domain detected.");
 assert.equal(config.authDomain,config.projectId+".firebaseapp.com");
