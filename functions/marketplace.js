@@ -7,6 +7,7 @@ const ID_RE=/^[A-Za-z0-9_-]{1,128}$/;
 const PHONE_RE=/^[0-9]{9,15}$/;
 const IMAGE_RE=/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 const HASH_RE=/^[0-9a-f]{64}$/;
+const VIDEO_HOSTS=new Set(["youtube.com","www.youtube.com","m.youtube.com","youtube-nocookie.com","www.youtube-nocookie.com","youtu.be","www.youtu.be","vimeo.com"]);
 const DAY=86400000;
 
 function reject(message,code="invalid-argument"){
@@ -25,6 +26,32 @@ function media(value,label){
     reject("صورة "+label+" ليست بصيغة مدعومة أو حجمها كبير");
   }
   return value;
+}
+function safeVideoUrl(value){
+  if(typeof value!=="string"||value.length>400)reject("رابط الفيديو غير صالح");
+  if(!value)return "";
+  let url;
+  try{url=new URL(value);}catch{reject("رابط الفيديو غير صالح");}
+  if(url.protocol!=="https:"||url.username||url.password||url.port||!VIDEO_HOSTS.has(url.hostname.toLowerCase())){
+    reject("رابط الفيديو يجب أن يكون YouTube أو Vimeo آمنًا");
+  }
+  const host=url.hostname.toLowerCase();
+  const path=url.pathname;
+  if(host==="vimeo.com"&&!/^\\/[0-9]{5,12}$/.test(path))reject("رابط Vimeo غير صالح");
+  if((host==="youtu.be"||host==="www.youtu.be")&&!/^\\/[A-Za-z0-9_-]{11}$/.test(path))reject("رابط YouTube غير صالح");
+  if(!["vimeo.com","youtu.be","www.youtu.be"].includes(host) &&
+    !(/^\\/(?:shorts\\/[A-Za-z0-9_-]{11}|embed\\/[A-Za-z0-9_-]{11})$/.test(path)||
+      (path==="/watch"&&/^[A-Za-z0-9_-]{11}$/.test(url.searchParams.get("v")||""))))reject("رابط YouTube غير صالح");
+  return url.toString();
+}
+function galleryMedia(first,more){
+  if(!Array.isArray(more)||more.length>3)reject("عدد الصور الإضافية لا يتجاوز ثلاثة");
+  if(!first&&more.length)reject("اختر صورة رئيسية أولاً");
+  const extra=more.map((item,i)=>media(item,"الإضافية "+(i+1)));
+  if(first.length+extra.reduce((sum,img)=>sum+img.length,0)>750000){
+    reject("إجمالي صور الإعلان كبير جداً، جرّب تقليل عدد الصور أو جودتها");
+  }
+  return extra;
 }
 function allowedShape(raw,fields,required){
   if(!raw||typeof raw!=="object"||Array.isArray(raw))reject("بيانات الطلب غير صالحة");
@@ -45,7 +72,7 @@ function storeFields(raw){
   };
 }
 function adFields(raw){
-  const keys=["title","price","cur","cat","area","desc","phone","img","imgHash","storeId"];
+  const keys=["title","price","cur","cat","area","desc","phone","img","images","videoUrl","imgHash","storeId"];
   allowedShape(raw,keys,["title","price","cur","cat","area","desc","phone","img"]);
   if(typeof raw.price!=="number"||!Number.isFinite(raw.price)||raw.price<0||raw.price>1000000000000){
     reject("سعر الإعلان غير صالح");
@@ -61,6 +88,8 @@ function adFields(raw){
     phone:phone(raw.phone),
     img:media(raw.img,"الإعلان")
   };
+  data.images=galleryMedia(data.img,raw.images??[]);
+  data.videoUrl=safeVideoUrl(raw.videoUrl??"");
   if("imgHash" in raw){
     if(typeof raw.imgHash!=="string"||!HASH_RE.test(raw.imgHash))reject("معرف الصورة غير صالح");
     data.imgHash=raw.imgHash;
