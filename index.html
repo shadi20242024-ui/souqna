@@ -105,8 +105,33 @@ const marketplace=async (action,collectionName,fields,id=doc(collection(db,colle
   return response.data;
 };
 let pendingCleanupId="";
+let pendingCleanupJobs=[];
+let cleanupJobsLoaded=false;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fetchCleanupJobs=async()=>{
+  const call=httpsCallable(functions,"souqnaListAdCleanup");
+  const response=await call({});
+  if(response.data?.ok!==true||!Array.isArray(response.data.jobs))
+    throw new Error("تعذر التحقق من بيانات مهام التنظيف");
+  pendingCleanupJobs=response.data.jobs.filter(item=>
+    item&&typeof item.id==="string"&&/^[A-Za-z0-9_-]{1,128}$/.test(item.id)
+  ).map(item=>({
+    id:item.id,
+    failedImages:Math.max(0,Math.min(11,Number(item.failedImages)||0)),
+    createdAt:Number.isSafeInteger(item.createdAt)?item.createdAt:0
+  }));
+  cleanupJobsLoaded=true;
+};
+const cleanupJobsHtml=()=>{
+  if(!cleanupJobsLoaded)return '<p class="mut">اضغط تحديث المهام لعرض الصور المعلّقة.</p>';
+  if(!pendingCleanupJobs.length)return '<p class="mut">لا توجد مهام تنظيف معلّقة ضمن آخر 25 مهمة.</p>';
+  return '<div class="grid">'+pendingCleanupJobs.map(item=>
+    '<div class="box"><b dir="ltr">'+esc(item.id)+'</b><p class="mut">الصور المتبقية: '+
+      item.failedImages+'</p><button class="btn" data-a="retryCleanupItem" data-id="'+
+      esc(item.id)+'">إعادة تنظيف الصور</button></div>'
+  ).join("")+'</div>';
+};
 const safeHttpUrl=raw=>{try{const url=new URL(String(raw||"").trim());return url.protocol==="https:"||url.protocol==="http:"?url.href:""}catch{return ""}};
 const safeImage=raw=>{
   const value=String(raw||"").trim();
@@ -502,7 +527,7 @@ function render(){
     <h3>🚀 باقات تمييز الإعلان</h3>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
-    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+(isAdm()?`<div class="box"><h3>🧹 متابعة تنظيف صور الإعلانات</h3><p class="mut">خاص ببيئة الاختبار. أدخل معرّف إعلان محذوف له صور قيد التنظيف.</p><div class="row"><input id="cleanup-ad-id" dir="ltr" maxlength="128" placeholder="معرّف الإعلان" value="${esc(pendingCleanupId)}"><button class="btn" data-a="retryCleanup">إعادة محاولة تنظيف الصور</button></div></div>
+    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+(isAdm()?`<div class="box"><h3>🧹 متابعة تنظيف صور الإعلانات</h3><p class="mut">خاص ببيئة الاختبار. أدخل معرّف إعلان محذوف له صور قيد التنظيف.</p><div class="row"><input id="cleanup-ad-id" dir="ltr" maxlength="128" placeholder="معرّف الإعلان" value="${esc(pendingCleanupId)}"><button class="btn" data-a="retryCleanup">إعادة محاولة تنظيف الصور</button><button class="btn" data-a="loadCleanupJobs">تحديث المهام المعلّقة</button></div>${cleanupJobsHtml()}</div>
     <div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
@@ -740,16 +765,24 @@ document.addEventListener("click",async e=>{
       }
       await loadPublic();await loadMine();render()
     }
-    else if(a=="retryCleanup"){
+    else if(a=="loadCleanupJobs"){
       if(!isAdm()||app.options.projectId!=="souqna-staging")
         return toast("هذه العملية متاحة لمدير بيئة الاختبار فقط");
-      const cleanupId=(val("#cleanup-ad-id")||"").trim();
+      await fetchCleanupJobs();
+      render();
+      toast("تم تحديث مهام تنظيف الصور");
+    }
+    else if(a=="retryCleanup"||a=="retryCleanupItem"){
+      if(!isAdm()||app.options.projectId!=="souqna-staging")
+        return toast("هذه العملية متاحة لمدير بيئة الاختبار فقط");
+      const cleanupId=a=="retryCleanupItem"?id:(val("#cleanup-ad-id")||"").trim();
       if(!/^[A-Za-z0-9_-]{1,128}$/.test(cleanupId))
         return toast("أدخل معرّف إعلان صالح");
       const retry=httpsCallable(functions,"souqnaRetryAdCleanup");
       const result=await retry({id:cleanupId});
       const failed=Number(result.data?.failedImages||0);
       pendingCleanupId=failed?cleanupId:"";
+      if(cleanupJobsLoaded)await fetchCleanupJobs();
       toast(failed?"ما زال تنظيف "+failed+" صورة معلقاً":"اكتمل تنظيف الصور المتبقية");
       render()
     }
