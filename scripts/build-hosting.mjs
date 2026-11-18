@@ -10,7 +10,7 @@ assertSafeHostingOutput(target,root);
 const mode=process.argv[2]||"preview";
 assert.ok(["preview","staging"].includes(mode),"Usage: node scripts/build-hosting.mjs [preview|staging path/to/firebase.staging.json]");
 const publicFiles=Object.freeze([
-  "index.html","assets/responsive.css","assets/admin-metrics.js",
+  "index.html","assets/responsive.css","assets/admin-metrics.js","assets/souqna-extras.js","assets/souqna-media.js",
   "assets/category-photos/furniture.webp","assets/category-photos/furniture-scene.webp","assets/category-photos/electronics.webp","assets/category-photos/electronics-scene.webp","assets/category-photos/jobs.webp","assets/category-photos/jobs-scene.webp","assets/category-photos/cars.webp","assets/category-photos/cars-scene.webp","assets/category-photos/real_estate.webp","assets/category-photos/real_estate-scene.webp","assets/category-photos/misc.webp","assets/category-photos/misc-scene.webp","assets/category-photos/lost_found.webp","assets/category-photos/lost_found-scene.webp","assets/category-photos/fashion.webp","assets/category-photos/fashion-scene.webp","assets/category-photos/community.webp","assets/category-photos/community-scene.webp","assets/category-photos/services.webp","assets/category-photos/services-scene.webp","assets/souqna-approved-logo.jpg","assets/souqna-3d-mark.webp",
   "sw.js","manifest.webmanifest","logo.png","icon-192.png","icon-512.png"
 ]);
