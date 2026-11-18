@@ -132,6 +132,7 @@ let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},servi
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
+const canModerate=()=>me&&["admin","moderator","editor"].includes(me.role);
 const authErrorText=error=>{
   const code=String(error?.code||"");
   const descriptions={
@@ -312,7 +313,7 @@ function adminUserRows(){
     (visible.map(u=>'<div class="row" style="align-items:center;margin-bottom:6px"><span>'+esc(u.name||"بدون اسم")+' · '+esc(u.email||"")+' · '+esc(u.role||"user")+' · ⭐'+Number(u.stars||0)+'</span><button class="btn l" data-a="ustars" data-id="'+esc(u.id)+'">± نجوم</button><button class="btn l" data-a="urole" data-id="'+esc(u.id)+'">الدور</button></div>').join("")||'<p class="mut">لا توجد نتائج مطابقة.</p>');
 }
 function adminReviewQueue(){
-  if(!isStaff())return '<p class="mut">غير مصرح بعرض قائمة المراجعة.</p>';
+  if(!canModerate())return '<p class="mut">غير مصرح بعرض قائمة المراجعة.</p>';
   const queryText=adminReviewQuery.trim().toLocaleLowerCase();
   const matching=(item)=>[item.name,item.title,item.ownerName,item.area,item.desc].some(value=>String(value||"").toLocaleLowerCase().includes(queryText));
   const pendingStores=adminReviewType==="ads"?[]:pendStores.filter(matching);
@@ -557,7 +558,7 @@ function render(){
      <h3>طلبات شراء النجوم (${orders.length})</h3>${orders.map(o=>`<div class="box"><b>${esc(o.userName)}</b> يطلب ${o.stars} نجمة (${o.stars}$)<div class="acts"><button class="btn" data-a="ordok" data-id="${o.id}">تأكيد الاستلام</button><button class="btn l" data-a="ordno" data-id="${o.id}">رفض</button></div></div>`).join("")}
     <h3>طلبات التمييز (${promos.length})</h3>${promos.map(p=>`<div class="box"><b>${esc(p.userName)}</b>: ${esc(p.adTitle)}<div class="mut">${p.stars} نجوم · ${p.days} يوم</div><div class="acts"><button class="btn" data-a="prok" data-id="${p.id}">موافقة وخصم</button><button class="btn l" data-a="prno" data-id="${p.id}">رفض</button></div></div>`).join("")}`:"")+
     `<h3>طلبات الخدمات (${sorders.filter(x=>x.status=="new"||x.status=="progress").length})</h3>${sorders.filter(x=>x.status=="new"||x.status=="progress").map(x=>`<div class="box"><b>${esc(x.userName)}</b> · ${esc(x.serviceName)}${x.partnerName?" · "+esc(x.partnerName):""} <span class="tag g">${SL[x.status]}</span><div class="mut">${esc(x.details)}</div><div class="acts"><button class="btn" data-a="sost" data-s="progress" data-id="${x.id}">قيد التنفيذ</button><button class="btn g" data-a="sost" data-s="done" data-id="${x.id}">مكتمل</button><button class="btn l" data-a="sost" data-s="rejected" data-id="${x.id}">رفض</button></div></div>`).join("")}
-    <div class="box"><h3>🛡️ مراجعة المتاجر والإعلانات</h3><label for="admin-review-search" class="mut">البحث في الطلبات المعلقة</label><input id="admin-review-search" type="search" autocomplete="off" value="${esc(adminReviewQuery)}" placeholder="اسم المتجر أو الإعلان أو المنطقة"><label for="admin-review-type" class="mut">نوع الطلب</label><select id="admin-review-type"><option value="all" ${adminReviewType==="all"?"selected":""}>الكل</option><option value="stores" ${adminReviewType==="stores"?"selected":""}>المتاجر</option><option value="ads" ${adminReviewType==="ads"?"selected":""}>الإعلانات</option></select><div id="admin-review-results">${adminReviewQueue()}</div></div>`;
+    ${canModerate()?`<div class="box"><h3>🛡️ مراجعة المتاجر والإعلانات</h3><label for="admin-review-search" class="mut">البحث في الطلبات المعلقة</label><input id="admin-review-search" type="search" autocomplete="off" value="${esc(adminReviewQuery)}" placeholder="اسم المتجر أو الإعلان أو المنطقة"><label for="admin-review-type" class="mut">نوع الطلب</label><select id="admin-review-type"><option value="all" ${adminReviewType==="all"?"selected":""}>الكل</option><option value="stores" ${adminReviewType==="stores"?"selected":""}>المتاجر</option><option value="ads" ${adminReviewType==="ads"?"selected":""}>الإعلانات</option></select><div id="admin-review-results">${adminReviewQueue()}</div></div>`:""} `;
   }else{
     A.innerHTML=!me?loginBox():`${accountProfileReadError?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تعذر التحقق من صلاحيات حسابك.</b><p>فشلت قراءة ملف المستخدم من Firestore. لا يمكن السماح بإدارة الموقع قبل نجاح التحقق. راجع إعدادات الاتصال وقواعد Firestore لمشروع الاختبار.</p></div>':""}${!accountProfileMissing&&!accountProfileReadError&&!isStaff()?'<div class="box" role="status" style="border:1px solid #c58e2f"><b>حسابك مسجّل، لكن صلاحية المدير غير مفعّلة.</b><p>الاسم وكلمة المرور لا يحددان صلاحيات المدير. يتطلب الوصول إلى لوحة الإدارة وجود ملف مستخدم مرتبط بحسابك وrole يساوي admin في Firestore؛ لا يمكن منح هذا الدور من داخل المتصفح.</p></div>':""}${accountProfileMissing?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تم تسجيل الدخول لكن ملف المستخدم غير موجود في Firestore.</b><p>لا يمكن تفعيل صلاحيات المدير من المتصفح. يجب مراجعة مسار users/UID وقيمة role بواسطة مالك Firebase المخوّل. لا تشارك كلمة المرور ولا تنشئ مديراً من المتصفح.</p></div>':""}<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="favorites">♥ المفضلة (${favorites.length})</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="sponsor">📢 حجوزات البنر</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
   }
@@ -718,7 +719,7 @@ document.addEventListener("click",async e=>{
       if(!ad)return toast("اختر إعلانًا منشورًا أولًا");if((me.stars||0)<p.stars)return toast("رصيدك لا يكفي، اشترِ نجومًا أولًا");
       await addDoc(collection(db,"promos"),{userId:me.uid,userName:me.name,adId,adTitle:ad.title,pkgId:p.id,stars:p.stars,days:p.days,status:"pending",createdAt:Date.now()});
       toast("أُرسل طلب التمييز وسيُفعّل بعد موافقة الإدارة")}
-    else if(a=="ok"||a=="no"){if(!isStaff())return toast("غير مصرح");const action=a=="ok"?"approve":"reject";if(!confirm(action=="approve"?"الموافقة على نشر الإعلان؟":"تأكيد رفض الإعلان؟"))return;await moderate("ad",id,action);await loadPublic();await loadMine();render();toast("تم حفظ قرار مراجعة الإعلان في السجل الإداري")}
+    else if(a=="ok"||a=="no"){if(!canModerate())return toast("غير مصرح");const action=a=="ok"?"approve":"reject";if(!confirm(action=="approve"?"الموافقة على نشر الإعلان؟":"تأكيد رفض الإعلان؟"))return;await moderate("ad",id,action);await loadPublic();await loadMine();render();toast("تم حفظ قرار مراجعة الإعلان في السجل الإداري")}
     else if(a=="del"){if(!confirm("حذف الإعلان؟"))return;await deleteDoc(doc(db,"ads",id));await loadPublic();await loadMine();render()}
     else if(a=="savewa"){const n=val("#s-wa").replace(/\D/g,"");await setDoc(doc(db,"settings","contact"),{whatsapp:n});wa=n;toast("تم الحفظ")}
     else if(a=="seed"){for(const [s,d] of [[5,15],[10,30],[15,30],[20,30],[25,30]])await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
@@ -772,7 +773,7 @@ document.addEventListener("click",async e=>{
     else if(a=="edst"){editSt=myStores.find(x=>x.id==id);render();scrollTo(0,99999)}
     else if(a=="cancelst"){editSt=null;render()}
     else if(a=="delst"){if(!confirm("حذف المتجر؟"))return;await deleteDoc(doc(db,"stores",id));await loadPublic();await loadMine();render()}
-    else if(a=="stok"||a=="stno"){if(!isStaff())return toast("غير مصرح");const action=a=="stok"?"approve":"reject";if(!confirm(action=="approve"?"الموافقة على نشر المتجر؟":"تأكيد رفض المتجر؟"))return;await moderate("store",id,action);await loadPublic();await loadMine();render();toast("تم حفظ قرار مراجعة المتجر في السجل الإداري")}
+    else if(a=="stok"||a=="stno"){if(!canModerate())return toast("غير مصرح");const action=a=="stok"?"approve":"reject";if(!confirm(action=="approve"?"الموافقة على نشر المتجر؟":"تأكيد رفض المتجر؟"))return;await moderate("store",id,action);await loadPublic();await loadMine();render();toast("تم حفظ قرار مراجعة المتجر في السجل الإداري")}
     else if(a=="savesite"){await pickReady;await setDoc(doc(db,"settings","site"),{ticker:val("#s-tk"),tickerOn:$("#s-tkon").checked,tickerSecondary:val("#s-tk2"),tickerSecondaryOn:$("#s-tk2on").checked,weatherOn:$("#s-wxon").checked,adClient:val("#s-adc"),adSlot:val("#s-ads"),maxStores:+val("#s-mx")||3,logo:tmp.logo||site.logo||"",banner:tmp.banner||site.banner||""},{merge:true});tmp.logo=tmp.banner="";await loadPublic();toast("تم الحفظ");render()}
     else if(a=="clrimg"){await setDoc(doc(db,"settings","site"),{logo:"",banner:""},{merge:true});await loadPublic();render()}
     else if(a=="addsp"){await pickReady;const d=+val("#p-days");if(!val("#p-co")||!(d>0))return toast("اكتب اسم الشركة والمدة");await addDoc(collection(db,"sponsors"),{company:val("#p-co"),title:val("#p-ti"),desc:val("#p-de"),phone:val("#p-ph").replace(/\D/g,""),img:tmp.sp||"",from:Date.now(),to:Date.now()+d*864e5,active:true});tmp.sp="";await loadPublic();render()}
@@ -797,10 +798,10 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("input",e=>{
   if(e.target.id==="admin-user-search"&&isAdm()){adminUserQuery=e.target.value;const target=$("#admin-user-results");if(target)target.innerHTML=adminUserRows();}
-  if(e.target.id==="admin-review-search"&&isStaff()){adminReviewQuery=e.target.value;const target=$("#admin-review-results");if(target)target.innerHTML=adminReviewQueue();}
+  if(e.target.id==="admin-review-search"&&canModerate()){adminReviewQuery=e.target.value;const target=$("#admin-review-results");if(target)target.innerHTML=adminReviewQueue();}
 });
 document.addEventListener("change",e=>{
-  if(e.target.id!=="admin-review-type"||!isStaff())return;
+  if(e.target.id!=="admin-review-type"||!canModerate())return;
   const type=e.target.value;
   if(!["all","stores","ads"].includes(type))return;
   adminReviewType=type;
