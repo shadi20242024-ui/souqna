@@ -13,9 +13,10 @@ function url(value,label){
   if(parsed.protocol!=="https:"||parsed.username||parsed.password)mediaError(label+" يجب أن يكون رابط HTTPS آمناً");
   return parsed;
 }
-function validateImageUrls(images,projectId){
+function validateImageUrls(images,projectId,uid){
   if(!Array.isArray(images)||images.length>MAX_IMAGES)mediaError("عدد صور الإعلان يتجاوز 12 صورة");
   if(typeof projectId!=="string"||!/^[a-z][a-z0-9-]{4,40}$/.test(projectId))mediaError("معرف مشروع التخزين غير صحيح");
+  if(typeof uid!=="string"||!/^[A-Za-z0-9_-]{1,128}$/.test(uid))mediaError("معرّف صاحب الإعلان غير صحيح");
   const bucketNames=new Set([projectId+".firebasestorage.app",projectId+".appspot.com"]);
   const output=images.map(value=>{
     const parsed=url(value,"رابط الصورة");
@@ -33,7 +34,7 @@ function validateImageUrls(images,projectId){
       bucket=decodeURIComponent(match[1]);
       objectPath=decodeURIComponent(match[2]);
     }
-    if(!bucketNames.has(bucket)||!objectPath.startsWith("ads/")||objectPath.includes(".."))
+    if(!bucketNames.has(bucket)||!objectPath.startsWith("ads/"+uid+"/")||objectPath.includes(".."))
       mediaError("الصورة ليست من مساحة إعلانات المشروع");
     return parsed.href;
   });
