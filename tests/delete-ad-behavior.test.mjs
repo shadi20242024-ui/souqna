@@ -11,8 +11,9 @@ const image=(owner,name="image_001")=>
   "https://firebasestorage.googleapis.com/v0/b/souqna-staging.firebasestorage.app/o/"+
   encodeURIComponent("ads/"+owner+"/"+name+".jpg")+"?alt=media";
 
-function harness({role="user",actor="owner",owner="owner",project="souqna-staging",files=[image("owner")],failPath=""}={}){
+function harness({role="user",actor="owner",owner="owner",project="souqna-staging",files=[image("owner")],failPath="",transientFailures=0}={}){
   const deleted=[],storageDeletes=[],logs=[];
+  let remainingTransientFailures=transientFailures;
   const database=new Map([
     ["users/"+actor,{role}],
     ["ads/test_ad",{ownerId:owner,images:files}]
@@ -41,7 +42,14 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
   const storage={
     bucket(bucket){return{
       file(path){return{
-        async delete(){storageDeletes.push({bucket,path});if(path===failPath)throw Error("simulated Storage failure");}
+        async delete(){
+          storageDeletes.push({bucket,path});
+          if(path===failPath)throw Object.assign(Error("simulated Storage failure"),{code:403});
+          if(remainingTransientFailures>0){
+            remainingTransientFailures--;
+            throw Object.assign(Error("temporary storage outage"),{code:503});
+          }
+        }
       };}
     };}
   };
@@ -129,4 +137,20 @@ test("invalid advertisement identifiers are rejected without touching Storage",a
   await assert.rejects(h.call("owner","../other"),error=>error.code==="invalid-argument");
   assert.ok(h.database.has("ads/test_ad"));
   assert.deepEqual(h.storageDeletes,[]);
+});
+
+test("temporary Storage failures are retried and ultimately succeed",async()=>{
+  const h=harness({transientFailures:2});
+  const result=await h.call();
+  assert.equal(result.deletedImages,1);
+  assert.equal(result.failedImages,0);
+  assert.equal(h.storageDeletes.length,3);
+  assert.equal(h.database.has("ads/test_ad"),false);
+});
+
+test("permanent Storage authorization failure is not retried",async()=>{
+  const h=harness({failPath:"ads/owner/image_001.jpg"});
+  const result=await h.call();
+  assert.equal(result.failedImages,1);
+  assert.equal(h.storageDeletes.length,1);
 });
