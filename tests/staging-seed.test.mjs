@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 
 const script=resolve("scripts/seed-staging.mjs");
 const run=(...args)=>spawnSync(process.execPath,[script,...args],{
-  encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",FIRESTORE_EMULATOR_HOST:""}
+  encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",FIRESTORE_EMULATOR_HOST:"",GCLOUD_PROJECT:"",GOOGLE_CLOUD_PROJECT:""}
 });
 
 test("Staging bootstrap defaults to dry run and never allows production",()=>{
@@ -28,7 +28,7 @@ test("Staging bootstrap defaults to dry run and never allows production",()=>{
 test("Initial staging administrator provisioning is dry-run only by default",()=>{
   const admin=resolve("functions/bootstrap-staging-admin.cjs");
   const attempt=(...args)=>spawnSync(process.execPath,[admin,...args],{
-    encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",FIRESTORE_EMULATOR_HOST:""}
+    encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",FIRESTORE_EMULATOR_HOST:"",GCLOUD_PROJECT:"",GOOGLE_CLOUD_PROJECT:""}
   });
   const dry=attempt("--project","souqna-staging","--email","owner@example.test");
   assert.equal(dry.status,0,dry.stderr);
@@ -45,7 +45,7 @@ test("Initial staging administrator provisioning is dry-run only by default",()=
 test("Manual staging admin UID bootstrap requires explicit owner verification and project match",()=>{
   const admin=resolve("functions/bootstrap-staging-admin.cjs");
   const runAdmin=(...args)=>spawnSync(process.execPath,[admin,...args],{
-    encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",FIRESTORE_EMULATOR_HOST:""}
+    encoding:"utf8",env:{...process.env,GOOGLE_APPLICATION_CREDENTIALS:"",FIRESTORE_EMULATOR_HOST:"",GCLOUD_PROJECT:"",GOOGLE_CLOUD_PROJECT:""}
   });
   const base=["--project","souqna-staging","--email","owner@example.test","--uid","firebaseExampleUID_123456"];
   const dry=runAdmin(...base);
