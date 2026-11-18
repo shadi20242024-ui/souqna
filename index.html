@@ -93,6 +93,7 @@ import{getFunctions,httpsCallable,connectFunctionsEmulator}from"https://www.gsta
 import{summarizeAdmin}from"./assets/admin-metrics.js";
 const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
 const auth=getAuth(app),db=getFirestore(app),functions=getFunctions(app,"us-central1");
+window.dispatchEvent(new Event("souqna:firebase-ready"));
 const finance=async (action,id,extra={})=>{
   const call=httpsCallable(functions,"souqnaFinance");
   const response=await call({action,...(id?{id}:{}),...extra});
