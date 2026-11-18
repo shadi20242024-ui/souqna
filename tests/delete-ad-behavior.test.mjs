@@ -11,7 +11,7 @@ const image=(owner,name="image_001")=>
   "https://firebasestorage.googleapis.com/v0/b/souqna-staging.firebasestorage.app/o/"+
   encodeURIComponent("ads/"+owner+"/"+name+".jpg")+"?alt=media";
 
-function harness({role="user",actor="owner",owner="owner",project="souqna-staging",files=[image("owner")],failPath="",transientFailures=0}={}){
+function harness({role="user",actor="owner",owner="owner",project="souqna-staging",files=[image("owner")],failPath="",transientFailures=0,failStorageInit=false}={}){
   const deleted=[],storageDeletes=[],logs=[];
   let remainingTransientFailures=transientFailures;
   const database=new Map([
@@ -55,7 +55,7 @@ function harness({role="user",actor="owner",owner="owner",project="souqna-stagin
   };
   const mockedRequire=id=>{
     if(id==="firebase-functions/v2/https")return{onCall:(_options,handler)=>handler,HttpsError};
-    if(id==="firebase-admin/storage")return{getStorage:()=>storage};
+    if(id==="firebase-admin/storage")return{getStorage:()=>{if(failStorageInit)throw Error("Storage unavailable");return storage;}};
     if(id==="./ad-media")return{extractOwnedImageObjects};
     throw Error("Unexpected dependency: "+id);
   };
@@ -153,4 +153,23 @@ test("permanent Storage authorization failure is not retried",async()=>{
   const result=await h.call();
   assert.equal(result.failedImages,1);
   assert.equal(h.storageDeletes.length,1);
+});
+
+test("Storage initialization failure is reported without masking committed listing deletion",async()=>{
+  const h=harness({failStorageInit:true});
+  const result=await h.call();
+  assert.equal(result.ok,true);
+  assert.equal(result.deletedImages,0);
+  assert.equal(result.failedImages,1);
+  assert.equal(h.database.has("ads/test_ad"),false);
+  assert.deepEqual(h.storageDeletes,[]);
+});
+
+test("listings without additional images delete successfully when Storage is unavailable",async()=>{
+  const h=harness({files:[],failStorageInit:true});
+  const result=await h.call();
+  assert.equal(result.ok,true);
+  assert.equal(result.deletedImages,0);
+  assert.equal(result.failedImages,0);
+  assert.equal(h.database.has("ads/test_ad"),false);
 });
