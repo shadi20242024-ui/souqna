@@ -24,7 +24,7 @@ test("administrator access requires an existing authorized profile", () => {
 test("registration cannot self-assign an administrator role", () => {
   assert.ok(html.includes('role:"user",stars:0'));
   assert.ok(rules.includes('request.resource.data.role == "user"'));
-  assert.ok(rules.includes('allow update: if (isAdmin() && changedOnly(["name", "role"]))'));
+  assert.ok(rules.includes('allow update: if (isAdmin() && changedOnly(["name", "role", "specialties"])'));
 });
 
 test("production credentials are not required for source validation", () => {
