@@ -725,7 +725,22 @@ document.addEventListener("click",async e=>{
       await addDoc(collection(db,"promos"),{userId:me.uid,userName:me.name,adId,adTitle:ad.title,pkgId:p.id,stars:p.stars,days:p.days,status:"pending",createdAt:Date.now()});
       toast("أُرسل طلب التمييز وسيُفعّل بعد موافقة الإدارة")}
     else if(a=="ok"||a=="no"){await updateDoc(doc(db,"ads",id),{status:a=="ok"?"approved":"rejected"});{const x=pend.find(y=>y.id==id);if(x)await notify(x.ownerId,(a=="ok"?"تمت الموافقة على إعلانك: ":"تم رفض إعلانك: ")+x.title)}await loadPublic();await loadMine();render()}
-    else if(a=="del"){if(!confirm("حذف الإعلان؟"))return;await deleteDoc(doc(db,"ads",id));await loadPublic();await loadMine();render()}
+    else if(a=="del"){
+      if(!confirm("حذف الإعلان؟"))return;
+      const adRef=doc(db,"ads",id);
+      const snapshot=await getDoc(adRef);
+      if(!snapshot.exists())return toast("الإعلان غير موجود");
+      const deletedAd=snapshot.data();
+      await deleteDoc(adRef);
+      if(app.options.projectId==="souqna-staging"&&me?.uid===deletedAd.ownerId&&Array.isArray(deletedAd.images)&&deletedAd.images.length){
+        try{
+          const {deleteGalleryByUrls}=await import("./assets/souqna-gallery.mjs");
+          const outcome=await deleteGalleryByUrls(app,me.uid,deletedAd.images);
+          if(outcome.failed)toast("حُذف الإعلان، لكن تعذر تنظيف بعض صوره");
+        }catch(error){console.warn("Deleted ad image cleanup failed:",error);toast("حُذف الإعلان، لكن تعذر تنظيف صوره");}
+      }
+      await loadPublic();await loadMine();render()
+    }
     else if(a=="savewa"){const n=val("#s-wa").replace(/\D/g,"");await setDoc(doc(db,"settings","contact"),{whatsapp:n});wa=n;toast("تم الحفظ")}
     else if(a=="seed"){for(const [s,d] of [[5,15],[10,30],[15,30],[20,30],[25,30]])await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
     else if(a=="addpk"){const s=+val("#k-s"),d=+val("#k-d");if(!(s>0&&d>0))return toast("أدخل النجوم والأيام");await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
