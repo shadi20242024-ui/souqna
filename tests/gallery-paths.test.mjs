@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 const moduleText=readFileSync(new URL("../assets/souqna-gallery.mjs",import.meta.url),"utf8");
 const match=moduleText.match(/export function pathsFromGalleryUrls\([\s\S]*?\n}\n(?=export async function deleteGalleryByUrls)/);
 assert.ok(match,"Expected the gallery path validator to exist");
-const pathsFromGalleryUrls=new Function("URL",match[0].replace("export function ","")+";return pathsFromGalleryUrls;")(URL);
+const pathsFromGalleryUrls=new Function("URL",match[0].replace("export ","")+";return pathsFromGalleryUrls;")(URL);
 const project="souqna-staging",user="owner123";
 const link=(uid,name="photo_001",bucket="souqna-staging.firebasestorage.app")=>
   "https://firebasestorage.googleapis.com/v0/b/"+bucket+"/o/"+encodeURIComponent("ads/"+uid+"/"+name+".jpg")+"?alt=media";
