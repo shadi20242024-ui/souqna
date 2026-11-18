@@ -96,3 +96,34 @@ jobs:
             Start-SOUQNA.cmd
           if-no-files-found: error
           retention-days: 14
+
+  remote-staging-hosting:
+    name: Check actual staging website (read-only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Inspect actual public Firebase staging URLs
+        id: check_hosting
+        continue-on-error: true
+        run: |
+          node scripts/check-staging-hosting.mjs > staging-hosting-check.txt 2>&1
+          result=$?
+          cat staging-hosting-check.txt
+          if [ "$result" -ne 0 ]; then
+            echo "::warning::SOUQNA staging website is not verified online. No deployment was attempted."
+          fi
+          exit "$result"
+      - name: Upload staging availability result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUQNA-remote-staging-hosting-check
+          path: staging-hosting-check.txt
+          if-no-files-found: ignore
+          retention-days: 7
