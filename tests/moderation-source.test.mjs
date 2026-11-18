@@ -110,8 +110,8 @@ test("client writes to moderation audit are prohibited by rules", () => {
 
 test("client uses trusted moderation endpoint", () => {
   assert.ok(client.includes('httpsCallable(functions,"souqnaModeration")'));
-  assert.ok(client.includes('await moderate("ad",id,action)'));
-  assert.ok(client.includes('await moderate("store",id,action)'));
+  assert.ok(client.includes('await reviewDecision("ad",id,action)'));
+  assert.ok(client.includes('await reviewDecision("store",id,action)'));
 });
 
 test("missing moderation target rejects without writing an audit", async () => {
@@ -136,4 +136,14 @@ test("missing owner identifier rejects without side effects", async () => {
     error => error.code === "failed-precondition"
   );
   assert.ok(!calls.some(call => call[0] === "update" || call[0] === "create"));
+});
+
+test("moderation decision UI prevents duplicate submissions and refreshes stale requests", () => {
+  assert.ok(client.includes("const moderationInFlight=new Set()"));
+  assert.ok(client.includes("if(moderationInFlight.has(key))return"));
+  assert.ok(client.includes("moderationInFlight.add(key)"));
+  assert.ok(client.includes("moderationInFlight.delete(key)"));
+  assert.ok(client.includes('"functions/failed-precondition","functions/not-found"'));
+  assert.ok(client.includes('await reviewDecision("ad",id,action)'));
+  assert.ok(client.includes('await reviewDecision("store",id,action)'));
 });
