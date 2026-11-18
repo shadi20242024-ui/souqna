@@ -116,7 +116,7 @@ const bgImage=raw=>{const safe=safeImage(raw);return safe?`background-image:url(
 
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
-let adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
+let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
@@ -237,12 +237,39 @@ async function loadPublic(){
 }
 async function loadMine(){
   if(!me)return;
+  adminLoadWarnings=[];
+  const read=async(label,run)=>{
+    try{return await run()}
+    catch(error){
+      console.error("SOUQNA collection read failed:",label,error);
+      adminLoadWarnings.push(label+" ("+(error?.code||"unknown")+")");
+      return [];
+    }
+  };
   const u=await getDoc(doc(db,"users",me.uid));if(u.exists())Object.assign(me,u.data());
-  mine=(await q2("ads","ownerId",me.uid)).sort((x,y)=>y.createdAt-x.createdAt);favorites=await q2("favorites","userId",me.uid);myStores=await q2("stores","ownerId",me.uid).catch(()=>[]);const byT=(x,y)=>y.createdAt-x.createdAt;txs=(await q2("transactions","userId",me.uid).catch(()=>[])).sort(byT);notifs=(await q2("notifs","userId",me.uid).catch(()=>[])).sort(byT);mySponsorRequests=(await q2("sponsorRequests","userId",me.uid).catch(()=>[])).sort(byT);mySorders=(await q2("sorders","userId",me.uid).catch(()=>[])).sort(byT);
-  if(isStaff()){pend=(await q2("ads","status","pending")).sort((x,y)=>y.createdAt-x.createdAt);pendStores=await q2("stores","status","pending").catch(()=>[]);sorders=(await getDocs(collection(db,"sorders")).catch(()=>({docs:[]}))).docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.createdAt-x.createdAt);
-    if(isAdm()){orders=await q2("starOrders","status","pending");promos=await q2("promos","status","pending");subs=await q2("subs","status","pending").catch(()=>[]);pendingSponsorRequests=(await q2("sponsorRequests","status","pending").catch(()=>[])).sort(byT);allUsers=(await getDocs(collection(db,"users"))).docs.map(d=>({id:d.id,...d.data()}));allTx=(await getDocs(collection(db,"transactions"))).docs.map(d=>({id:d.id,...d.data()}))}}
+  mine=(await read("إعلاناتي",()=>q2("ads","ownerId",me.uid))).sort((x,y)=>y.createdAt-x.createdAt);
+  favorites=await read("المفضلة",()=>q2("favorites","userId",me.uid));
+  myStores=await read("متاجري",()=>q2("stores","ownerId",me.uid));
+  const byT=(x,y)=>y.createdAt-x.createdAt;
+  txs=(await read("معاملاتي",()=>q2("transactions","userId",me.uid))).sort(byT);
+  notifs=(await read("الإشعارات",()=>q2("notifs","userId",me.uid))).sort(byT);
+  mySponsorRequests=(await read("حجوزات البنرات",()=>q2("sponsorRequests","userId",me.uid))).sort(byT);
+  mySorders=(await read("طلبات الخدمات الخاصة",()=>q2("sorders","userId",me.uid))).sort(byT);
+  if(isStaff()){pend=(await read("مراجعة الإعلانات",()=>q2("ads","status","pending"))).sort((x,y)=>y.createdAt-x.createdAt);
+    pendStores=await read("مراجعة المتاجر",()=>q2("stores","status","pending"));
+    sorders=(await read("طلبات الخدمات",async()=>{const s=await getDocs(collection(db,"sorders"));return s.docs.map(d=>({id:d.id,...d.data()}))})).sort((x,y)=>y.createdAt-x.createdAt);
+    if(isAdm()){orders=await read("طلبات النجوم",()=>q2("starOrders","status","pending"));
+      promos=await read("طلبات الترويج",()=>q2("promos","status","pending"));
+      subs=await read("طلبات الاشتراكات",()=>q2("subs","status","pending"));
+      pendingSponsorRequests=(await read("طلبات رعاية البنرات",()=>q2("sponsorRequests","status","pending"))).sort(byT);
+      allUsers=await read("المستخدمون",async()=>{const s=await getDocs(collection(db,"users"));return s.docs.map(d=>({id:d.id,...d.data()}))});
+      allTx=await read("سجل المعاملات",async()=>{const s=await getDocs(collection(db,"transactions"));return s.docs.map(d=>({id:d.id,...d.data()}))})}}
     adminUpdatedAt=Date.now();
 }
+const adminErrorBanner=()=>adminLoadWarnings.length?
+  '<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تعذر تحميل بعض بيانات الإدارة</b><p>تأكد من نشر قواعد Firestore الصحيحة لمشروع souqna-staging. لا تعدّل الصلاحيات أو قواعد الحماية لتجاوز الخطأ.</p><ul>'+
+    adminLoadWarnings.map(v=>'<li>'+esc(v)+'</li>').join("")+'</ul></div>':"";
+
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
   const msg="مرحبًا، بخصوص إعلانك في سوقنا: "+a.title;
@@ -453,7 +480,7 @@ function render(){
     <h3>🚀 باقات تمييز الإعلان</h3>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
-    A.innerHTML=adminDashboardHtml()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
+    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
     <div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label class="mut">أخبار الشريط العاجل (سطر لكل خبر)</label><textarea id="s-tk" rows="3">${esc(site.ticker||"")}</textarea><label class="mut">شريط الخدمات والوقود أسفل البنر (خبر في كل سطر)</label><textarea id="s-tk2" rows="3">${esc(site.tickerSecondary||"")}</textarea>
@@ -524,7 +551,13 @@ async function shrink(file){
 const need=()=>{if(!me){toast("سجّل الدخول أولًا");view="acc";render();return false}return true};
 
 document.addEventListener("click",async e=>{
-  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc","favorites"].includes(view))await loadMine();feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
+  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc","favorites"].includes(view)){
+    try{await loadMine()}catch(error){
+      console.error("SOUQNA account load failed:",error);
+      adminLoadWarnings=["قراءة ملف الحساب ("+(error?.code||"unknown")+")"];
+      toast("تعذر تحميل الحساب: "+(error?.code||"unknown"));
+    }
+  }feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
   const ss=e.target.closest("[data-st]");if(ss){curStore=ss.dataset.st;view="store";stx={f:[],r:[]};await loadStoreX(curStore);render();return scrollTo(0,0)}
   const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;$("#dir").innerHTML=dirHtml();document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt==dtype));return}
   const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view=view==="ads"?"ads":"home";feat=false;render();return scrollTo(0,0)}
@@ -703,10 +736,26 @@ document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
 onAuthStateChanged(auth,async u=>{
   me=null;
-  if(u){const s=await getDoc(doc(db,"users",u.uid));me=s.exists()?{uid:u.uid,...s.data()}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0};await loadMine()}
-  else{mine=[];favorites=[];pend=[];orders=[];promos=[]}
-  if(view=="admin"&&!isStaff())view="home";
+  try{
+    if(u){
+      const s=await getDoc(doc(db,"users",u.uid));
+      me=s.exists()?{uid:u.uid,...s.data()}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0};
+      await loadMine();
+    }else{
+      adminLoadWarnings=[];
+      mine=[];favorites=[];pend=[];orders=[];promos=[];
+    }
+  }catch(error){
+    console.error("SOUQNA session load failed:",error);
+    adminLoadWarnings=["تعذر قراءة بيانات الحساب ("+(error?.code||"unknown")+")"];
+    if(!me&&u)me={uid:u.uid,name:u.email||"مستخدم",email:u.email,role:"user",stars:0};
+    toast("خطأ في قراءة صلاحية الحساب: "+(error?.code||"unknown"));
+  }
+  if(view=="admin"&&!isStaff())view="acc";
   render();
+},error=>{
+  console.error("SOUQNA Firebase Auth session error:",error);
+  toast("تعذر تسجيل الدخول: "+(error?.code||"unknown"));
 });
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 loadPublic().then(render).catch(e=>{console.error(e);$("#app").innerHTML='<p class="mut">تعذر تحميل البيانات.</p>'});
