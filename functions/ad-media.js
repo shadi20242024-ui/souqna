@@ -1,6 +1,6 @@
 "use strict";
 
-const MAX_IMAGES=12;
+const MAX_IMAGES=11;
 const MAX_URL_LENGTH=2048;
 const VIDEO_HOSTS=new Set(["youtube.com","www.youtube.com","m.youtube.com","youtu.be","www.youtu.be","vimeo.com","www.vimeo.com"]);
 const IMAGE_HOSTS=new Set(["firebasestorage.googleapis.com","storage.googleapis.com"]);
@@ -14,7 +14,7 @@ function url(value,label){
   return parsed;
 }
 function validateImageUrls(images,projectId,uid){
-  if(!Array.isArray(images)||images.length>MAX_IMAGES)mediaError("عدد صور الإعلان يتجاوز 12 صورة");
+  if(!Array.isArray(images)||images.length>MAX_IMAGES)mediaError("عدد صور الإعلان يتجاوز 11 صورة إضافية");
   if(typeof projectId!=="string"||!/^[a-z][a-z0-9-]{4,40}$/.test(projectId))mediaError("معرف مشروع التخزين غير صحيح");
   if(typeof uid!=="string"||!/^[A-Za-z0-9_-]{1,128}$/.test(uid))mediaError("معرّف صاحب الإعلان غير صحيح");
   const bucketNames=new Set([projectId+".firebasestorage.app",projectId+".appspot.com"]);
