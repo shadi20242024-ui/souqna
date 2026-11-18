@@ -77,3 +77,12 @@ test("only reviewer roles can invoke moderation from the interface", () => {
   assert.ok(html.includes('else if(a=="stok"||a=="stno"){if(!canModerate())'));
   assert.ok(html.includes('${canModerate()?'));
 });
+
+test("privileged data is reset before any new authentication session is loaded", () => {
+  const callback = html.slice(html.indexOf("onAuthStateChanged(auth,async u=>"));
+  assert.ok(callback.startsWith("onAuthStateChanged(auth,async u=>"));
+  const resetIndex = callback.indexOf("allUsers=[];allTx=[];moderationHistory=[];pendStores=[]");
+  const readIndex = callback.indexOf('const s=await getDoc(doc(db,"users",u.uid))');
+  assert.ok(resetIndex > 0 && readIndex > resetIndex, "Previous administrator data must be cleared before fetching a new account");
+  assert.ok(callback.indexOf("adminLoadWarnings=[]") < readIndex);
+});
