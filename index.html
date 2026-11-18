@@ -264,8 +264,56 @@ const categoryScene=id=>{
 };
 const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس",fuel:"محطة وقود"};
 const wxTxt=c=>c==0?"صافٍ":c<4?"غائم جزئيًا":c<50?"ضباب":c<70?"أمطار":c<80?"ثلوج":c<90?"زخات مطر":"عاصفة رعدية";
-async function loadWx(){try{const j=await(await fetch("https://api.open-meteo.com/v1/forecast?latitude=32.71&longitude=36.57&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto")).json();wx={t:Math.round(j.current.temperature_2m),c:j.current.weather_code,hi:Math.round(j.daily.temperature_2m_max[0]),lo:Math.round(j.daily.temperature_2m_min[0])};if(view=="home")render()}catch(e){wx=null}}
-const wxHtml=()=>wx&&site.weatherOn!==false?`<div class="wx"><span>${wx.c==0?"☀️":wx.c<4?"⛅":wx.c<50?"🌫️":wx.c<80?"🌧️":"⛈️"}</span><div><b>طقس السويداء الآن</b><div class="mut">${wxTxt(wx.c)} · العظمى ${wx.hi}° · الصغرى ${wx.lo}°</div></div><i>${wx.t}°</i></div>`:"";
+
+let weatherError="",lastWeatherPoll=0,marketFx=null,marketGold=null,marketError="",lastMarketPoll=0;
+async function loadWx(){
+  if(Date.now()-lastWeatherPoll<60000)return;
+  lastWeatherPoll=Date.now();
+  try{
+    const response=await fetch("https://api.open-meteo.com/v1/forecast?latitude=32.71&longitude=36.57&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=Asia%2FDamascus",{signal:AbortSignal.timeout(12000),cache:"no-store"});
+    if(!response.ok)throw Error("HTTP "+response.status);
+    const data=await response.json();
+    if(!Number.isFinite(data.current?.temperature_2m)||!Number.isFinite(data.current?.weather_code))throw Error("بيانات طقس غير مكتملة");
+    wx={t:Math.round(data.current.temperature_2m),c:data.current.weather_code,hi:Math.round(data.daily.temperature_2m_max[0]),lo:Math.round(data.daily.temperature_2m_min[0]),humidity:data.current.relative_humidity_2m,wind:data.current.wind_speed_10m,updated:Date.now()};
+    weatherError="";
+  }catch(error){weatherError="بيانات الطقس غير متاحة مؤقتاً";wx=null;console.warn("Weather update unavailable",error);}
+  if(view==="home")render();
+}
+const wxHtml=()=>{
+  if(site.weatherOn===false)return "";
+  if(!wx)return '<div class="wx wx-unavailable" role="status">🌤️ طقس السويداء: '+(weatherError||"جاري تحميل الطقس...")+' <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></div>';
+  const current=wx.c===0?"☀️":wx.c<4?"⛅":wx.c<50?"🌫️":wx.c<70?"🌧️":wx.c<80?"❄️":"⛈️";
+  const age=Math.round((Date.now()-wx.updated)/60000);
+  return `<div class="wx wx-live" role="region" aria-label="طقس مدينة السويداء"><span>${current}</span><div><b>طقس السويداء · تحديث تلقائي</b><div class="mut">${wxTxt(wx.c)} · العظمى ${wx.hi}° · الصغرى ${wx.lo}° · الرطوبة ${wx.humidity}% · الرياح ${wx.wind} كم/س</div><small>آخر تحديث منذ ${age} دقيقة · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></small></div><i>${wx.t}°</i></div>`;
+};
+async function loadMarketData(force=false){
+  if(!force&&Date.now()-lastMarketPoll<30*60000)return;
+  lastMarketPoll=Date.now();
+  const urls=["https://open.er-api.com/v6/latest/USD","https://api.gold-api.com/price/XAU"];
+  const results=await Promise.allSettled(urls.map(async url=>{
+    const res=await fetch(url,{signal:AbortSignal.timeout(12000),cache:"no-store"});
+    if(!res.ok)throw Error("HTTP "+res.status);
+    return res.json();
+  }));
+  marketFx=results[0].status==="fulfilled"?validRatePayload(results[0].value):null;
+  marketGold=results[1].status==="fulfilled"?validGoldPayload(results[1].value):null;
+  marketError=marketFx||marketGold?"":"تعذر استرداد أحدث المؤشرات من مزودي الخدمة.";
+  if(view==="markets")render();
+}
+const fmtNumber=n=>Number(n).toLocaleString("ar-SY",{maximumFractionDigits:2});
+function calculatorHtml(){
+  return '<div class="utility-page"><div class="utility-head"><b>🧮 الآلة الحاسبة</b><p class="mut">حساب مجاني للجمع والطرح والضرب والقسمة والأقواس.</p></div><div class="box calculator"><label for="calc-expression">اكتب العملية الحسابية</label><input type="text" dir="ltr" inputmode="decimal" autocomplete="off" id="calc-expression" placeholder="(120 + 30) * 2"><output id="calc-result" role="status">النتيجة تظهر هنا</output><div class="calc-keys">'+["7","8","9","/","4","5","6","*","1","2","3","-","0",".","(",")","C","=","+"].map(key=>'<button type="button" class="btn l" data-a="calc-key" data-key="'+key+'">'+(key==="*"? "×":key==="/"? "÷":key)+'</button>').join("")+'</div></div></div>';
+}
+function marketsHtml(){
+  const freshFx=marketFx&&isFresh(marketFx.timestamp,48*3600000);
+  const freshGold=marketGold&&isFresh(marketGold.timestamp,30*60000);
+  const fxRows=freshFx?'<div class="market-value">USD ↔ SYP: '+fmtNumber(marketFx.syp)+' ل.س / USD</div><div class="market-value">EUR ↔ SYP: '+fmtNumber(marketFx.syp/marketFx.eur)+' ل.س / EUR</div><div class="market-value">TRY ↔ SYP: '+fmtNumber(marketFx.syp/marketFx.tryRate)+' ل.س / TRY</div><small>تحديث المرجع: '+new Date(marketFx.timestamp).toLocaleString("ar-SY")+'</small>':'<p class="mut">أسعار مرجعية غير متاحة أو قديمة؛ لا تُعرض أرقام غير مؤكدة.</p>';
+  const goldRows=freshGold?'<div class="market-value">'+fmtNumber(marketGold.usdPerOunce)+' USD / أونصة الذهب العالمية</div><small>تحديث المؤشر: '+new Date(marketGold.timestamp).toLocaleString("ar-SY")+'</small>':'<p class="mut">مؤشر الذهب العالمي غير متاح أو قديم.</p>';
+  return `<div class="utility-page"><div class="utility-head"><h2>💱 أسعار العملات والذهب</h2><p>مؤشرات عالمية تُحدَّث تلقائياً عند فتح الصفحة، وليست أسعار الصرافة أو الصاغة المعتمدة في سورية.</p></div>
+  <div class="market-panels"><section class="box market-panel"><h3>أسعار صرف مرجعية مقابل الليرة السورية</h3>${fxRows}<p class="mut">سعر مرجعي دولي: قد يختلف كثيراً عن نشرة مصرف سورية المركزي أو سعر السوق المحلية، خصوصاً مع اختلاف فئات العملة الجديدة والقديمة.</p><a href="https://www.exchangerate-api.com/" rel="noopener noreferrer" target="_blank">المصدر: ExchangeRate-API</a></section>
+  <section class="box market-panel"><h3>الذهب العالمي</h3>${goldRows}<p class="mut">سعر الأونصة بالدولار عالمياً؛ لا يمثل سعر غرام 21 أو 18 قيراطاً في محلات الصاغة السورية.</p><a href="https://gold-api.com/" target="_blank" rel="noopener noreferrer">المصدر: Gold-API</a></section></div>
+  <section class="box market-official"><h3>الأسعار الرسمية في سورية</h3><p>للتسعيرة المحلية المعتمدة يرجى مراجعة الجهات الرسمية مباشرة، ولا ننشر أسعاراً محلية غير موثقة.</p><div class="acts"><a class="btn l" target="_blank" rel="noopener noreferrer" href="https://www.cb.gov.sy/">مصرف سورية المركزي</a><a class="btn l" target="_blank" rel="noopener noreferrer" href="https://pma.sy/">الهيئة العامة لإدارة المعادن الثمينة</a><button class="btn" data-a="markets-refresh">تحديث المؤشرات الآن</button></div></section>${marketError?'<p class="mut" role="status">'+esc(marketError)+'</p>':""}</div>`;
+}
 function tkHtml(secondary=false){
   const entries=secondary
     ? [...dr.filter(x=>x.type==="fuel"&&x.active!==false).map(x=>"⛽ "+x.name+(x.area?" – "+x.area:"")+(x.spec?" | "+x.spec:"")),...(site.tickerSecondary||"").split("\n")]
@@ -456,6 +504,7 @@ function drawNav(){
     ["stores","المتاجر","desktop-only"],
     ["favorites","المفضلة","desktop-only"],
     ["orders","طلبات الخدمات","desktop-only"],
+    ["calculator","حاسبة","desktop-only"],["markets","العملات والذهب","desktop-only"],
     ...(isStaff()?[["admin","لوحة الإدارة","desktop-only"]]:[])
   ];
   $("#nav").innerHTML=b.map(x=>{
@@ -587,6 +636,10 @@ function render(){
     <button class="cm" style="width:100%;border:0;font:inherit;cursor:pointer;text-align:right" data-v="services"><b>🎨 خدمات التصميم والفيديو والحملات التسويقية</b><span class="gold">اطلب الآن</span></button>
     <div class="sec"><b>${feat?"الإعلانات المميزة":"أحدث الإعلانات"}</b></div><div class="grid" id="list"></div>${adHtml()}`;pushAds();
     drawList();
+  }else if(view=="calculator"){
+    A.innerHTML=calculatorHtml();
+  }else if(view=="markets"){
+    A.innerHTML=marketsHtml();if(!lastMarketPoll)loadMarketData();
   }else if(view=="ads"){
     A.innerHTML=`<div class="desktop-page-title premium-page-heading"><div class="page-heading-row"><img src="assets/souqna-3d-mark.webp" class="page-brand-icon" alt="" loading="lazy"><div><h2>سوق الإعلانات</h2><p>اكتشف العروض الجديدة في السويداء ومناطقها</p></div></div></div>
       <div class="filter-chips photo-filter-chips"><button class="${cur==="all"?"on":""}" data-c="all" aria-pressed="${cur==="all"}">جميع الأقسام</button>${cats.map(c=>`<button class="${cur===c.id?"on":""}" data-c="${esc(c.id)}" aria-pressed="${cur===c.id}">${categoryPhoto(c.id)?`<img class="filter-category-photo" src="assets/category-photos/${categoryPhoto(c.id)}-scene.webp" alt="" loading="lazy">`:crystalSvg(c.id,"filter-symbol")}${esc(c.name_ar)}</button>`).join("")}</div>
@@ -781,6 +834,8 @@ document.addEventListener("click",async e=>{
   const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;$("#dir").innerHTML=dirHtml();document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt==dtype));return}
   const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view=view==="ads"?"ads":"home";feat=false;render();return scrollTo(0,0)}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
+  if(a==="calc-key"){const input=$("#calc-expression"),out=$("#calc-result");if(!input||!out)return;const key=b.dataset.key;if(key==="C"){input.value="";out.textContent="النتيجة تظهر هنا";return;}if(key==="="){try{out.textContent=fmtNumber(calculateExpression(input.value));}catch(error){out.textContent=error.message;}return;}input.value+=key;input.focus();return;}
+  if(a==="markets-refresh"){lastMarketPoll=0;loadMarketData(true);return;}
   try{
     if(a=="gallery"){showAdGallery(id);return;}
     if(a=="gallery-close"){$("#adMediaDialog")?.close();return;}
@@ -975,7 +1030,7 @@ document.addEventListener("change",e=>{
   if(target)target.innerHTML=adminReviewQueue();
 });
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
-setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
+setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();setInterval(loadWx,15*60000);
 onAuthStateChanged(auth,async u=>{
   const expectedVersion=++sessionVersion;
   me=null;
