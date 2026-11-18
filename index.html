@@ -241,6 +241,22 @@ const waLink=t=>"https://wa.me/"+wa+(t?"?text="+encodeURIComponent(t):"");
 const q2=(c,f,v)=>getDocs(query(collection(db,c),where(f,"==",v))).then(s=>s.docs.map(d=>({id:d.id,...d.data()})));
 
 const CI={electronics:"i1",jobs:"i2",cars:"i3",real_estate:"i4",misc:"i5",community:"i6",services:"i7",furniture:"i8"};
+const PHOTO_CATEGORIES=Object.freeze({
+  real_estate:"real_estate",cars:"cars",jobs:"jobs",electronics:"electronics",
+  furniture:"furniture",services:"services",community:"community",fashion:"fashion",
+  lost_found:"lost_found",misc:"misc"
+});
+const categoryPhoto=id=>PHOTO_CATEGORIES[id]||null;
+const categoryTile=c=>{
+  const photo=categoryPhoto(c.id);
+  return photo
+    ? `<img class="category-photo" src="assets/category-photos/${photo}.webp" alt="" loading="lazy" decoding="async"><span class="sr-only">${esc(c.name_ar)}</span>`
+    : `${crystalSvg(c.id)}<span class="category-fallback-label">${esc(c.name_ar)}</span>`;
+};
+const categoryScene=id=>{
+  const photo=categoryPhoto(id);
+  return photo?`<img class="listing-category-art" src="assets/category-photos/${photo}-scene.webp" alt="" loading="lazy" decoding="async">`:crystalSvg(id);
+};
 const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس",fuel:"محطة وقود"};
 const wxTxt=c=>c==0?"صافٍ":c<4?"غائم جزئيًا":c<50?"ضباب":c<70?"أمطار":c<80?"ثلوج":c<90?"زخات مطر":"عاصفة رعدية";
 async function loadWx(){try{const j=await(await fetch("https://api.open-meteo.com/v1/forecast?latitude=32.71&longitude=36.57&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto")).json();wx={t:Math.round(j.current.temperature_2m),c:j.current.weather_code,hi:Math.round(j.daily.temperature_2m_max[0]),lo:Math.round(j.daily.temperature_2m_min[0])};if(view=="home")render()}catch(e){wx=null}}
@@ -382,7 +398,7 @@ const adminErrorBanner=()=>adminLoadWarnings.length?
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
   const msg="مرحبًا، بخصوص إعلانك في سوقنا: "+a.title;
-  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":crystalSvg(a.cat)}</div><div class="bd">
+  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":categoryScene(a.cat)}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button>`
@@ -392,9 +408,9 @@ function card(a,m){
 function drawHd(){
   const H=$("#hd");
   if(view=="home"){H.className="hd big";
-    H.innerHTML=`<div class="top">${safeImage(site.logo)?`<img class="lgi" src="${esc(safeImage(site.logo))}" alt="">`:'<div class="sp lg desktop-logo"></div><img class="lgi mobile-logo" src="logo.png" alt="سوقنا">'}<div></div><a class="ic" ${wa?`href="${waLink()}" target="_blank"`:""}>📞</a></div><div class="sr"><span>🇸🇾</span><input id="q" placeholder="ابحث في سوقنا ..." value="${esc(q)}"><i>🔍</i></div>`;
+    H.innerHTML=`<div class="top">${safeImage(site.logo)?`<img class="lgi" src="${esc(safeImage(site.logo))}" alt="">`:'<div class="sp lg desktop-logo"></div><img class="lgi mobile-logo" src="assets/souqna-3d-mark.webp" alt="رمز سوقنا">'}<div></div><a class="ic" ${wa?`href="${waLink()}" target="_blank"`:""}>📞</a></div><div class="sr"><span>🇸🇾</span><input id="q" placeholder="ابحث في سوقنا ..." value="${esc(q)}"><i>🔍</i></div>`;
     $("#q").oninput=e=>{q=e.target.value;drawList()};
-  }else{H.className="hd";H.innerHTML='<img class="s" src="logo.png" alt=""><h2>سوقنا | Souqna</h2>'}
+  }else{H.className="hd";H.innerHTML='<img class="s" src="assets/souqna-approved-logo.jpg" alt="سوقنا"><h2>سوقنا | Souqna</h2>'}
 }
 function drawNav(){
   const b=[
@@ -417,7 +433,7 @@ function drawNav(){
 }
 function drawDesktopBar(){
   const bar=$("#desktopBar");
-  bar.innerHTML=`<div class="desktop-bar-brand"><span>✦</span> سوقنا <small>SOUQNA</small></div>
+  bar.innerHTML=`<div class="desktop-bar-brand"><img class="desktop-brand-mark" src="assets/souqna-3d-mark.webp" alt="" width="46" height="46"><span>سوقنا<small>SOUQNA</small></span></div>
     <label class="desktop-search" for="globalSearch">${crystalSvg("lost_found","search-symbol")}<input id="globalSearch" type="search" placeholder="ابحث عن سيارات، عقارات، ومتاجر..." aria-label="ابحث في الإعلانات" value="${esc(q)}"></label>
     <button class="desktop-add" data-v="add">＋ أضف إعلانك</button>
     <button class="desktop-account" data-v="acc" aria-label="الذهاب إلى حسابي">${me?"👤 "+esc(me.name):"👤 تسجيل الدخول"}</button>`;
@@ -528,10 +544,10 @@ function render(){
   drawHd();drawNav();drawDesktopBar();$("#newsHost").innerHTML=tkHtml();const A=$("#app");
   if(view=="home"){
     A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>safeImage(a.img)).slice(0,8).map(a=>`<button class="sc" data-c="${esc(a.cat)}" aria-label="${esc(a.title)}" style="${bgImage(a.img)}"></button>`).join("")}</div>
-    ${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div class="hero-copy" style="flex:1"><span class="hero-eyebrow">سوق السويداء • من أهل البلد ولأهلها</span><b>كل ما تحتاجه .. في مكان واحد</b><p class="hero-subtitle">اكتشف السيارات والعقارات والمتاجر والخدمات في مكان يجمع أهل السويداء.</p><button class="gold" data-c="all">استكشف الإعلانات ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
+    ${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div class="hero-copy" style="flex:1"><span class="hero-eyebrow">سوق السويداء • من أهل البلد ولأهلها</span><b>كل ما تحتاجه .. في مكان واحد</b><p class="hero-subtitle">اكتشف السيارات والعقارات والمتاجر والخدمات في مكان يجمع أهل السويداء.</p><button class="gold" data-c="all">استكشف الإعلانات ‹</button></div><img class="hero-brand-logo" src="assets/souqna-approved-logo.jpg" alt="شعار سوقنا ثلاثي الأبعاد" loading="lazy"><em>📍 السويداء</em></div>`}
     ${wxHtml()}<div id="spw">${spHtml()}</div>${tkHtml(true)}${storesHtml()}
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
-    <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${crystalSvg(c.id)}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
+    <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${categoryPhoto(c.id)?"photo-category":""} ${cur==c.id?"on":""}" data-c="${esc(c.id)}" aria-label="${esc(c.name_ar)}" title="${esc(c.name_ar)}">${categoryTile(c)}</button>`).join("")}</div>${adHtml()}
     <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"],["fuel","محطات الوقود"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
     <div class="qt"><button data-a="feat">${crystalSvg("ads","quick-symbol")}إعلانات مميزة</button><button data-c="services">${crystalSvg("services","quick-symbol")}دليل الخدمات</button><button data-v="add">${crystalSvg("stars","quick-symbol")}أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}>${crystalSvg("support","quick-symbol")}دعم فني</a></div>
     <div class="cm"><b>معاً .. نبني مجتمعاً أفضل في السويداء 👥</b><button class="gold" data-c="community">انضم إلينا</button></div>

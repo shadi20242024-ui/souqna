@@ -1011,3 +1011,24 @@ nav button {position:relative;}
   .qt >* {transition:none;}
   .qt >*:hover {transform:none;}
 }
+
+
+/* Approved SOUQNA 3D brand: cropped exactly from user-selected images, not redesigned. */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.cg{grid-template-columns:repeat(5,minmax(0,1fr));gap:13px;align-items:stretch}
+.cc.photo-category{padding:0!important;min-height:0;overflow:hidden;aspect-ratio:290/366;display:flex;align-items:stretch;justify-content:stretch;border:0;background:transparent;box-shadow:0 8px 26px rgba(9,42,92,.08);border-radius:20px;position:relative}
+.cc.photo-category::before{display:none}
+.cc.photo-category:hover{box-shadow:0 16px 30px rgba(9,42,92,.15);transform:translateY(-4px)}
+.cc.photo-category.on{box-shadow:0 0 0 3px #d4a852,0 12px 29px rgba(10,43,90,.14)}
+.cc .category-photo{width:100%;height:100%;display:block;object-fit:fill;pointer-events:none;flex:1;position:relative;z-index:1;}
+.item .img .listing-category-art{width:100%;height:100%;object-fit:cover;display:block;}
+.desktop-bar-brand{display:inline-flex;align-items:center;gap:9px;}
+.desktop-bar-brand .desktop-brand-mark{height:46px;width:46px;border-radius:12px;object-fit:cover;box-shadow:0 4px 10px rgba(12,42,86,.15);}
+.desktop-bar-brand > span{display:flex;flex-direction:column;line-height:1.2}
+.desktop-bar-brand small{margin-top:3px}
+.bn .hero-brand-logo{height:170px;width:170px;flex:none;object-fit:cover;border-radius:24px;border:1px solid rgba(241,193,102,.57);box-shadow:0 12px 26px rgba(0,9,28,.28)}
+@media(min-width:1024px){.cg{grid-template-columns:repeat(5,minmax(0,1fr));}}
+@media(min-width:701px) and (max-width:1023px){.cg{grid-template-columns:repeat(4,minmax(0,1fr));}}
+@media(max-width:700px){.cg{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.cc.photo-category{border-radius:14px;min-height:0!important;font-size:inherit}.bn .hero-brand-logo{width:90px;height:90px;border-radius:15px}}
+@media(max-width:380px){.cg{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.cc.photo-category{border-radius:11px}.bn .hero-brand-logo{width:74px;height:74px}}
+@media(prefers-reduced-motion:reduce){.cc.photo-category{transition:none}.cc.photo-category:hover{transform:none}}

@@ -9,9 +9,10 @@ const moduleSource=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
 test("premium icons are local SVG assets without unsafe data or external libraries",()=>{
   assert.ok(moduleSource.includes("const CRYSTAL_ICON_PATHS=Object.freeze({"));
   assert.ok(moduleSource.includes("const crystalSvg=(name,cssClass="));
-  assert.ok(html.includes('${crystalSvg(c.id)}'));
+  assert.ok(html.includes('${categoryTile(c)}'));
   assert.ok(html.includes('crystalSvg(x[0],"nav-symbol")'));
   assert.ok(!css.includes("@import url("));
+  assert.ok(html.includes("assets/category-photos/${photo}.webp"));
   const a=moduleSource.indexOf("const CRYSTAL_ICON_PATHS=");
   const b=moduleSource.indexOf("const STAFF=",a);
   const lib=new Function(moduleSource.slice(a,b)+"return {CRYSTAL_ICON_PATHS,crystalSvg};")();
