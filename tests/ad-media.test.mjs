@@ -23,3 +23,9 @@ test("only supported video hosts and video paths are accepted",()=>{
   assert.throws(()=>validateVideoUrl("https://youtube.com.evil.example/watch?v=a"),/مدعوم/);
   assert.throws(()=>validateVideoUrl("javascript:alert(1)"),/HTTPS/);
 });
+
+test("Firebase download URLs require the media endpoint and correct project",()=>{
+  assert.throws(()=>validateImageUrls([image(1).replace("?alt=media","")],project,uid),/تصريح/);
+  assert.throws(()=>validateImageUrls([image(1).replace("?alt=media","?alt=metadata")],project,uid),/تصريح/);
+  assert.equal(validateImageUrls([image(1)],project,uid).length,1);
+});
