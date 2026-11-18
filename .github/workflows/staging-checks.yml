@@ -26,6 +26,8 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Check media validation
         run: node --test tests/ad-media.test.mjs tests/staging-guards.test.mjs
+      - name: Check embedded marketplace module syntax
+        run: node --test tests/inline-module-syntax.test.mjs
       - name: Check safe hosting build
         run: npm run test:build-isolation && npm run build:hosting
       - name: Validate owner-only Storage uploads in local emulator
