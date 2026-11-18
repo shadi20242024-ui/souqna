@@ -86,3 +86,12 @@ test("privileged data is reset before any new authentication session is loaded",
   assert.ok(resetIndex > 0 && readIndex > resetIndex, "Previous administrator data must be cleared before fetching a new account");
   assert.ok(callback.indexOf("adminLoadWarnings=[]") < readIndex);
 });
+
+test("obsolete asynchronous account reads cannot restore prior administrator data", () => {
+  assert.ok(html.includes("let sessionVersion=0;"));
+  assert.ok(html.includes('throw new Error("souqna/session-changed")'));
+  assert.ok(html.includes('const expectedVersion=++sessionVersion'));
+  assert.ok(html.includes('if(expectedVersion!==sessionVersion)return;'));
+  assert.ok(html.includes("ensureSession(expectedVersion,expectedUid);return result"));
+  assert.ok(html.includes("ensureSession(expectedVersion,expectedUid);if(u.exists())"));
+});
