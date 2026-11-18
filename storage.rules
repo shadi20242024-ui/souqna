@@ -10,11 +10,8 @@ service firebase.storage {
         && request.resource.size > 0
         && request.resource.size <= 5 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|png|webp)');
-      allow update: if request.auth != null
-        && request.auth.uid == userId
-        && request.resource.size > 0
-        && request.resource.size <= 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+      // Uploaded image objects are immutable; a replacement receives a new name.
+      allow update: if false;
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
   }
