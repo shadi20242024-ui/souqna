@@ -24,7 +24,9 @@ jobs:
           java-version: '21'
       - name: Install test dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Check media validation
+      - name: Check source integrity
+        run: npm run test:source
+      - name: Run unit and security regression tests
         run: npm run test:unit
       - name: Check safe hosting build
         run: npm run test:build-isolation && npm run build:hosting
