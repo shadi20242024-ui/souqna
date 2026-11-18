@@ -44,7 +44,9 @@ service cloud.firestore {
     function validLocalSection(sectionId) {
       return sectionId is string && safeDocumentId(sectionId)
         && (sectionId in ["jobs", "on_call_clinics", "fuel_stations"]
-          || exists(/databases/$(database)/documents/categories/$(sectionId)));
+          || (exists(/databases/$(database)/documents/categories/$(sectionId))
+            && get(/databases/$(database)/documents/categories/$(sectionId)).data.get("contentType", "") == "localPosts"
+            && get(/databases/$(database)/documents/categories/$(sectionId)).data.get("active", false) == true));
     }
 
     function mayEditLocalSection(sectionId) {
