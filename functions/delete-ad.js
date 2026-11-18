@@ -6,9 +6,29 @@ const {extractOwnedImageObjects}=require("./ad-media");
 
 const ID=/^[A-Za-z0-9_-]{1,128}$/;
 const RETRIABLE_CODES=new Set([408,429,500,502,503,504,"ETIMEDOUT","ECONNRESET","EAI_AGAIN"]);
+const STAGING="souqna-staging";
+const MAX_IMAGES=11;
+
+function activeProject(){
+  const project=process.env.GCLOUD_PROJECT||process.env.GCP_PROJECT||process.env.FIREBASE_PROJECT_ID;
+  if(project!==STAGING)throw new HttpsError("failed-precondition","هذه العملية مخصصة لبيئة سوقنا التجريبية");
+  return project;
+}
+function authorizedUid(request){
+  const uid=request.auth?.uid;
+  if(typeof uid!=="string"||!ID.test(uid))
+    throw new HttpsError("unauthenticated","سجّل الدخول أولاً");
+  return uid;
+}
+function requestedId(request){
+  const id=request.data?.id;
+  if(typeof id!=="string"||!ID.test(id))
+    throw new HttpsError("invalid-argument","معرّف الإعلان غير صالح");
+  return id;
+}
 function isRetriableStorageFailure(error){
   const status=Number(error?.code||error?.statusCode||error?.status);
-  return RETRIABLE_CODES.has(status) || RETRIABLE_CODES.has(error?.code);
+  return RETRIABLE_CODES.has(status)||RETRIABLE_CODES.has(error?.code);
 }
 async function deleteImageWithRetry(storage,bucket,path,maxAttempts=3){
   for(let attempt=1;attempt<=maxAttempts;attempt++){
@@ -21,21 +41,68 @@ async function deleteImageWithRetry(storage,bucket,path,maxAttempts=3){
     }
   }
 }
+function safeCleanupObjects(raw,ownerId){
+  if(typeof ownerId!=="string"||!ID.test(ownerId)||!Array.isArray(raw)||raw.length>MAX_IMAGES)
+    throw new HttpsError("failed-precondition","بيانات تنظيف الصور غير صالحة");
+  const allowed=new Set([STAGING+".firebasestorage.app",STAGING+".appspot.com"]);
+  const prefix="ads/"+ownerId+"/";
+  const seen=new Set();
+  return raw.map(item=>{
+    if(!item||typeof item!=="object"||!allowed.has(item.bucket)||
+       typeof item.path!=="string"||!item.path.startsWith(prefix)||
+       !/^[A-Za-z0-9_-]{8,100}\.(jpg|jpeg|png|webp)$/.test(item.path.slice(prefix.length)))
+      throw new HttpsError("failed-precondition","مسار صورة غير مصرح به");
+    const key=item.bucket+"/"+item.path;
+    if(seen.has(key))throw new HttpsError("failed-precondition","مسار صورة مكرر");
+    seen.add(key);
+    return {bucket:item.bucket,path:item.path};
+  });
+}
+async function cleanJob(db,id,ownerId,objects){
+  const imageObjects=safeCleanupObjects(objects,ownerId);
+  let outcomes=[];
+  if(imageObjects.length){
+    try{
+      const storage=getStorage();
+      outcomes=await Promise.allSettled(imageObjects.map(({bucket,path})=>
+        deleteImageWithRetry(storage,bucket,path)
+      ));
+    }catch(error){
+      console.error("SOUQNA staging Storage initialization failed",{adId:id,error});
+      outcomes=imageObjects.map(()=>({status:"rejected",reason:error}));
+    }
+  }
+  const failedObjects=imageObjects.filter((_,index)=>outcomes[index]?.status==="rejected");
+  const job=db.collection("mediaCleanupJobs").doc(id);
+  try{
+    if(failedObjects.length){
+      await job.update({objects:failedObjects,updatedAt:Date.now(),failedImages:failedObjects.length});
+    }else if(imageObjects.length){
+      await job.delete();
+    }
+  }catch(error){
+    console.error("SOUQNA cleanup progress persistence failed",{adId:id,error});
+  }
+  if(failedObjects.length)
+    console.warn("SOUQNA staging media cleanup incomplete",{adId:id,failed:failedObjects.length});
+  return {
+    ok:true,
+    id,
+    deletedImages:imageObjects.length-failedObjects.length,
+    failedImages:failedObjects.length,
+    recoveryPending:failedObjects.length>0
+  };
+}
 
 function makeDeleteAd(db,options){
   return onCall(options,async request=>{
-    const project=process.env.GCLOUD_PROJECT||process.env.GCP_PROJECT||process.env.FIREBASE_PROJECT_ID;
-    if(project!=="souqna-staging")
-      throw new HttpsError("failed-precondition","هذه العملية مخصصة لبيئة سوقنا التجريبية");
-    const uid=request.auth?.uid;
-    if(!uid)throw new HttpsError("unauthenticated","سجّل الدخول أولاً");
-    const id=request.data?.id;
-    if(typeof id!=="string"||!ID.test(id))
-      throw new HttpsError("invalid-argument","معرّف الإعلان غير صالح");
-
+    const project=activeProject();
+    const uid=authorizedUid(request);
+    const id=requestedId(request);
     const ref=db.collection("ads").doc(id);
-    let imageObjects=[];
+    const cleanupRef=db.collection("mediaCleanupJobs").doc(id);
     let ownerId="";
+    let imageObjects=[];
     await db.runTransaction(async tx=>{
       const [userSnap,adSnap]=await Promise.all([
         tx.get(db.collection("users").doc(uid)),
@@ -44,32 +111,39 @@ function makeDeleteAd(db,options){
       if(!userSnap.exists)throw new HttpsError("permission-denied","الحساب غير موجود");
       if(!adSnap.exists)throw new HttpsError("not-found","الإعلان غير موجود");
       const ad=adSnap.data();
-      const admin=userSnap.data().role==="admin";
-      if(!admin&&ad.ownerId!==uid)
+      if(userSnap.data().role!=="admin"&&ad.ownerId!==uid)
         throw new HttpsError("permission-denied","لا تملك صلاحية حذف الإعلان");
       if(typeof ad.ownerId!=="string"||!ID.test(ad.ownerId))
         throw new HttpsError("failed-precondition","معرّف صاحب الإعلان غير صحيح");
       ownerId=ad.ownerId;
       imageObjects=extractOwnedImageObjects(ad.images,project,ownerId);
+      if(imageObjects.length){
+        tx.create(cleanupRef,{
+          ownerId,objects:imageObjects,status:"pending",createdAt:Date.now(),
+          failedImages:0
+        });
+      }
       tx.delete(ref);
     });
-
-    // Clean up only after a successful Firestore commit. No arbitrary paths from callers.
-    let outcomes=[];
-    if(imageObjects.length){
-      try{
-        const storage=getStorage();
-        outcomes=await Promise.allSettled(imageObjects.map(({bucket,path})=>
-          deleteImageWithRetry(storage,bucket,path)
-        ));
-      }catch(error){
-        console.error("SOUQNA staging Storage initialization failed",{adId:id,error});
-        outcomes=imageObjects.map(()=>({status:"rejected",reason:error}));
-      }
-    }
-    const failed=outcomes.filter(v=>v.status==="rejected").length;
-    if(failed)console.warn("SOUQNA staging media cleanup incomplete",{adId:id,failed});
-    return {ok:true,id,deletedImages:imageObjects.length-failed,failedImages:failed};
+    return cleanJob(db,id,ownerId,imageObjects);
+  });
+}
+function makeRetryCleanup(db,options){
+  return onCall(options,async request=>{
+    activeProject();
+    const uid=authorizedUid(request);
+    const id=requestedId(request);
+    const [userSnap,jobSnap]=await Promise.all([
+      db.collection("users").doc(uid).get(),
+      db.collection("mediaCleanupJobs").doc(id).get()
+    ]);
+    if(!userSnap.exists)throw new HttpsError("permission-denied","الحساب غير موجود");
+    if(!jobSnap.exists)throw new HttpsError("not-found","لا يوجد سجل تنظيف معلّق");
+    const data=jobSnap.data();
+    if(userSnap.data().role!=="admin"&&data.ownerId!==uid)
+      throw new HttpsError("permission-denied","لا تملك صلاحية متابعة تنظيف الإعلان");
+    return cleanJob(db,id,data.ownerId,data.objects);
   });
 }
 module.exports=makeDeleteAd;
+module.exports.makeRetryCleanup=makeRetryCleanup;
