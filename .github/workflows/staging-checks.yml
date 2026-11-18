@@ -34,3 +34,13 @@ jobs:
         run: npm run test:storage
       - name: Validate scoped Firestore permissions in local emulator
         run: npm run test:rules
+      - name: Print emulator diagnostics on failure
+        if: failure()
+        run: |
+          for file in storage-debug.log firestore-debug.log firebase-debug.log; do
+            if test -f "$file"; then
+              echo "::group::$file"
+              tail -n 140 "$file"
+              echo "::endgroup::"
+            fi
+          done
