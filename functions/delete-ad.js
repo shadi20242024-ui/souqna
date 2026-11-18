@@ -55,10 +55,18 @@ function makeDeleteAd(db,options){
     });
 
     // Clean up only after a successful Firestore commit. No arbitrary paths from callers.
-    const storage=getStorage();
-    const outcomes=await Promise.allSettled(imageObjects.map(({bucket,path})=>
-      deleteImageWithRetry(storage,bucket,path)
-    ));
+    let outcomes=[];
+    if(imageObjects.length){
+      try{
+        const storage=getStorage();
+        outcomes=await Promise.allSettled(imageObjects.map(({bucket,path})=>
+          deleteImageWithRetry(storage,bucket,path)
+        ));
+      }catch(error){
+        console.error("SOUQNA staging Storage initialization failed",{adId:id,error});
+        outcomes=imageObjects.map(()=>({status:"rejected",reason:error}));
+      }
+    }
     const failed=outcomes.filter(v=>v.status==="rejected").length;
     if(failed)console.warn("SOUQNA staging media cleanup incomplete",{adId:id,failed});
     return {ok:true,id,deletedImages:imageObjects.length-failed,failedImages:failed};
