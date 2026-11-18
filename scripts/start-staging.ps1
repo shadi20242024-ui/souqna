@@ -35,7 +35,8 @@ Write-Host "SOUQNA: installing local project dependencies..."
 Invoke-Checked npm.cmd @("install", "--ignore-scripts", "--no-audit", "--no-fund")
 Invoke-Checked npm.cmd @("install", "--prefix", "functions", "--ignore-scripts", "--no-audit", "--no-fund")
 
-$adc = Join-Path $env:APPDATA "gcloud\application_default_credentials.json"
+$appDataDirectory = if ($env:APPDATA) { $env:APPDATA } else { Join-Path $HOME "AppData\Roaming" }
+$adc = Join-Path $appDataDirectory "gcloud\application_default_credentials.json"
 if (-not (Test-Path $adc) -and -not $env:GOOGLE_APPLICATION_CREDENTIALS) {
     if (-not (Get-Command gcloud.cmd -ErrorAction SilentlyContinue)) {
         throw "Google Cloud CLI is required for the first setup. Install gcloud, then run this launcher again."
@@ -56,12 +57,20 @@ if (-not $SkipTests) {
 
 if (-not $SkipCloudCheck) {
     Write-Host "SOUQNA: checking real staging backend availability (read only)..."
-    Invoke-Checked npm.cmd @("run", "check:staging:services")
+    & npm.cmd run check:staging:services
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Staging cloud functions are not verified. The local site can open, but approvals and payments may fail."
+    }
+    Write-Host "SOUQNA: checking public staging Hosting (read only)..."
+    & npm.cmd run check:staging:hosting
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "No verified remote staging site. This launcher starts a LOCAL server only."
+    }
 } else {
-    Write-Warning "Cloud services were not checked. Moderation and payments may be unavailable."
+    Write-Warning "Cloud services and public hosting were not checked; the local site is NOT proof of production readiness."
 }
 
-Write-Host "Starting SOUQNA Staging at http://127.0.0.1:5000"
+Write-Host "Starting LOCAL SOUQNA Staging at http://127.0.0.1:5000"
 Write-Host "Press Ctrl+C to stop. No deployment or billing action will be performed."
 Invoke-Checked npx.cmd @(
     "firebase", "emulators:start",
