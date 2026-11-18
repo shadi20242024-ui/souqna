@@ -31,3 +31,17 @@ test("production credentials are not required for source validation", () => {
   assert.ok(!html.includes('serviceAccountKey'));
   assert.ok(!html.includes('GOOGLE_APPLICATION_CREDENTIALS'));
 });
+
+test("administrator directory supports bounded search and safe rendering", () => {
+  assert.ok(html.includes("function adminUserRows()"));
+  assert.ok(html.includes('if(!isAdm())return'));
+  assert.ok(html.includes("filtered.slice(0,100)"));
+  assert.ok(html.includes("esc(u.email||"));
+  assert.ok(html.includes('id="admin-user-search"'));
+  assert.ok(html.includes('e.target.id!=="admin-user-search"'));
+});
+
+test("sign-out clears privileged user collections", () => {
+  assert.ok(html.includes("allUsers=[];allTx=[];pendStores=[]"));
+  assert.ok(html.includes('adminUserQuery="";'));
+});
