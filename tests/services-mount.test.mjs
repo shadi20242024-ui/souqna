@@ -21,3 +21,13 @@ test("main SPA redraws its own container and must not own local widgets",()=>{
   assert.match(html,/<main id="app"><\/main>/);
   assert.match(html,/A\.innerHTML=/);
 });
+
+test("staff and community widgets retry after Firebase app initialization",()=>{
+  const html=source("index.html");
+  const staff=source("assets/souqna-staff-ui.mjs");
+  const community=source("assets/souqna-community-ui.mjs");
+  assert.match(html,/window\.dispatchEvent\(new Event\("souqna:firebase-ready"\)\)/);
+  assert.match(staff,/addEventListener\("souqna:firebase-ready",boot,\{once:true\}\)/);
+  assert.match(community,/addEventListener\("souqna:firebase-ready",bootCommunity,\{once:true\}\)/);
+  assert.match(community,/ready=true;root\.hidden=false/);
+});
