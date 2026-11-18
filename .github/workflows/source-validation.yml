@@ -38,6 +38,13 @@ jobs:
         run: npm run test:admin
       - name: Check existing application source
         run: npm run test:source
+      - name: Test staging and production isolation
+        run: npm run test:build-isolation
+      - name: Build isolated offline preview
+        run: npm run build:hosting
+      - name: Validate preview has no production Firebase project
+        run: |
+          node --input-type=module -e 'import {readFileSync} from "node:fs";import assert from "node:assert/strict";const html=readFileSync("dist/index.html","utf8");assert.ok(html.includes("\\"projectId\\":\\"souqna-preview-disabled\\""));assert.ok(!html.includes("\\"projectId\\":\\"souqna-sweida\\""));console.log("Isolated preview verified")'
       - name: Validate Firebase Functions JavaScript
         run: |
           node --check functions/index.js
