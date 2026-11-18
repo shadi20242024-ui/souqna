@@ -114,7 +114,7 @@ async function createSection(event){
 }
 if(getApps().length){
   const app=getApp();
-  if(app.options.projectId!=="souqna-sweida"&&app.options.projectId!=="souqna-preview-disabled"){
+  if(app.options.projectId==="souqna-staging"){
     db=getFirestore(app);ready=true;
     onAuthStateChanged(getAuth(app),async user=>{
       try{
