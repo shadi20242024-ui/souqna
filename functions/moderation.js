@@ -3,7 +3,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const TARGETS = Object.freeze({ ad: "ads", store: "stores" });
 const DECISIONS = Object.freeze({ approve: "approved", reject: "rejected" });
-const REVIEW_ROLES = new Set(["admin", "moderator", "editor"]);
+const REVIEW_ROLES = new Set(["admin", "moderator", "editor", "specialist"]);
 
 function validReview(data) {
   const type = data?.type;
@@ -33,6 +33,11 @@ module.exports = function createModeration(db, options) {
       }
       if (!targetSnap.exists) throw new HttpsError("not-found", "لم يعد الطلب موجوداً");
       const item = targetSnap.data();
+      if (userSnap.data().role === "specialist" &&
+          !(type === "ad" && item.cat === "jobs" && Array.isArray(userSnap.data().specialties) &&
+            userSnap.data().specialties.includes("jobs"))) {
+        throw new HttpsError("permission-denied", "هذا المشرف مخول بمراجعة إعلانات الوظائف فقط");
+      }
       if (item.status !== "pending") {
         throw new HttpsError("failed-precondition", "سبق التعامل مع هذا الطلب؛ حدّث القائمة");
       }
