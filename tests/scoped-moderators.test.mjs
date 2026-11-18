@@ -23,7 +23,9 @@ before(async()=>{
       setDoc(doc(db,"users","ordinary"),{name:"User",email:"user@example.test",role:"user",stars:0}),
       setDoc(doc(db,"staffAssignments","jobsMod"),{active:true,sectionIds:["jobs"],displayName:"Jobs"}),
       setDoc(doc(db,"ads","sample"),{ownerId:"ordinary",status:"pending",category:"jobs",title:"Sample"}),
-      setDoc(doc(db,"stores","sample"),{ownerId:"ordinary",status:"pending",name:"Sample"})
+      setDoc(doc(db,"stores","sample"),{ownerId:"ordinary",status:"pending",name:"Sample"}),
+      setDoc(doc(db,"categories","volunteer"),{name_ar:"تطوع",active:true,contentType:"localPosts"}),
+      setDoc(doc(db,"categories","closed_service"),{name_ar:"مغلق",active:false,contentType:"localPosts"})
     ]);
   });
 });
@@ -66,4 +68,9 @@ test("moderator cannot assign their own permissions",async()=>{
 });
 test("administrator may change section assignment",async()=>{
   await assertSucceeds(updateDoc(doc(userDb("owner"),"staffAssignments","jobsMod"),{sectionIds:["jobs","fuel_stations"]}));
+});
+
+test("only active local service categories accept postings",async()=>{
+  await assertFails(setDoc(doc(userDb("owner"),"localPosts","closed-post"),payload("closed_service","owner")));
+  await assertSucceeds(setDoc(doc(userDb("owner"),"localPosts","volunteer-post"),payload("volunteer","owner")));
 });
