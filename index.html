@@ -163,6 +163,7 @@ const CRYSTAL_ICON_PATHS=Object.freeze({
   stores:'<path d="M4 10 6 4h12l2 6M4 10h16v10H4zM9 20v-6h6v6M4 10a3 3 0 0 0 5 1 3 3 0 0 0 6 0 3 3 0 0 0 5-1"/>',
   favorites:'<path d="M20.5 8.8c0 4.6-8.5 10.7-8.5 10.7S3.5 13.4 3.5 8.8a4.6 4.6 0 0 1 8.5-2.4 4.6 4.6 0 0 1 8.5 2.4z"/>',
   orders:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h4"/>',
+  support:'<path d="M4 13v-1a8 8 0 0 1 16 0v1M4 13h3v6H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 1-2M20 13h-3v6h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-1-2M19 19v1a2 2 0 0 1-2 2h-4"/>',
   admin:'<circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5 21 15l-2 3.5-2.1-.6a9 9 0 0 1-1.8 1L14.5 21h-5l-.6-2.1a9 9 0 0 1-1.8-1L5 18.5 3 15l1.6-1.5a8 8 0 0 1 0-3L3 9l2-3.5 2.1.6a9 9 0 0 1 1.8-1L9.5 3h5l.6 2.1a9 9 0 0 1 1.8 1L19 5.5 21 9l-1.6 1.5a8 8 0 0 1 0 3z"/>'
 });
 const crystalSvg=(name,cssClass="category-symbol")=>'<span class="'+cssClass+'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false">'+(CRYSTAL_ICON_PATHS[name]||CRYSTAL_ICON_PATHS.misc)+'</svg></span>';
@@ -381,7 +382,7 @@ const adminErrorBanner=()=>adminLoadWarnings.length?
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
   const msg="مرحبًا، بخصوص إعلانك في سوقنا: "+a.title;
-  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":IC[a.cat]||"🛍️"}</div><div class="bd">
+  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":crystalSvg(a.cat)}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button>`
@@ -417,7 +418,7 @@ function drawNav(){
 function drawDesktopBar(){
   const bar=$("#desktopBar");
   bar.innerHTML=`<div class="desktop-bar-brand"><span>✦</span> سوقنا <small>SOUQNA</small></div>
-    <label class="desktop-search" for="globalSearch"><span>⌕</span><input id="globalSearch" type="search" placeholder="ابحث عن سيارات، عقارات، ومتاجر..." aria-label="ابحث في الإعلانات" value="${esc(q)}"></label>
+    <label class="desktop-search" for="globalSearch">${crystalSvg("lost_found","search-symbol")}<input id="globalSearch" type="search" placeholder="ابحث عن سيارات، عقارات، ومتاجر..." aria-label="ابحث في الإعلانات" value="${esc(q)}"></label>
     <button class="desktop-add" data-v="add">＋ أضف إعلانك</button>
     <button class="desktop-account" data-v="acc" aria-label="الذهاب إلى حسابي">${me?"👤 "+esc(me.name):"👤 تسجيل الدخول"}</button>`;
   $("#globalSearch").oninput=e=>{
@@ -532,7 +533,7 @@ function render(){
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
     <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${crystalSvg(c.id)}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
     <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"],["fuel","محطات الوقود"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
-    <div class="qt"><button data-a="feat"><i>📢</i>إعلانات مميزة</button><button data-c="services"><i>📍</i>دليل الخدمات</button><button data-v="add"><i>⭐</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}><i>🎧</i>دعم فني</a></div>
+    <div class="qt"><button data-a="feat">${crystalSvg("ads","quick-symbol")}إعلانات مميزة</button><button data-c="services">${crystalSvg("services","quick-symbol")}دليل الخدمات</button><button data-v="add">${crystalSvg("stars","quick-symbol")}أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}>${crystalSvg("support","quick-symbol")}دعم فني</a></div>
     <div class="cm"><b>معاً .. نبني مجتمعاً أفضل في السويداء 👥</b><button class="gold" data-c="community">انضم إلينا</button></div>
     <button class="cm" style="width:100%;border:0;font:inherit;cursor:pointer;text-align:right" data-v="services"><b>🎨 خدمات التصميم والفيديو والحملات التسويقية</b><span class="gold">اطلب الآن</span></button>
     <div class="sec"><b>${feat?"الإعلانات المميزة":"أحدث الإعلانات"}</b></div><div class="grid" id="list"></div>${adHtml()}`;pushAds();
