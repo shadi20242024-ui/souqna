@@ -56,26 +56,38 @@ function validateVideoUrl(videoUrl){
   return parsed.href;
 }
 
-function extractOwnedImagePaths(images,projectId,uid){
+function extractOwnedImageObjects(images,projectId,uid){
   if(projectId!=="souqna-staging"||typeof uid!=="string"||!/^[A-Za-z0-9_-]{1,128}$/.test(uid))
     mediaError("المشروع أو صاحب الإعلان غير صالح");
   if(!Array.isArray(images))return [];
   const expectedBuckets=new Set([projectId+".firebasestorage.app",projectId+".appspot.com"]);
   const prefix="ads/"+uid+"/";
-  const paths=[];
+  const output=[];
+  const seen=new Set();
   for(const value of images.slice(0,MAX_IMAGES)){
-    if(typeof value!=="string")continue;
+    if(typeof value!=="string"||value.length>MAX_URL_LENGTH)continue;
     try{
       const parsed=new URL(value);
-      if(parsed.protocol!=="https:"||parsed.hostname!=="firebasestorage.googleapis.com")continue;
+      if(parsed.protocol!=="https:"||parsed.hostname!=="firebasestorage.googleapis.com"||
+         parsed.username||parsed.password||parsed.searchParams.get("alt")!=="media")continue;
       const match=parsed.pathname.match(/^\/v0\/b\/([^/]+)\/o\/([^/]+)$/);
-      if(!match||!expectedBuckets.has(decodeURIComponent(match[1])))continue;
+      if(!match)continue;
+      const bucket=decodeURIComponent(match[1]);
+      if(!expectedBuckets.has(bucket))continue;
       const path=decodeURIComponent(match[2]);
       const filename=path.startsWith(prefix)?path.slice(prefix.length):"";
-      if(/^[A-Za-z0-9_-]{8,100}\.(jpg|jpeg|png|webp)$/.test(filename)&&!paths.includes(path))paths.push(path);
+      if(!/^[A-Za-z0-9_-]{8,100}\.(jpg|jpeg|png|webp)$/.test(filename))continue;
+      const key=bucket+"/"+path;
+      if(!seen.has(key)){
+        seen.add(key);
+        output.push({bucket,path});
+      }
     }catch{}
   }
-  return paths;
+  return output;
+}
+function extractOwnedImagePaths(images,projectId,uid){
+  return extractOwnedImageObjects(images,projectId,uid).map(item=>item.path);
 }
 
-module.exports={validateImageUrls,validateVideoUrl,extractOwnedImagePaths,MAX_IMAGES};
+module.exports={validateImageUrls,validateVideoUrl,extractOwnedImagePaths,extractOwnedImageObjects,MAX_IMAGES};
