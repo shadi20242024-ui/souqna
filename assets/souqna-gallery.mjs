@@ -1,4 +1,4 @@
-import {getStorage,ref,uploadBytes,getDownloadURL} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
+import {getStorage,ref,uploadBytes,getDownloadURL,deleteObject} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 
 const ALLOWED_TYPES=new Set(["image/jpeg","image/png","image/webp"]);
 const EXTENSIONS={"image/jpeg":"jpg","image/png":"png","image/webp":"webp"};
@@ -23,16 +23,36 @@ export async function uploadGallery(app,userId,files,{onProgress=()=>{}}={}){
   selected.forEach(verifyFile);
   const storage=getStorage(app);
   const uploaded=[];
-  for(let i=0;i<selected.length;i++){
-    const file=selected[i],path="ads/"+userId+"/"+randomName(file.type);
-    const target=ref(storage,path);
-    await uploadBytes(target,file,{contentType:file.type,customMetadata:{purpose:"souqna-ad"}});
-    const url=await getDownloadURL(target);
-    uploaded.push({path,url});
-    onProgress({completed:i+1,total:selected.length});
+  try{
+    for(let i=0;i<selected.length;i++){
+      const file=selected[i],path="ads/"+userId+"/"+randomName(file.type);
+      const target=ref(storage,path);
+      await uploadBytes(target,file,{contentType:file.type,customMetadata:{purpose:"souqna-ad"}});
+      uploaded.push({path,url:""});
+      uploaded[uploaded.length-1].url=await getDownloadURL(target);
+      onProgress({completed:i+1,total:selected.length});
+    }
+    return uploaded;
+  }catch(error){
+    // Best-effort cleanup prevents abandoned files after a partial upload.
+    await Promise.allSettled(uploaded.map(item=>deleteObject(ref(storage,item.path))));
+    throw error;
   }
-  return uploaded;
 }
+export async function deleteUploadedGallery(app,userId,items){
+  if(!app||app.options.projectId==="souqna-sweida"||app.options.projectId==="souqna-preview-disabled")
+    throw new Error("تنظيف الصور محصور في بيئة الاختبار");
+  const storage=getStorage(app),prefix="ads/"+userId+"/";
+  const list=Array.from(items??[]);
+  const results=await Promise.allSettled(list.map(item=>{
+    if(typeof item?.path!=="string"||!item.path.startsWith(prefix)||item.path.includes(".."))
+      throw new Error("مسار ملف غير مصرح بحذفه");
+    return deleteObject(ref(storage,item.path));
+  }));
+  const failures=results.filter(r=>r.status==="rejected");
+  return {deleted:results.length-failures.length,failed:failures.length};
+}
+
 export function renderGallery(container,images,{videoUrl=""}={}){
   if(!(container instanceof HTMLElement))throw new Error("مكان عرض الصور غير صالح");
   container.replaceChildren();
