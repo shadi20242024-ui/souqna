@@ -2,6 +2,7 @@
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { FieldValue } = require("firebase-admin/firestore");
+const { validateImageUrls, validateVideoUrl } = require("./ad-media");
 
 const ID_RE=/^[A-Za-z0-9_-]{1,128}$/;
 const PHONE_RE=/^[0-9]{9,15}$/;
@@ -44,8 +45,8 @@ function storeFields(raw){
     map,logo:media(raw.logo,"الشعار"),cover:media(raw.cover,"الغلاف")
   };
 }
-function adFields(raw){
-  const keys=["title","price","cur","cat","area","desc","phone","img","imgHash","storeId"];
+function adFields(raw,uid,projectId){
+  const keys=["title","price","cur","cat","area","desc","phone","img","imgHash","storeId","images","videoUrl"];
   allowedShape(raw,keys,["title","price","cur","cat","area","desc","phone","img"]);
   if(typeof raw.price!=="number"||!Number.isFinite(raw.price)||raw.price<0||raw.price>1000000000000){
     reject("سعر الإعلان غير صالح");
@@ -61,6 +62,10 @@ function adFields(raw){
     phone:phone(raw.phone),
     img:media(raw.img,"الإعلان")
   };
+  try {
+    if("images" in raw)data.images=validateImageUrls(raw.images,projectId,uid);
+    if("videoUrl" in raw)data.videoUrl=validateVideoUrl(raw.videoUrl);
+  }catch(error){reject(error.message);}
   if("imgHash" in raw){
     if(typeof raw.imgHash!=="string"||!HASH_RE.test(raw.imgHash))reject("معرف الصورة غير صالح");
     data.imgHash=raw.imgHash;
@@ -92,7 +97,7 @@ module.exports=function makeMarketplace(db,options){
     if(!["createStore","createAd"].includes(action))reject("عملية غير مدعومة");
     const id=requestId(request.data?.id);
     const raw=request.data?.fields;
-    const fields=action==="createStore"?storeFields(raw):adFields(raw);
+    const fields=action==="createStore"?storeFields(raw):adFields(raw,uid,process.env.GCLOUD_PROJECT||process.env.GCP_PROJECT||db.projectId);
     const now=Date.now();
     const result=await db.runTransaction(async tx=>{
       const userRef=db.collection("users").doc(uid);
