@@ -58,7 +58,7 @@ root.innerHTML=`
  <p class="sq-result" role="status" id="sq-result"></p>
 </div>`;
 const target=document.querySelector("main");
-if(target)target.prepend(root);
+if(target)target.before(root);
 else document.body.append(root);
 
 const node=id=>root.querySelector("#"+id);
