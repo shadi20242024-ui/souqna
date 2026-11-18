@@ -14,7 +14,9 @@
     "build:staging": "node scripts/build-hosting.mjs staging",
     "preflight:staging": "node scripts/preflight-staging.mjs",
     "seed:staging": "node scripts/seed-staging.mjs",
-    "setup:staging:auto": "node scripts/auto-staging-setup.mjs"
+    "setup:staging:auto": "node scripts/auto-staging-setup.mjs",
+    "test:admin": "node --test tests/admin-access-source.test.mjs tests/staging-admin-diagnostic.test.mjs",
+    "diagnose:staging:admin": "node scripts/diagnose-staging-admin.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
