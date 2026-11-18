@@ -178,7 +178,7 @@ let sessionVersion=0;
 const ensureSession=(version,uid)=>{if(version!==sessionVersion||!me||me.uid!==uid)throw new Error("souqna/session-changed");};
 let adminReviewQuery="";
 let adminReviewType="all";
-let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
+let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],allCategoryRecords=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
@@ -329,7 +329,8 @@ ${stx.r.slice(0,5).map(r=>`<div class="mut" style="margin-top:6px"><b>${esc(r.us
 const storeList=()=>[...stores].filter(s=>!sq||(s.name+(s.desc||"")+(s.area||"")).includes(sq)).sort((x,y)=>(planOf(y)?.order||0)-(planOf(x)?.order||0)).map(s=>`<button class="dr" data-st="${s.id}" style="width:100%;border:0;text-align:right;font:inherit"><div class="stl" style="${stImg(s,"logo")};margin:0;flex:none;width:52px;height:52px">${s.logo?"":esc((s.name||"?")[0])}</div><div style="flex:1"><b>${esc(s.name)}</b> ${planTag(s)}<div class="mut">${esc(s.area||"")}</div></div></button>`).join("")||'<p class="mut">لا نتائج.</p>';
 async function loadPublic(){
   const sf=x=>x.catch(()=>null);const [c,a,s,p,st,sps,drs,sts,pls,svs,pts]=await Promise.all([getDocs(collection(db,"categories")),q2("ads","status","approved"),getDoc(doc(db,"settings","contact")),getDocs(collection(db,"packages")),sf(getDoc(doc(db,"settings","site"))),sf(getDocs(collection(db,"sponsors"))),sf(getDocs(collection(db,"directory"))),sf(getDocs(query(collection(db,"stores"),where("status","==","approved")))),sf(getDocs(collection(db,"plans"))),sf(getDocs(collection(db,"services"))),sf(getDocs(collection(db,"partners")))]);
-  cats=c.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.active).sort((x,y)=>x.order-y.order);
+  allCategoryRecords=c.docs.map(d=>({id:d.id,...d.data()}));
+  cats=allCategoryRecords.filter(x=>x.active===true).sort((x,y)=>(Number(x.order)||0)-(Number(y.order)||0));
   ads=a;wa=s.exists()?(s.data().whatsapp||""):"";site=st&&st.exists()?st.data():{};sp=sps?sps.docs.map(d=>({id:d.id,...d.data()})):[];dr=drs?drs.docs.map(d=>({id:d.id,...d.data()})):[];stores=sts?sts.docs.map(d=>({id:d.id,...d.data()})):[];plans=pls?pls.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(x.order||0)-(y.order||0)):[];services=svs?svs.docs.map(d=>({id:d.id,...d.data()})):[];partners=pts?pts.docs.map(d=>({id:d.id,...d.data()})):[];initAds();
   pk=p.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.active!==false).sort((x,y)=>x.stars-y.stars||x.days-y.days);
 }
@@ -366,6 +367,32 @@ async function loadMine(){
       moderationHistory=await read("سجل مراجعة المحتوى",async()=>{const s=await getDocs(query(collection(db,"moderationAudit"),orderBy("createdAt","desc"),limit(50)));return s.docs.map(d=>({id:d.id,...d.data()}))});
       allTx=await read("سجل المعاملات",async()=>{const s=await getDocs(collection(db,"transactions"));return s.docs.map(d=>({id:d.id,...d.data()}))})}}
     adminUpdatedAt=Date.now();
+}
+const APPROVED_CATEGORY_NAMES=Object.freeze({
+  real_estate:"عقارات",cars:"سيارات",jobs:"وظائف",electronics:"إلكترونيات",
+  furniture:"أثاث",services:"خدمات",community:"مجتمع",fashion:"أزياء",
+  lost_found:"مفقودات",misc:"متنوعة"
+});
+function adminCategoryReadiness(){
+  if(!isAdm())return "";
+  const known=new Map(allCategoryRecords.map(c=>[c.id,c]));
+  const active=Object.keys(APPROVED_CATEGORY_NAMES).filter(id=>known.get(id)?.active===true);
+  const inactive=Object.keys(APPROVED_CATEGORY_NAMES).filter(id=>known.has(id)&&known.get(id).active!==true);
+  const missing=Object.keys(APPROVED_CATEGORY_NAMES).filter(id=>!known.has(id));
+  const complete=active.length===10;
+  const rows=Object.entries(APPROVED_CATEGORY_NAMES).map(([id,name])=>{
+    const record=known.get(id);
+    const status=!record?"غير موجود":record.active===true?"مفعّل":"معطّل";
+    const statusClass=record?.active===true?"ready":"blocked";
+    const icon=categoryPhoto(id);
+    return `<div class="category-audit-item ${statusClass}"><img src="assets/category-photos/${icon}.webp" alt="" loading="lazy" decoding="async"><span><b>${name}</b><small dir="ltr">${id}</small></span><strong>${status}</strong></div>`;
+  }).join("");
+  const unknown=allCategoryRecords.filter(c=>!Object.hasOwn(APPROVED_CATEGORY_NAMES,c.id));
+  return `<section class="box category-audit" aria-label="فحص جاهزية أقسام سوقنا"><div class="category-audit-head"><div><h3>جاهزية الأقسام المصوّرة</h3><p class="mut">فحص مباشر لسجلات Firebase: وجود الأقسام العشرة وحالة تفعيلها. لا يجري هذا الفحص أي تعديل.</p></div><span class="category-audit-score ${complete?"ready":"blocked"}">${active.length} / 10</span></div>
+    <div class="category-audit-grid">${rows}</div>
+    <p class="mut" role="status">${complete?"الأقسام العشرة موجودة ومفعّلة.":"الأقسام المعطّلة: "+(inactive.map(id=>APPROVED_CATEGORY_NAMES[id]).join("، ")||"لا يوجد")+" · الأقسام المفقودة: "+(missing.map(id=>APPROVED_CATEGORY_NAMES[id]).join("، ")||"لا يوجد")}</p>
+    ${unknown.length?`<p class="mut">أقسام إضافية في قاعدة البيانات: ${unknown.map(c=>esc(c.name_ar||c.id)).join("، ")}</p>`:""}
+    <p class="mut">التفعيل أو إنشاء الأقسام المفقودة يتطلب صلاحيات المدير ومراجعة بيانات Staging أولاً.</p></section>`;
 }
 function adminAuditRows(){
   if(!isAdm())return "";
@@ -610,7 +637,7 @@ function render(){
     <h3>🚀 باقات تمييز الإعلان</h3>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
-    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
+    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+adminCategoryReadiness()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
     <div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label class="mut">أخبار الشريط العاجل (سطر لكل خبر)</label><textarea id="s-tk" rows="3">${esc(site.ticker||"")}</textarea><label class="mut">شريط الخدمات والوقود أسفل البنر (خبر في كل سطر)</label><textarea id="s-tk2" rows="3">${esc(site.tickerSecondary||"")}</textarea>
