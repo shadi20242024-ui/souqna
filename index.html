@@ -93,6 +93,7 @@ import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,delete
 import{getFunctions,httpsCallable,connectFunctionsEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 import{summarizeAdmin}from"./assets/admin-metrics.js";
 import{isSafeVideoUrl,validGallery,MAX_AD_PHOTOS,calculateExpression,jobFreshCount,validRatePayload,validGoldPayload,isFresh,SPECIALTIES}from"./assets/souqna-extras.js";
+import{compressAdPhotos}from"./assets/souqna-media.js";
 const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
 const auth=getAuth(app),db=getFirestore(app),functions=getFunctions(app,"us-central1");
 const finance=async (action,id,extra={})=>{
@@ -432,6 +433,7 @@ function card(a,m){
   return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":categoryScene(a.cat)}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
+  <div class="ad-media-tools">${[a.img,...(Array.isArray(a.images)?a.images:[])].filter(safeImage).length?`<button class="btn l" data-a="gallery" data-id="${esc(a.id)}">📷 الصور (${[a.img,...(Array.isArray(a.images)?a.images:[])].filter(safeImage).length})</button>`:""}${isSafeVideoUrl(a.videoUrl)&&a.videoUrl?`<a class="btn l" href="${esc(a.videoUrl)}" target="_blank" rel="noopener noreferrer">▶ مشاهدة الفيديو</a>`:""}</div>
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button>`
   :m=="mine"?`<button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
   :`<button class="favorite-button ${favorites.some(f=>f.adId===a.id)?"saved":""}" data-a="toggleFav" data-id="${esc(a.id)}" aria-label="${favorites.some(f=>f.adId===a.id)?"إزالة الإعلان من المفضلة":"حفظ الإعلان في المفضلة"}" aria-pressed="${favorites.some(f=>f.adId===a.id)}">${favorites.some(f=>f.adId===a.id)?"♥":"♡"} <span>${favorites.some(f=>f.adId===a.id)?"محفوظ":"حفظ"}</span></button><a class="btn wa" rel="noopener noreferrer" target="_blank" href="https://wa.me/${esc(a.phone)}?text=${encodeURIComponent(msg)}">واتساب</a>`}</div></div></div>`}
@@ -672,6 +674,56 @@ function render(){
     A.innerHTML=!me?loginBox():`${accountProfileReadError?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تعذر التحقق من صلاحيات حسابك.</b><p>فشلت قراءة ملف المستخدم من Firestore. لا يمكن السماح بإدارة الموقع قبل نجاح التحقق. راجع إعدادات الاتصال وقواعد Firestore لمشروع الاختبار.</p></div>':""}${!accountProfileMissing&&!accountProfileReadError&&!isStaff()?'<div class="box" role="status" style="border:1px solid #c58e2f"><b>حسابك مسجّل، لكن صلاحية المدير غير مفعّلة.</b><p>الاسم وكلمة المرور لا يحددان صلاحيات المدير. يتطلب الوصول إلى لوحة الإدارة وجود ملف مستخدم مرتبط بحسابك وrole يساوي admin في Firestore؛ لا يمكن منح هذا الدور من داخل المتصفح.</p></div>':""}${accountProfileMissing?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تم تسجيل الدخول لكن ملف المستخدم غير موجود في Firestore.</b><p>لا يمكن تفعيل صلاحيات المدير من المتصفح. يجب مراجعة مسار users/UID وقيمة role بواسطة مالك Firebase المخوّل. لا تشارك كلمة المرور ولا تنشئ مديراً من المتصفح.</p></div>':""}<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="favorites">♥ المفضلة (${favorites.length})</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="sponsor">📢 حجوزات البنر</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
   }
 }
+
+async function prepareGalleryPhotos(files){
+  const sequence=++photoSeq;
+  photo="";galleryPhotos=[];photoHash="";photoError="";
+  const holder=$("#photo-gallery-preview");if(holder)holder.replaceChildren();
+  try{
+    const images=await compressAdPhotos(files);
+    if(sequence!==photoSeq)return;
+    if(!images.length)return;
+    photo=images[0];galleryPhotos=images.slice(1);
+    if(crypto?.subtle){
+      const hash=await crypto.subtle.digest("SHA-256",await files[0].arrayBuffer());
+      if(sequence!==photoSeq)return;
+      photoHash=Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,"0")).join("");
+    }
+    if(holder)for(let i=0;i<images.length;i++){
+      const image=document.createElement("img");
+      image.src=images[i];image.alt="صورة الإعلان "+(i+1);image.loading="lazy";
+      holder.append(image);
+    }
+    toast("تم تجهيز "+images.length+" صور للإعلان");
+  }catch(error){
+    if(sequence!==photoSeq)return;
+    photo="";galleryPhotos=[];photoError=String(error?.message||"تعذر تجهيز الصور");
+    toast(photoError);
+  }
+}
+function showAdGallery(id){
+  const ad=[...ads,...mine,...pend].find(a=>a.id===id);
+  if(!ad)return toast("الإعلان غير موجود");
+  activeGallery=[ad.img,...(Array.isArray(ad.images)?ad.images:[])].filter(safeImage).slice(0,MAX_AD_PHOTOS);
+  if(!activeGallery.length)return toast("لا توجد صور لهذا الإعلان");
+  galleryPosition=0;
+  updateAdGallery();
+  const dlg=$("#adMediaDialog");
+  if(dlg&&!dlg.open)dlg.showModal();
+}
+function updateAdGallery(){
+  const dlg=$("#adMediaDialog");if(!dlg)return;
+  const head=document.createElement("div");head.className="ad-gallery-head";
+  const counter=document.createElement("strong");counter.textContent="صور الإعلان · "+(galleryPosition+1)+" / "+activeGallery.length;
+  const close=document.createElement("button");close.className="btn l";close.type="button";close.textContent="إغلاق ✕";close.dataset.a="gallery-close";
+  head.append(counter,close);
+  const img=document.createElement("img");img.className="ad-gallery-big";img.src=activeGallery[galleryPosition];img.alt="صورة الإعلان "+(galleryPosition+1);
+  const actions=document.createElement("div");actions.className="ad-gallery-actions";
+  for(const [action,label,disabled] of [["gallery-prev","السابق",galleryPosition===0],["gallery-next","التالي",galleryPosition===activeGallery.length-1]]){
+    const btn=document.createElement("button");btn.className="btn l";btn.type="button";btn.textContent=label;btn.dataset.a=action;btn.disabled=disabled;actions.append(btn);
+  }
+  dlg.replaceChildren(head,img,actions);
+}
 async function shrink(file){
   const selection=++photoSeq;
   photo="";photoHash="";photoError="";
@@ -730,6 +782,9 @@ document.addEventListener("click",async e=>{
   const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view=view==="ads"?"ads":"home";feat=false;render();return scrollTo(0,0)}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   try{
+    if(a=="gallery"){showAdGallery(id);return;}
+    if(a=="gallery-close"){$("#adMediaDialog")?.close();return;}
+    if(a=="gallery-next"||a=="gallery-prev"){galleryPosition=Math.max(0,Math.min(activeGallery.length-1,galleryPosition+(a==="gallery-next"?1:-1)));updateAdGallery();return;}
     if(a=="toggleFav"){
       if(!need())return;
       if(typeof id!=="string"||!/^[A-Za-z0-9_-]{1,128}$/.test(id))return toast("الإعلان غير صالح");
