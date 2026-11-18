@@ -686,9 +686,7 @@ document.addEventListener("click",async e=>{
             console.warn("Unable to reconcile ad submission:",readError);
           }
         }
-        if(adConfirmed){
-          toast("تم تسجيل الإعلان، بانتظار المراجعة");
-        }else{
+        if(!adConfirmed){
           if(uploadedGallery.length&&confirmedFailure){
             try{
               const {deleteUploadedGallery}=await import("./assets/souqna-gallery.mjs");
@@ -697,7 +695,7 @@ document.addEventListener("click",async e=>{
             }catch(cleanupError){console.warn("Photo cleanup failed:",cleanupError);}
           }
           if(uploadedGallery.length&&!confirmedFailure)
-            throw new Error("تعذر تأكيد إنشاء الإعلان بسبب الاتصال؛ لم نحذف صوره حفاظاً عليها. تحقق من إعلاناتي قبل إعادة الإرسال");
+            throw Object.assign(new Error("تعذر تأكيد الإعلان؛ احتفظنا بصوره. تحقق من إعلاناتي قبل إعادة الإرسال"),{code:"souqna/submission-uncertain"});
           throw error;
         }
       }
@@ -801,7 +799,7 @@ document.addEventListener("click",async e=>{
        await loadPublic();await loadMine();toast("تم تمييز الإعلان");render();
      }
     else if(a=="prno"){await finance("rejectPromotion",id);await loadMine();render()}
-  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?authErrorText(err):["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
+  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?authErrorText(err):err.code==="souqna/submission-uncertain"?err.message:["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
 });
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
