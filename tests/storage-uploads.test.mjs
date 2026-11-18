@@ -38,7 +38,8 @@ test("image contents are immutable after upload",async()=>{
   const storage=storageFor("alice");
   const destination=ref(storage,pathOf("alice","immutable_001"));
   await assertSucceeds(uploadBytes(destination,sample,jpeg));
-  await assertFails(uploadBytes(destination,sample,jpeg));
+  const replacement=new Uint8Array([255,216,255,224,90,80,70,60,255,217]);
+  await assertFails(uploadBytes(destination,replacement,jpeg));
 });
 test("only the owner may delete their uploaded image",async()=>{
   const own=ref(storageFor("alice"),pathOf("alice","delete_001"));
