@@ -5,7 +5,7 @@ import {readFileSync} from "node:fs";
 import {doc,setDoc,updateDoc,getDoc,serverTimestamp} from "firebase/firestore";
 
 let env;
-const projectId="demo-souqna-scoped-moderators";
+const projectId="demo-souqna-rules";
 before(async()=>{
   env=await initializeTestEnvironment({
     projectId,
