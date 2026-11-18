@@ -120,6 +120,25 @@ let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},servi
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
+const authErrorText=error=>{
+  const code=String(error?.code||"");
+  const descriptions={
+    "auth/invalid-email":"عنوان البريد الإلكتروني غير صالح.",
+    "auth/invalid-credential":"تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور، أو استخدم نسيت كلمة المرور.",
+    "auth/wrong-password":"تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور، أو استخدم نسيت كلمة المرور.",
+    "auth/user-not-found":"تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور، أو استخدم نسيت كلمة المرور.",
+    "auth/too-many-requests":"محاولات كثيرة. جرّب لاحقاً أو استخدم استعادة كلمة المرور.",
+    "auth/network-request-failed":"تعذر الاتصال بخدمة تسجيل الدخول. تحقق من الإنترنت ثم أعد المحاولة.",
+    "auth/operation-not-allowed":"تسجيل الدخول بالبريد وكلمة المرور غير مفعّل لهذا المشروع في Firebase Authentication.",
+    "auth/user-disabled":"هذا الحساب معطّل في Firebase Authentication. راجع مدير المشروع.",
+    "auth/invalid-api-key":"إعداد Firebase غير صحيح؛ أعد بناء نسخة Staging.",
+    "auth/configuration-not-found":"خدمة Firebase Authentication غير مهيأة لهذا المشروع.",
+    "auth/unauthorized-domain":"نطاق الموقع غير مصرح به في Firebase Authentication.",
+    "auth/email-already-in-use":"البريد مستخدم من قبل. اختر تسجيل الدخول أو استعادة كلمة المرور.",
+    "auth/weak-password":"كلمة المرور ضعيفة؛ اختر كلمة مرور أقوى."
+  };
+  return descriptions[code]||(code.startsWith("auth/")?"تعذر إكمال المصادقة ("+code.replace(/[^a-z0-9/-]/gi,"").slice(0,70)+").":"تعذر تسجيل الدخول.");
+};
 const isF=a=>(a.featuredUntil||0)>Date.now();
 const val=i=>($(i)?.value||"").trim();
 function startPaymentReview(action,id){
@@ -620,7 +639,12 @@ document.addEventListener("click",async e=>{
         await loadMine();render()}
       else await signInWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
     }
-    else if(a=="reset"){await sendPasswordResetEmail(auth,val("#l-mail"));toast("أُرسل رابط استعادة كلمة المرور إلى بريدك")}
+    else if(a=="reset"){
+      const email=val("#l-mail");
+      if(!email)return toast("اكتب بريد حسابك أولاً ثم اضغط نسيت كلمة المرور");
+      await sendPasswordResetEmail(auth,email);
+      toast("إذا كان البريد مسجّلاً، ستصل إليه رسالة استعادة كلمة المرور. افحص أيضاً الرسائل غير المرغوبة.");
+    }
     else if(a=="out"){await signOut(auth)}
     else if(a=="post"){
        await photoReady;
@@ -730,7 +754,7 @@ document.addEventListener("click",async e=>{
        await loadPublic();await loadMine();toast("تم تمييز الإعلان");render();
      }
     else if(a=="prno"){await finance("rejectPromotion",id);await loadMine();render()}
-  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
+  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?authErrorText(err):["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
 });
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
