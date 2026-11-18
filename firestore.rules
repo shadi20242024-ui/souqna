@@ -31,6 +31,49 @@ service cloud.firestore {
         || hasRole("editor");
     }
 
+    function isMarketplaceEditor() {
+      return isAdmin() || hasRole("editor");
+    }
+
+    function assignedTo(sectionId) {
+      return hasRole("moderator")
+        && exists(/databases/$(database)/documents/staffAssignments/$(request.auth.uid))
+        && get(/databases/$(database)/documents/staffAssignments/$(request.auth.uid)).data.active == true
+        && sectionId in get(/databases/$(database)/documents/staffAssignments/$(request.auth.uid)).data.sectionIds;
+    }
+
+    function validLocalSection(sectionId) {
+      return sectionId is string && safeDocumentId(sectionId)
+        && (sectionId in ["jobs", "on_call_clinics", "fuel_stations"]
+          || exists(/databases/$(database)/documents/categories/$(sectionId)));
+    }
+
+    function mayEditLocalSection(sectionId) {
+      return isAdmin() || assignedTo(sectionId);
+    }
+
+    function validLocalPost(data) {
+      return data.keys().hasOnly([
+          "sectionId", "title", "description", "status", "createdBy",
+          "createdAt", "updatedAt", "contact", "area"
+        ])
+        && data.keys().hasAll([
+          "sectionId", "title", "description", "status", "createdBy",
+          "createdAt", "updatedAt"
+        ])
+        && validLocalSection(data.sectionId)
+        && safeText(data.title, 3, 140)
+        && safeText(data.description, 0, 5000)
+        && data.status in ["draft", "approved", "archived"]
+        && data.createdBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.get("contact", "") is string
+        && data.get("contact", "").size() <= 120
+        && data.get("area", "") is string
+        && data.get("area", "").size() <= 120;
+    }
+
     function changedOnly(fields) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
     }
@@ -92,8 +135,8 @@ service cloud.firestore {
       allow create: if false;
       allow update: if (isAdmin()
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["featuredUntil"]))
-        || (isStaff() && changedOnly(["status"]));
-      allow delete: if isStaff()
+        || (isMarketplaceEditor() && changedOnly(["status"]));
+      allow delete: if isMarketplaceEditor()
         || (signedIn() && resource.data.ownerId == request.auth.uid);
     }
 
@@ -274,6 +317,43 @@ service cloud.firestore {
         || (signedIn() && resource.data.userId == request.auth.uid);
       // Financial ledger is write-once from trusted server credentials.
       allow create, update, delete: if false;
+    }
+
+    // Scoped moderation. Assignment records are written by the main administrator only.
+    match /staffAssignments/{uid} {
+      allow get: if isAdmin() || isSelf(uid);
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(["active", "sectionIds", "displayName"])
+        && request.resource.data.keys().hasAll(["active", "sectionIds"])
+        && request.resource.data.active is bool
+        && request.resource.data.sectionIds is list
+        && request.resource.data.sectionIds.size() <= 30
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100;
+      allow delete: if isAdmin();
+    }
+
+    // Public service updates: jobs, on-call clinics, fuel stations and dynamic sections.
+    match /localPosts/{id} {
+      allow get, list: if resource.data.status == "approved"
+        || isAdmin()
+        || assignedTo(resource.data.sectionId);
+      allow create: if signedIn()
+        && safeDocumentId(id)
+        && validLocalPost(request.resource.data)
+        && mayEditLocalSection(request.resource.data.sectionId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedIn()
+        && validLocalPost(request.resource.data)
+        && mayEditLocalSection(resource.data.sectionId)
+        && request.resource.data.sectionId == resource.data.sectionId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin();
     }
 
     match /notifs/{id} {
