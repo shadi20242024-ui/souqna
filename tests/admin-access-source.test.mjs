@@ -72,7 +72,7 @@ test("moderation history is admin-only and limited to fifty entries", () => {
 });
 
 test("only reviewer roles can invoke moderation from the interface", () => {
-  assert.ok(html.includes('const canModerate=()=>me&&["admin","moderator","editor"].includes(me.role)'));
+  assert.ok(html.includes('const canModerate=()=>me&&(["admin","moderator","editor"].includes(me.role)'));
   assert.ok(html.includes('else if(a=="ok"||a=="no"){if(!canModerate())'));
   assert.ok(html.includes('else if(a=="stok"||a=="stno"){if(!canModerate())'));
   assert.ok(html.includes('${canModerate()?'));
