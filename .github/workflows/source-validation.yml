@@ -15,7 +15,7 @@ permissions:
 jobs:
   source-checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,6 +54,18 @@ jobs:
         run: |
           node --check scripts/diagnose-staging-admin.mjs
           node --check tests/moderation-source.test.mjs
+      - name: Install Playwright browser for desktop and mobile smoke tests
+        run: npx playwright install --with-deps chromium
+      - name: Verify real browser UI against local Firebase emulators
+        run: npx firebase emulators:exec --project demo-souqna-rules --only auth,firestore,functions "node scripts/visual-check.mjs"
+      - name: Upload desktop and mobile verification screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUQNA-browser-screenshots
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Publish verified preview artifact
         uses: actions/upload-artifact@v4
         with:
