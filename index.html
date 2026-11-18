@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>سوقنا | Souqna</title>
-<meta name="theme-color" content="#0a2a72"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#0b2759"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png">
 <style>
 :root{--n:#0a2a72;--b:#1747b8;--g:#f4b400;--bg:#eef3fc;--t:#12203f;--m:#66728a;--bd:#dbe4f5;--r:#c0392b;--wa:#1fa04b}
 *{box-sizing:border-box}
@@ -143,6 +143,30 @@ const safeImage=raw=>{
 const bgImage=raw=>{const safe=safeImage(raw);return safe?`background-image:url("${esc(safe)}")`:""};
 
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
+
+const CRYSTAL_ICON_PATHS=Object.freeze({
+  home:'<path d="m3 10 9-7 9 7v10h-6v-6H9v6H3z"/>',
+  mine:'<rect x="6" y="3.5" width="12" height="17" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+  stars:'<path d="m12 2.8 2.8 5.8 6.4.9-4.6 4.5 1.1 6.4-5.7-3-5.7 3 1.1-6.4L2.8 9.5l6.4-.9z"/>',
+  acc:'<circle cx="12" cy="8" r="3.4"/><path d="M5.6 20v-1.6A6.4 6.4 0 0 1 12 12a6.4 6.4 0 0 1 6.4 6.4V20"/>',
+  cars:'<path d="M5 11.5 7 6h10l2 5.5M4 11.5h16v7H4zM7 18.5v2M17 18.5v2M4.5 14.7h2M17.5 14.7h2"/>',
+  real_estate:'<path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7M8 9h.01M16 9h.01"/>',
+  electronics:'<rect x="6.5" y="2.5" width="11" height="19" rx="2.2"/><path d="M10 5.5h4M11 18.2h2"/>',
+  furniture:'<path d="M5 13V9a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v4M4 14a2 2 0 0 1 4 0v3h8v-3a2 2 0 0 1 4 0v4H4zM6 18v3M18 18v3"/>',
+  jobs:'<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M9 7.5V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2.5M3 12a18 18 0 0 0 18 0M11 12h2v2h-2z"/>',
+  services:'<path d="M14.5 6.3a5 5 0 0 0-6.3 6.3l-5.1 5.1a2.1 2.1 0 0 0 3 3l5.1-5.1a5 5 0 0 0 6.3-6.3l-3.5 3.2-2.6-2.6z"/>',
+  community:'<circle cx="9" cy="8" r="3"/><path d="M2.5 20v-1.5A6.5 6.5 0 0 1 9 12a6.5 6.5 0 0 1 6.5 6.5V20M16 5a3 3 0 0 1 0 6M18 13a5 5 0 0 1 3.5 5v2"/>',
+  fashion:'<path d="M4.5 8h15l1 12h-17zM9 9V6a3 3 0 0 1 6 0v3"/>',
+  lost_found:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>',
+  misc:'<path d="m12 3 9 5-9 5-9-5zM3 8v9l9 5 9-5V8M12 13v9"/>',
+  ads:'<path d="M3 8h18v12H3zM7 8V5h10v3M7 13h10M7 16h7"/>',
+  stores:'<path d="M4 10 6 4h12l2 6M4 10h16v10H4zM9 20v-6h6v6M4 10a3 3 0 0 0 5 1 3 3 0 0 0 6 0 3 3 0 0 0 5-1"/>',
+  favorites:'<path d="M20.5 8.8c0 4.6-8.5 10.7-8.5 10.7S3.5 13.4 3.5 8.8a4.6 4.6 0 0 1 8.5-2.4 4.6 4.6 0 0 1 8.5 2.4z"/>',
+  orders:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h4"/>',
+  admin:'<circle cx="12" cy="12" r="3.1"/><path d="M19.4 13.5 21 15l-2 3.5-2.1-.6a9 9 0 0 1-1.8 1L14.5 21h-5l-.6-2.1a9 9 0 0 1-1.8-1L5 18.5 3 15l1.6-1.5a8 8 0 0 1 0-3L3 9l2-3.5 2.1.6a9 9 0 0 1 1.8-1L9.5 3h5l.6 2.1a9 9 0 0 1 1.8 1L19 5.5 21 9l-1.6 1.5a8 8 0 0 1 0 3z"/>'
+});
+const crystalSvg=(name,cssClass="category-symbol")=>'<span class="'+cssClass+'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false">'+(CRYSTAL_ICON_PATHS[name]||CRYSTAL_ICON_PATHS.misc)+'</svg></span>';
+
 const STAFF=["admin","moderator","accountant","editor"];
 let accountProfileMissing=false;
 let accountProfileReadError="";
@@ -373,18 +397,22 @@ function drawHd(){
 }
 function drawNav(){
   const b=[
-    ["home","🏠","الرئيسية"],
-    ["mine","📋","إعلاناتي"],
-    ["add","<i>＋</i>","أضف إعلان","pl"],
-    ["stars","⭐","النجوم"],
-    ["acc","👤"+(notifs.some(n=>!n.read)?'<b style="color:#c0392b">●</b>':""),"حسابي"],
-    ["ads","🚘","كل الإعلانات","desktop-only"],
-    ["stores","🏬","المتاجر","desktop-only"],
-    ["favorites","♥","المفضلة","desktop-only"],
-    ["orders","🧾","طلبات الخدمات","desktop-only"],
-    ...(isStaff()?[["admin","⚙️","لوحة الإدارة","desktop-only"]]:[])
+    ["home","الرئيسية"],
+    ["mine","إعلاناتي"],
+    ["add","أضف إعلان","pl"],
+    ["stars","النجوم"],
+    ["acc","حسابي"],
+    ["ads","كل الإعلانات","desktop-only"],
+    ["stores","المتاجر","desktop-only"],
+    ["favorites","المفضلة","desktop-only"],
+    ["orders","طلبات الخدمات","desktop-only"],
+    ...(isStaff()?[["admin","لوحة الإدارة","desktop-only"]]:[])
   ];
-  $("#nav").innerHTML=b.map(x=>`<button data-v="${x[0]}" class="${x[3]||""} ${view==x[0]?"on":""}" aria-label="${x[2]}">${x[1]}<br>${x[2]}</button>`).join("");
+  $("#nav").innerHTML=b.map(x=>{
+    const glyph=x[0]==="add"?"<i>＋</i>":crystalSvg(x[0],"nav-symbol");
+    const notice=x[0]==="acc"&&notifs.some(n=>!n.read)?'<b class="nav-unread" aria-label="تنبيهات جديدة">●</b>':"";
+    return `<button data-v="${x[0]}" class="${x[2]||""} ${view==x[0]?"on":""}" aria-label="${x[1]}" ${view===x[0]?'aria-current="page"':""}>${glyph}${notice}<br>${x[1]}</button>`;
+  }).join("");
 }
 function drawDesktopBar(){
   const bar=$("#desktopBar");
@@ -499,10 +527,10 @@ function render(){
   drawHd();drawNav();drawDesktopBar();$("#newsHost").innerHTML=tkHtml();const A=$("#app");
   if(view=="home"){
     A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>safeImage(a.img)).slice(0,8).map(a=>`<button class="sc" data-c="${esc(a.cat)}" aria-label="${esc(a.title)}" style="${bgImage(a.img)}"></button>`).join("")}</div>
-    ${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
+    ${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div class="hero-copy" style="flex:1"><span class="hero-eyebrow">سوق السويداء • من أهل البلد ولأهلها</span><b>كل ما تحتاجه .. في مكان واحد</b><p class="hero-subtitle">اكتشف السيارات والعقارات والمتاجر والخدمات في مكان يجمع أهل السويداء.</p><button class="gold" data-c="all">استكشف الإعلانات ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
     ${wxHtml()}<div id="spw">${spHtml()}</div>${tkHtml(true)}${storesHtml()}
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
-    <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
+    <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${crystalSvg(c.id)}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
     <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"],["fuel","محطات الوقود"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
     <div class="qt"><button data-a="feat"><i>📢</i>إعلانات مميزة</button><button data-c="services"><i>📍</i>دليل الخدمات</button><button data-v="add"><i>⭐</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}><i>🎧</i>دعم فني</a></div>
     <div class="cm"><b>معاً .. نبني مجتمعاً أفضل في السويداء 👥</b><button class="gold" data-c="community">انضم إلينا</button></div>
