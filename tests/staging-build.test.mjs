@@ -91,3 +91,15 @@ test("Admin dashboard handles failed Firestore reads without hiding the entire p
   assert.match(source,/if\(view=="admin"&&!isStaff\(\)\)view="acc"/);
   assert.match(source,/تعذر تسجيل الدخول:/);
 });
+
+test("Authentication errors are not all mislabeled as an incorrect password",()=>{
+  const html=readFileSync(join(root,"index.html"),"utf8");
+  assert.match(html,/const authErrorText=error=>/);
+  assert.match(html,/"auth\/network-request-failed":/);
+  assert.match(html,/"auth\/operation-not-allowed":/);
+  assert.match(html,/"auth\/invalid-credential":/);
+  assert.match(html,/authErrorText\(err\)/);
+  assert.doesNotMatch(html,/auth\/.*?"بيانات الدخول غير صحيحة"/);
+  assert.match(html,/await sendPasswordResetEmail\(auth,email\)/);
+  assert.match(html,/إذا كان البريد مسجّلاً/);
+});
