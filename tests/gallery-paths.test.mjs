@@ -30,3 +30,11 @@ test("staging deletions use server callable instead of direct client cleanup",()
   assert.match(branch,/await del\(\{id\}\)/);
   assert.doesNotMatch(branch,/deleteGalleryByUrls/);
 });
+
+test("staging administrator has a retry action for pending cleanup jobs",()=>{
+  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+  assert.match(html,/id="cleanup-ad-id"/);
+  assert.match(html,/data-a="retryCleanup"/);
+  assert.match(html,/httpsCallable\(functions,"souqnaRetryAdCleanup"\)/);
+  assert.match(html,/if\(!isAdm\(\)\|\|app\.options\.projectId!=="souqna-staging"\)/);
+});
