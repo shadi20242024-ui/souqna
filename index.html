@@ -1172,6 +1172,7 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();setInterval(loadWx,15*60000);
+setInterval(()=>{if(view==="markets")loadMarketData();},30*60000);
 onAuthStateChanged(auth,async u=>{
   const expectedVersion=++sessionVersion;
   me=null;
