@@ -38,3 +38,17 @@ test("staging administrator has a retry action for pending cleanup jobs",()=>{
   assert.match(html,/httpsCallable\(functions,"souqnaRetryAdCleanup"\)/);
   assert.match(html,/if\(!isAdm\(\)\|\|app\.options\.projectId!=="souqna-staging"\)/);
 });
+
+test("staging admin can retrieve a limited pending cleanup queue and retry individual jobs",()=>{
+  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+  assert.match(html,/httpsCallable\(functions,"souqnaListAdCleanup"\)/);
+  assert.match(html,/data-a="loadCleanupJobs"/);
+  assert.match(html,/data-a="retryCleanupItem"/);
+  assert.match(html,/a=="retryCleanup"\|\|a=="retryCleanupItem"/);
+  assert.match(html,/if\(!isAdm\(\)\|\|app\.options\.projectId!=="souqna-staging"\)/);
+  const server=readFileSync(new URL("../functions/delete-ad.js",import.meta.url),"utf8");
+  assert.match(server,/function makeListCleanupJobs\(db,options\)/);
+  assert.match(server,/role!=="admin"/);
+  assert.match(server,/\.limit\(25\)\.get\(\)/);
+  assert.doesNotMatch(server.slice(server.indexOf("function makeListCleanupJobs")),/path:item\.path|bucket:item\.bucket/);
+});
