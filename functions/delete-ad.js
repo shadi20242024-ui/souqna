@@ -5,6 +5,22 @@ const {getStorage}=require("firebase-admin/storage");
 const {extractOwnedImageObjects}=require("./ad-media");
 
 const ID=/^[A-Za-z0-9_-]{1,128}$/;
+const RETRIABLE_CODES=new Set([408,429,500,502,503,504,"ETIMEDOUT","ECONNRESET","EAI_AGAIN"]);
+function isRetriableStorageFailure(error){
+  const status=Number(error?.code||error?.statusCode||error?.status);
+  return RETRIABLE_CODES.has(status) || RETRIABLE_CODES.has(error?.code);
+}
+async function deleteImageWithRetry(storage,bucket,path,maxAttempts=3){
+  for(let attempt=1;attempt<=maxAttempts;attempt++){
+    try{
+      await storage.bucket(bucket).file(path).delete({ignoreNotFound:true});
+      return;
+    }catch(error){
+      if(attempt===maxAttempts||!isRetriableStorageFailure(error))throw error;
+      await new Promise(resolve=>setTimeout(resolve,Math.min(250*2**(attempt-1),1000)));
+    }
+  }
+}
 
 function makeDeleteAd(db,options){
   return onCall(options,async request=>{
@@ -39,8 +55,9 @@ function makeDeleteAd(db,options){
     });
 
     // Clean up only after a successful Firestore commit. No arbitrary paths from callers.
+    const storage=getStorage();
     const outcomes=await Promise.allSettled(imageObjects.map(({bucket,path})=>
-      getStorage().bucket(bucket).file(path).delete({ignoreNotFound:true})
+      deleteImageWithRetry(storage,bucket,path)
     ));
     const failed=outcomes.filter(v=>v.status==="rejected").length;
     if(failed)console.warn("SOUQNA staging media cleanup incomplete",{adId:id,failed});
