@@ -26,8 +26,18 @@ test("the UI and server agree on at most 11 additional images",()=>{
   assert.match(source("functions/ad-media.js"),/const MAX_IMAGES=11;/);
 });
 
-test("image cleanup is invoked if an ad request is rejected",()=>{
+test("known rejected ads clean up only their own staged uploads",()=>{
   const html=source("index.html");
-  assert.match(html,/catch\(error\)\{\s*if\(uploadedGallery\.length\)/);
+  assert.match(html,/uploadedGallery\.length&&confirmedFailure/);
   assert.match(html,/deleteUploadedGallery\(app,me\.uid,uploadedGallery\)/);
+  assert.match(html,/if\(uploadedGallery\.length&&!confirmedFailure\)/);
+});
+
+test("uncertain server responses preserve uploaded photos and verify ad existence",()=>{
+  const html=source("index.html");
+  assert.match(html,/const adRequestId=doc\(collection\(db,"ads"\)\)\.id;/);
+  assert.match(html,/getDoc\(doc\(db,"ads",adRequestId\)\)/);
+  assert.match(html,/adConfirmed=record\.exists\(\)&&record\.data\(\)\?\.ownerId===me\.uid/);
+  assert.match(html,/code:"souqna\/submission-uncertain"/);
+  assert.match(html,/err\.code==="souqna\/submission-uncertain"\?err\.message/);
 });
