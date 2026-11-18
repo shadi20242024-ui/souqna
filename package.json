@@ -20,7 +20,8 @@
     "test:moderation": "node --test tests/moderation-source.test.mjs",
     "verify:staging": "node scripts/build-hosting.mjs staging firebase.staging.json && node scripts/preflight-staging.mjs souqna-staging",
     "check:staging:services": "node scripts/check-staging-services.mjs",
-    "start:staging:windows": "powershell.exe -NoProfile -File scripts/start-staging.ps1"
+    "start:staging:windows": "powershell.exe -NoProfile -File scripts/start-staging.ps1",
+    "check:staging:hosting": "node scripts/check-staging-hosting.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
