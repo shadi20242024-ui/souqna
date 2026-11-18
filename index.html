@@ -98,6 +98,28 @@ const finance=async (action,id,extra={})=>{
   const response=await call({action,...(id?{id}:{}),...extra});
   return response.data;
 };
+const moderationInFlight=new Set();
+const reviewDecision=async(type,id,action)=>{
+  const key=type+":"+id;
+  if(moderationInFlight.has(key))return toast("تجري معالجة هذا الطلب بالفعل");
+  moderationInFlight.add(key);
+  try{
+    await moderate(type,id,action);
+    await loadPublic();
+    await loadMine();
+    render();
+    toast("تم حفظ قرار المراجعة وإشعار صاحب الطلب");
+  }catch(error){
+    if(["functions/failed-precondition","functions/not-found"].includes(error?.code)){
+      try{await loadPublic();await loadMine();render();}catch(refreshError){console.error("SOUQNA moderation refresh failed:",refreshError);}
+      toast("حالة الطلب تغيرت أو لم يعد موجوداً. تم تحديث قائمة المراجعة.");
+      return;
+    }
+    throw error;
+  }finally{
+    moderationInFlight.delete(key);
+  }
+};
 const moderate=async (type,id,action)=>{
   const call=httpsCallable(functions,"souqnaModeration");
   const response=await call({type,id,action});
@@ -723,7 +745,7 @@ document.addEventListener("click",async e=>{
       if(!ad)return toast("اختر إعلانًا منشورًا أولًا");if((me.stars||0)<p.stars)return toast("رصيدك لا يكفي، اشترِ نجومًا أولًا");
       await addDoc(collection(db,"promos"),{userId:me.uid,userName:me.name,adId,adTitle:ad.title,pkgId:p.id,stars:p.stars,days:p.days,status:"pending",createdAt:Date.now()});
       toast("أُرسل طلب التمييز وسيُفعّل بعد موافقة الإدارة")}
-    else if(a=="ok"||a=="no"){if(!canModerate())return toast("غير مصرح");const action=a=="ok"?"approve":"reject";if(!confirm(action=="approve"?"الموافقة على نشر الإعلان؟":"تأكيد رفض الإعلان؟"))return;await moderate("ad",id,action);await loadPublic();await loadMine();render();toast("تم حفظ قرار مراجعة الإعلان في السجل الإداري")}
+    else if(a=="ok"||a=="no"){if(!canModerate())return toast("غير مصرح");const action=a=="ok"?"approve":"reject";if(!confirm(action=="approve"?"الموافقة على نشر الإعلان؟":"تأكيد رفض الإعلان؟"))return;await reviewDecision("ad",id,action)}
     else if(a=="del"){if(!confirm("حذف الإعلان؟"))return;await deleteDoc(doc(db,"ads",id));await loadPublic();await loadMine();render()}
     else if(a=="savewa"){const n=val("#s-wa").replace(/\D/g,"");await setDoc(doc(db,"settings","contact"),{whatsapp:n});wa=n;toast("تم الحفظ")}
     else if(a=="seed"){for(const [s,d] of [[5,15],[10,30],[15,30],[20,30],[25,30]])await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
@@ -777,7 +799,7 @@ document.addEventListener("click",async e=>{
     else if(a=="edst"){editSt=myStores.find(x=>x.id==id);render();scrollTo(0,99999)}
     else if(a=="cancelst"){editSt=null;render()}
     else if(a=="delst"){if(!confirm("حذف المتجر؟"))return;await deleteDoc(doc(db,"stores",id));await loadPublic();await loadMine();render()}
-    else if(a=="stok"||a=="stno"){if(!canModerate())return toast("غير مصرح");const action=a=="stok"?"approve":"reject";if(!confirm(action=="approve"?"الموافقة على نشر المتجر؟":"تأكيد رفض المتجر؟"))return;await moderate("store",id,action);await loadPublic();await loadMine();render();toast("تم حفظ قرار مراجعة المتجر في السجل الإداري")}
+    else if(a=="stok"||a=="stno"){if(!canModerate())return toast("غير مصرح");const action=a=="stok"?"approve":"reject";if(!confirm(action=="approve"?"الموافقة على نشر المتجر؟":"تأكيد رفض المتجر؟"))return;await reviewDecision("store",id,action)}
     else if(a=="savesite"){await pickReady;await setDoc(doc(db,"settings","site"),{ticker:val("#s-tk"),tickerOn:$("#s-tkon").checked,tickerSecondary:val("#s-tk2"),tickerSecondaryOn:$("#s-tk2on").checked,weatherOn:$("#s-wxon").checked,adClient:val("#s-adc"),adSlot:val("#s-ads"),maxStores:+val("#s-mx")||3,logo:tmp.logo||site.logo||"",banner:tmp.banner||site.banner||""},{merge:true});tmp.logo=tmp.banner="";await loadPublic();toast("تم الحفظ");render()}
     else if(a=="clrimg"){await setDoc(doc(db,"settings","site"),{logo:"",banner:""},{merge:true});await loadPublic();render()}
     else if(a=="addsp"){await pickReady;const d=+val("#p-days");if(!val("#p-co")||!(d>0))return toast("اكتب اسم الشركة والمدة");await addDoc(collection(db,"sponsors"),{company:val("#p-co"),title:val("#p-ti"),desc:val("#p-de"),phone:val("#p-ph").replace(/\D/g,""),img:tmp.sp||"",from:Date.now(),to:Date.now()+d*864e5,active:true});tmp.sp="";await loadPublic();render()}
@@ -798,7 +820,7 @@ document.addEventListener("click",async e=>{
        await loadPublic();await loadMine();toast("تم تمييز الإعلان");render();
      }
     else if(a=="prno"){await finance("rejectPromotion",id);await loadMine();render()}
-  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?authErrorText(err):["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
+  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?authErrorText(err):["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists","functions/not-found","functions/unauthenticated"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
 });
 document.addEventListener("input",e=>{
   if(e.target.id==="admin-user-search"&&isAdm()){adminUserQuery=e.target.value;const target=$("#admin-user-results");if(target)target.innerHTML=adminUserRows();}
