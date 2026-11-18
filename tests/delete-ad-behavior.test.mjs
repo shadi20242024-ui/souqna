@@ -116,3 +116,17 @@ test("an individual image deletion failure is reported after listing deletion",a
   assert.equal(result.failedImages,1);
   assert.equal(h.database.has("ads/test_ad"),false);
 });
+
+test("unauthenticated deletion is rejected without removing a listing",async()=>{
+  const h=harness();
+  await assert.rejects(h.call(null),error=>error.code==="unauthenticated");
+  assert.ok(h.database.has("ads/test_ad"));
+  assert.deepEqual(h.storageDeletes,[]);
+});
+
+test("invalid advertisement identifiers are rejected without touching Storage",async()=>{
+  const h=harness();
+  await assert.rejects(h.call("owner","../other"),error=>error.code==="invalid-argument");
+  assert.ok(h.database.has("ads/test_ad"));
+  assert.deepEqual(h.storageDeletes,[]);
+});
