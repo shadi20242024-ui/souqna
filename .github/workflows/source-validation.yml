@@ -45,6 +45,13 @@ jobs:
       - name: Validate preview has no production Firebase project
         run: |
           node --input-type=module -e 'import {readFileSync} from "node:fs";import assert from "node:assert/strict";const html=readFileSync("dist/index.html","utf8");assert.ok(html.includes("souqna-preview-disabled"));assert.ok(!html.includes("souqna-sweida.firebaseapp.com"));console.log("Isolated preview verified")'
+      - name: Publish verified preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUQNA-verified-preview
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
       - name: Validate Firebase Functions JavaScript
         run: |
           node --check functions/index.js
