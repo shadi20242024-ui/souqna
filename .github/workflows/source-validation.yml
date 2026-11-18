@@ -45,13 +45,6 @@ jobs:
       - name: Validate preview has no production Firebase project
         run: |
           node --input-type=module -e 'import {readFileSync} from "node:fs";import assert from "node:assert/strict";const html=readFileSync("dist/index.html","utf8");assert.ok(html.includes("souqna-preview-disabled"));assert.ok(!html.includes("souqna-sweida.firebaseapp.com"));console.log("Isolated preview verified")'
-      - name: Publish verified preview artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SOUQNA-verified-preview
-          path: dist/
-          if-no-files-found: error
-          retention-days: 14
       - name: Validate Firebase Functions JavaScript
         run: |
           node --check functions/index.js
@@ -61,3 +54,35 @@ jobs:
         run: |
           node --check scripts/diagnose-staging-admin.mjs
           node --check tests/moderation-source.test.mjs
+      - name: Publish verified preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUQNA-verified-preview
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish complete source and Windows launcher
+        uses: actions/upload-artifact@v4
+        with:
+          name: SOUQNA-verified-source
+          path: |
+            index.html
+            assets/
+            functions/index.js
+            functions/marketplace.js
+            functions/moderation.js
+            functions/package.json
+            scripts/
+            tests/
+            firebase.json
+            firebase.staging.config.json
+            firestore.rules
+            package.json
+            sw.js
+            manifest.webmanifest
+            logo.png
+            icon-192.png
+            icon-512.png
+            Start-SOUQNA.cmd
+          if-no-files-found: error
+          retention-days: 14
