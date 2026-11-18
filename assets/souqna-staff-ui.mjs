@@ -128,7 +128,7 @@ function draw(){
 }
 function boot(){
   const apps=getApps();
-  if(!apps.length){root.hidden=true;return}
+  if(!apps.length){root.hidden=true;window.addEventListener("souqna:firebase-ready",boot,{once:true});return}
   const app=getApp();
   if(app.options.projectId!=="souqna-staging"){root.hidden=true;return}
   db=getFirestore(app);
