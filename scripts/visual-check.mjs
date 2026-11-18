@@ -110,7 +110,7 @@ try {
     ]);
   });
   server=await startServer();
-  browser=await chromium.launch({headless:true});
+  browser=await chromium.launch({headless:true,channel:process.env.SOUQNA_USE_SYSTEM_CHROME==="1"?"chrome":"chromium"});
   await mkdir("artifacts",{recursive:true});
   const cases=[
     {name:"desktop",viewport:{width:1440,height:900},mobile:false},
