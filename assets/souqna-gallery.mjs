@@ -14,7 +14,7 @@ function randomName(type){
   return Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("")+"."+EXTENSIONS[type];
 }
 export async function uploadGallery(app,userId,files,{onProgress=()=>{}}={}){
-  if(!app||app.options.projectId==="souqna-sweida"||app.options.projectId==="souqna-preview-disabled")
+  if(!app||app.options.projectId!=="souqna-staging")
     throw new Error("رفع الصور محصور في بيئة الاختبار حالياً");
   if(!userId||!/^[A-Za-z0-9_-]{1,128}$/.test(userId))
     throw new Error("معرّف المستخدم غير صحيح");
@@ -40,7 +40,7 @@ export async function uploadGallery(app,userId,files,{onProgress=()=>{}}={}){
   }
 }
 export async function deleteUploadedGallery(app,userId,items){
-  if(!app||app.options.projectId==="souqna-sweida"||app.options.projectId==="souqna-preview-disabled")
+  if(!app||app.options.projectId!=="souqna-staging")
     throw new Error("تنظيف الصور محصور في بيئة الاختبار");
   const storage=getStorage(app),prefix="ads/"+userId+"/";
   const list=Array.from(items??[]);
