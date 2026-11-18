@@ -172,7 +172,7 @@ const CRYSTAL_ICON_PATHS=Object.freeze({
 });
 const crystalSvg=(name,cssClass="category-symbol")=>'<span class="'+cssClass+'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false">'+(CRYSTAL_ICON_PATHS[name]||CRYSTAL_ICON_PATHS.misc)+'</svg></span>';
 
-const STAFF=["admin","moderator","accountant","editor"];
+const STAFF=["admin","moderator","accountant","editor","specialist"];
 let galleryPhotos=[],activeGallery=[],galleryPosition=0;
 let accountProfileMissing=false;
 let accountProfileReadError="";
@@ -186,7 +186,9 @@ let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},servi
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
-const canModerate=()=>me&&["admin","moderator","editor"].includes(me.role);
+const isSpecialist=()=>me?.role==="specialist";
+const canManageSpecialty=type=>isAdm()||(isSpecialist()&&Array.isArray(me.specialties)&&me.specialties.includes(type));
+const canModerate=()=>me&&(["admin","moderator","editor"].includes(me.role)||(isSpecialist()&&canManageSpecialty("jobs")));
 const authErrorText=error=>{
   const code=String(error?.code||"");
   const descriptions={
@@ -417,7 +419,10 @@ async function loadMine(){
   notifs=(await read("الإشعارات",()=>q2("notifs","userId",me.uid))).sort(byT);
   mySponsorRequests=(await read("حجوزات البنرات",()=>q2("sponsorRequests","userId",me.uid))).sort(byT);
   mySorders=(await read("طلبات الخدمات الخاصة",()=>q2("sorders","userId",me.uid))).sort(byT);
-  if(isStaff()){pend=(await read("مراجعة الإعلانات",()=>q2("ads","status","pending"))).sort((x,y)=>y.createdAt-x.createdAt);
+  if(isSpecialist()){
+    pend=canManageSpecialty("jobs")?(await read("وظائف بانتظار المراجعة",async()=>{const snap=await getDocs(query(collection(db,"ads"),where("cat","==","jobs"),where("status","==","pending")));return snap.docs.map(d=>({id:d.id,...d.data()}));})).sort((x,y)=>y.createdAt-x.createdAt):[];
+    pendStores=[];sorders=[];adminUpdatedAt=Date.now();
+  }else if(isStaff()){pend=(await read("مراجعة الإعلانات",()=>q2("ads","status","pending"))).sort((x,y)=>y.createdAt-x.createdAt);
     pendStores=await read("مراجعة المتاجر",()=>q2("stores","status","pending"));
     sorders=(await read("طلبات الخدمات",async()=>{const s=await getDocs(collection(db,"sorders"));return s.docs.map(d=>({id:d.id,...d.data()}))})).sort((x,y)=>y.createdAt-x.createdAt);
     if(isAdm()){orders=await read("طلبات النجوم",()=>q2("starOrders","status","pending"));
@@ -476,13 +481,25 @@ function adminAuditRows(){
   const rows=moderationHistory.map(entry=>'<div class="row" style="align-items:center;margin-bottom:8px"><div><b>'+esc(entry.type==="ad"?"إعلان":"متجر")+' · '+esc(entry.action==="approve"?"موافقة":"رفض")+'</b><div class="mut">'+esc(entry.targetId)+' · المسؤول: '+esc(entry.actorId)+'</div><div class="mut">'+(Number.isFinite(entry.createdAt)?new Date(entry.createdAt).toLocaleString("ar-SY"):"تاريخ غير متاح")+'</div></div></div>').join("");
   return '<div class="box"><h3>📜 سجل مراجعة الإدارة</h3><p class="mut">آخر 50 إجراء مسجل. لا يمكن تعديل السجل من الواجهة.</p>'+(rows||'<p class="mut">لا توجد إجراءات مسجلة.</p>')+'</div>';
 }
+
+function specialistDirectoryPanel(){
+  if(!isSpecialist())return "";
+  const allowed=Array.isArray(me.specialties)?me.specialties.filter(type=>["pharmacy","doctor","fuel"].includes(type)):[];
+  const jobs=canManageSpecialty("jobs");
+  const itemList=dr.filter(item=>allowed.includes(item.type)).map(item=>`<div class="category-manager-row"><b>${esc(item.name)}</b><small>${esc(TY[item.type]||item.type)} · ${esc(item.area||"")}</small><span>${item.onDuty?"مناوب الآن":"غير مناوب"}</span>
+    <button class="btn l" data-a="specialty-duty" data-id="${esc(item.id)}">${item.onDuty?"إنهاء المناوبة":"تفعيل المناوبة"}</button><button class="btn r" data-a="specialty-delete" data-id="${esc(item.id)}">حذف</button></div>`).join("");
+  return `<section class="box specialty-panel"><h3>لوحة مشرف الاختصاص</h3><p class="mut">الاختصاصات الممنوحة: ${(me.specialties||[]).map(x=>SPECIALTIES.find(s=>s.id===x)?.label||x).join("، ")||"لم يحدد المالك اختصاصاً بعد"}.</p>
+    ${jobs?'<p class="mut">يمكنك مراجعة إعلانات الوظائف فقط من قائمة المراجعة أدناه.</p>':""}
+    ${allowed.length?`<div class="specialty-form"><label>نوع الخدمة</label><select id="spec-type">${allowed.map(type=>`<option value="${type}">${esc(TY[type])}</option>`).join("")}</select><input id="spec-name" maxlength="120" placeholder="الاسم / اسم العيادة أو المحطة"><input id="spec-detail" placeholder="التخصص أو التفاصيل"><input id="spec-area" placeholder="المنطقة"><input id="spec-phone" dir="ltr" placeholder="رقم الهاتف"><button class="btn g" data-a="specialty-add">إضافة سجل</button></div><div class="category-manager-list">${itemList||'<p class="mut">لا توجد سجلات في الاختصاصات المسموح بها.</p>'}</div>`:""}
+    </section>`;
+}
 function adminUserRows(){
   if(!isAdm())return '<p class="mut">هذه البيانات متاحة للمدير فقط.</p>';
   const term=adminUserQuery.trim().toLocaleLowerCase();
-  const filtered=allUsers.filter(u=>[u.name,u.email,u.role].some(value=>String(value||"").toLocaleLowerCase().includes(term)));
+  const filtered=allUsers.filter(u=>[u.name,u.email,u.role,...(Array.isArray(u.specialties)?u.specialties:[])].some(value=>String(value||"").toLocaleLowerCase().includes(term)));
   const visible=filtered.slice(0,100);
   return '<p class="mut" role="status">النتائج: '+filtered.length+' من '+allUsers.length+(filtered.length>100?' · يظهر أول 100 نتيجة':'')+'</p>'+
-    (visible.map(u=>'<div class="row" style="align-items:center;margin-bottom:6px"><span>'+esc(u.name||"بدون اسم")+' · '+esc(u.email||"")+' · '+esc(u.role||"user")+' · ⭐'+Number(u.stars||0)+'</span><button class="btn l" data-a="ustars" data-id="'+esc(u.id)+'">± نجوم</button><button class="btn l" data-a="urole" data-id="'+esc(u.id)+'">الدور</button></div>').join("")||'<p class="mut">لا توجد نتائج مطابقة.</p>');
+    (visible.map(u=>'<div class="row" style="align-items:center;margin-bottom:6px"><span>'+esc(u.name||"بدون اسم")+' · '+esc(u.email||"")+' · '+esc(u.role||"user")+' · ⭐'+Number(u.stars||0)+'</span><button class="btn l" data-a="ustars" data-id="'+esc(u.id)+'">± نجوم</button><button class="btn l" data-a="urole" data-id="'+esc(u.id)+'">الدور</button><button class="btn l" data-a="uscope" data-id="'+esc(u.id)+'">الاختصاصات: '+esc((u.specialties||[]).join("، ")||"غير محددة")+'</button></div>').join("")||'<p class="mut">لا توجد نتائج مطابقة.</p>');
 }
 function adminReviewQueue(){
   if(!canModerate())return '<p class="mut">غير مصرح بعرض قائمة المراجعة.</p>';
@@ -727,7 +744,7 @@ function render(){
     <h3>🚀 باقات تمييز الإعلان</h3>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
-    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+adminCategoryReadiness()+adminCategoryManager()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
+    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+adminCategoryReadiness()+adminCategoryManager()+specialistDirectoryPanel()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
     <div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label class="mut">أخبار الشريط العاجل (سطر لكل خبر)</label><textarea id="s-tk" rows="3">${esc(site.ticker||"")}</textarea><label class="mut">شريط الخدمات والوقود أسفل البنر (خبر في كل سطر)</label><textarea id="s-tk2" rows="3">${esc(site.tickerSecondary||"")}</textarea>
@@ -1023,7 +1040,17 @@ else if(a==="category-add"){
        await finance("adjustBalance",null,{userId:id,delta:n,note:note.trim(),operationId:doc(collection(db,"transactions")).id});
        await loadMine();toast("حُفظ تعديل الرصيد");render();
      }
-    else if(a=="urole"){const r=prompt("الدور: user / moderator / accountant / editor / admin");if(!["user","moderator","accountant","editor","admin"].includes(r))return toast("دور غير صحيح");await updateDoc(doc(db,"users",id),{role:r});await loadMine();render()}
+    else if(a=="urole"){if(!isAdm())return toast("غير مصرح");const role=prompt("الدور: user / specialist / moderator / accountant / editor / admin");if(!["user","specialist","moderator","accountant","editor","admin"].includes(role))return toast("دور غير صحيح");await updateDoc(doc(db,"users",id),{role,...(role==="specialist"?{specialties:[]}:{})});await loadMine();render()}
+    else if(a==="uscope"){
+      if(!isAdm())return toast("الاختصاصات متاحة للمالك فقط");
+      const user=allUsers.find(x=>x.id===id);if(!user||user.role!=="specialist")return toast("حدد دور specialist أولاً");
+      const text=prompt("اختصاصات هذا المشرف مفصولة بفاصلة: jobs, pharmacy, doctor, fuel",Array.isArray(user.specialties)?user.specialties.join(", "):"");
+      if(text===null)return;
+      const selected=[...new Set(text.split(",").map(x=>x.trim()).filter(Boolean))];
+      if(selected.some(x=>!SPECIALTIES.some(s=>s.id===x)))return toast("الاختصاصات المسموح بها: jobs, pharmacy, doctor, fuel");
+      await updateDoc(doc(db,"users",id),{specialties:selected});
+      await loadMine();render();toast("حُفظت اختصاصات المشرف");
+    }
     else if(a=="svadd"){if(!val("#sv-n"))return toast("اكتب اسم الخدمة");await addDoc(collection(db,"services"),{name:val("#sv-n"),desc:val("#sv-d"),price:+val("#sv-p")||0,active:true});await loadPublic();render()}
     else if(a=="svseed"){for(const n of ["تصميم إعلان","تصميم شعار وهوية","فيديو إعلاني","مونتاج فيديو","حملة تسويقية"])await addDoc(collection(db,"services"),{name:n,desc:"",price:0,active:true});await loadPublic();render()}
     else if(a=="svprice"){const p=prompt("السعر بالدولار (0 = حسب الاتفاق):");if(p===null)return;await updateDoc(doc(db,"services",id),{price:+p||0});await loadPublic();render()}
@@ -1061,6 +1088,25 @@ else if(a==="category-add"){
     else if(a=="addsp"){await pickReady;const d=+val("#p-days");if(!val("#p-co")||!(d>0))return toast("اكتب اسم الشركة والمدة");await addDoc(collection(db,"sponsors"),{company:val("#p-co"),title:val("#p-ti"),desc:val("#p-de"),phone:val("#p-ph").replace(/\D/g,""),img:tmp.sp||"",from:Date.now(),to:Date.now()+d*864e5,active:true});tmp.sp="";await loadPublic();render()}
     else if(a=="togsp"){await updateDoc(doc(db,"sponsors",id),{active:!sp.find(x=>x.id==id).active});await loadPublic();render()}
     else if(a=="delsp"){await deleteDoc(doc(db,"sponsors",id));await loadPublic();render()}
+    else if(a==="specialty-add"){
+      const type=val("#spec-type");
+      if(!canManageSpecialty(type)||!["pharmacy","doctor","fuel"].includes(type))return toast("لا تمتلك هذا الاختصاص");
+      const name=val("#spec-name"),details=val("#spec-detail"),area=val("#spec-area"),phone=val("#spec-phone").replace(/[^0-9+]/g,"");
+      if(name.length<2||name.length>120||details.length>500||area.length>100||phone.length>32)return toast("بيانات الخدمة غير مكتملة أو طويلة");
+      await addDoc(collection(db,"directory"),{type,name,spec:details,area,phone,stars:0,onDuty:false,active:true,createdAt:Date.now()});
+      await loadPublic();render();toast("تم إضافة سجل الاختصاص");
+    }
+    else if(a==="specialty-duty"){
+      const item=dr.find(x=>x.id===id);if(!item||!canManageSpecialty(item.type))return toast("غير مصرح");
+      await updateDoc(doc(db,"directory",id),{onDuty:!item.onDuty});
+      await loadPublic();render();
+    }
+    else if(a==="specialty-delete"){
+      const item=dr.find(x=>x.id===id);if(!item||!canManageSpecialty(item.type))return toast("غير مصرح");
+      if(!confirm("هل تريد حذف السجل؟"))return;
+      await deleteDoc(doc(db,"directory",id));
+      await loadPublic();render();
+    }
     else if(a=="adddir"){if(!val("#d-n"))return toast("اكتب الاسم");await addDoc(collection(db,"directory"),{type:$("#d-t").value,name:val("#d-n"),spec:val("#d-s"),area:val("#d-a"),phone:val("#d-p").replace(/[^\d+]/g,""),stars:+$("#d-st").value,onDuty:false,active:true,createdAt:Date.now()});await loadPublic();render()}
     else if(a=="duty"){await updateDoc(doc(db,"directory",id),{onDuty:!dr.find(x=>x.id==id).onDuty});await loadPublic();render()}
     else if(a=="deldir"){await deleteDoc(doc(db,"directory",id));await loadPublic();render()}
