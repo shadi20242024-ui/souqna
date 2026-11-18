@@ -364,10 +364,22 @@ try {
 
     const pendingAd=page.locator("#app .item").filter({hasText:"إعلان فحص واجهة سوقنا"});
     await pendingAd.locator('[data-a="ok"]').waitFor({timeout:20000});
+    const pendingAdId=await pendingAd.locator('[data-a="ok"]').getAttribute("data-id");
+    assert.ok(pendingAdId,"Pending ad ID is missing");
     await pendingAd.locator('[data-a="ok"]').click();
+    await pendingAd.waitFor({state:"detached",timeout:25000});
+    await env.withSecurityRulesDisabled(async ctx=>{
+      assert.equal((await getDoc(doc(ctx.firestore(),"ads",pendingAdId))).data().status,"approved");
+    });
     const pendingStore=page.locator("#app .box").filter({hasText:"متجر فحص سوقنا"});
     await pendingStore.locator('[data-a="stok"]').waitFor({timeout:20000});
+    const pendingStoreId=await pendingStore.locator('[data-a="stok"]').getAttribute("data-id");
+    assert.ok(pendingStoreId,"Pending store ID is missing");
     await pendingStore.locator('[data-a="stok"]').click();
+    await pendingStore.waitFor({state:"detached",timeout:25000});
+    await env.withSecurityRulesDisabled(async ctx=>{
+      assert.equal((await getDoc(doc(ctx.firestore(),"stores",pendingStoreId))).data().status,"approved");
+    });
     await page.locator('#nav [data-v="home"]').click();
     await page.locator("#list .item").filter({hasText:"إعلان فحص واجهة سوقنا"}).waitFor({timeout:20000});
     await page.locator("#app .stc").filter({hasText:"متجر فحص سوقنا"}).waitFor({timeout:20000});
