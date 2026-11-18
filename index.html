@@ -104,6 +104,7 @@ const marketplace=async (action,collectionName,fields,id=doc(collection(db,colle
   const response=await call({action,id,fields});
   return response.data;
 };
+let pendingCleanupId="";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const safeHttpUrl=raw=>{try{const url=new URL(String(raw||"").trim());return url.protocol==="https:"||url.protocol==="http:"?url.href:""}catch{return ""}};
@@ -501,7 +502,8 @@ function render(){
     <h3>🚀 باقات تمييز الإعلان</h3>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
-    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
+    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+(isAdm()?`<div class="box"><h3>🧹 متابعة تنظيف صور الإعلانات</h3><p class="mut">خاص ببيئة الاختبار. أدخل معرّف إعلان محذوف له صور قيد التنظيف.</p><div class="row"><input id="cleanup-ad-id" dir="ltr" maxlength="128" placeholder="معرّف الإعلان" value="${esc(pendingCleanupId)}"><button class="btn" data-a="retryCleanup">إعادة محاولة تنظيف الصور</button></div></div>
+    <div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
     <div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label class="mut">أخبار الشريط العاجل (سطر لكل خبر)</label><textarea id="s-tk" rows="3">${esc(site.ticker||"")}</textarea><label class="mut">شريط الخدمات والوقود أسفل البنر (خبر في كل سطر)</label><textarea id="s-tk2" rows="3">${esc(site.tickerSecondary||"")}</textarea>
@@ -731,11 +733,25 @@ document.addEventListener("click",async e=>{
         const del=httpsCallable(functions,"souqnaDeleteAd");
         const response=await del({id});
         const failed=Number(response.data?.failedImages||0);
+        pendingCleanupId=failed?id:"";
         toast(failed?"حُذف الإعلان، لكن تعذر تنظيف "+failed+" صورة":"حُذف الإعلان وصوره الإضافية");
       }else{
         await deleteDoc(doc(db,"ads",id));
       }
       await loadPublic();await loadMine();render()
+    }
+    else if(a=="retryCleanup"){
+      if(!isAdm()||app.options.projectId!=="souqna-staging")
+        return toast("هذه العملية متاحة لمدير بيئة الاختبار فقط");
+      const cleanupId=(val("#cleanup-ad-id")||"").trim();
+      if(!/^[A-Za-z0-9_-]{1,128}$/.test(cleanupId))
+        return toast("أدخل معرّف إعلان صالح");
+      const retry=httpsCallable(functions,"souqnaRetryAdCleanup");
+      const result=await retry({id:cleanupId});
+      const failed=Number(result.data?.failedImages||0);
+      pendingCleanupId=failed?cleanupId:"";
+      toast(failed?"ما زال تنظيف "+failed+" صورة معلقاً":"اكتمل تنظيف الصور المتبقية");
+      render()
     }
     else if(a=="savewa"){const n=val("#s-wa").replace(/\D/g,"");await setDoc(doc(db,"settings","contact"),{whatsapp:n});wa=n;toast("تم الحفظ")}
     else if(a=="seed"){for(const [s,d] of [[5,15],[10,30],[15,30],[20,30],[25,30]])await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
