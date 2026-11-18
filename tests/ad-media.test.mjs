@@ -4,7 +4,7 @@ import {createRequire} from "node:module";
 const require=createRequire(import.meta.url);
 const {validateImageUrls,validateVideoUrl,MAX_IMAGES}=require("../functions/ad-media.js");
 const project="souqna-staging",uid="user_123";
-const image=n=>"https://firebasestorage.googleapis.com/v0/b/"+project+".firebasestorage.app/o/ads%2F"+uid+"%2Fimage"+n+".jpg?alt=media";
+const image=n=>"https://firebasestorage.googleapis.com/v0/b/"+project+".firebasestorage.app/o/ads%2F"+uid+"%2Fimage_file_"+n+".jpg?alt=media";
 test("accept up to 11 additional images stored within user's Firebase upload folder",()=>{
   const validated=validateImageUrls(Array.from({length:MAX_IMAGES},(_,i)=>image(i)),project,uid);
   assert.equal(validated.length,MAX_IMAGES);
@@ -28,4 +28,20 @@ test("Firebase download URLs require the media endpoint and correct project",()=
   assert.throws(()=>validateImageUrls([image(1).replace("?alt=media","")],project,uid),/تصريح/);
   assert.throws(()=>validateImageUrls([image(1).replace("?alt=media","?alt=metadata")],project,uid),/تصريح/);
   assert.equal(validateImageUrls([image(1)],project,uid).length,1);
+});
+
+test("reject malformed paths, nested files, and alternate download hosts",()=>{
+  const urlFor=(path)=>"https://firebasestorage.googleapis.com/v0/b/"+project+".firebasestorage.app/o/"+encodeURIComponent(path)+"?alt=media";
+  assert.throws(()=>validateImageUrls([urlFor("ads/"+uid+"/nested/photo_123.jpg")],project,uid),/ليست/);
+  assert.throws(()=>validateImageUrls([urlFor("ads/"+uid+"/tiny.jpg")],project,uid),/ليست/);
+  assert.throws(()=>validateImageUrls([urlFor("ads/"+uid+"/photo_123.exe")],project,uid),/ليست/);
+  assert.throws(()=>validateImageUrls(["https://storage.googleapis.com/"+project+".firebasestorage.app/ads/"+uid+"/photo_123.jpg"],project,uid),/مسموح/);
+});
+
+test("reject one stored image submitted with different query parameters",()=>{
+  assert.throws(()=>validateImageUrls([image(1),image(1)+"&token=second"],project,uid),/مكرر/);
+});
+
+test("deny additional image URLs from non-staging projects",()=>{
+  assert.throws(()=>validateImageUrls([], "souqna-sweida",uid),/الاختبار/);
 });
