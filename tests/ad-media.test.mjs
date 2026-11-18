@@ -5,12 +5,12 @@ const require=createRequire(import.meta.url);
 const {validateImageUrls,validateVideoUrl,MAX_IMAGES}=require("../functions/ad-media.js");
 const project="souqna-staging",uid="user_123";
 const image=n=>"https://firebasestorage.googleapis.com/v0/b/"+project+".firebasestorage.app/o/ads%2F"+uid+"%2Fimage"+n+".jpg?alt=media";
-test("accept up to 12 images stored within user's Firebase upload folder",()=>{
+test("accept up to 11 additional images stored within user's Firebase upload folder",()=>{
   const validated=validateImageUrls(Array.from({length:MAX_IMAGES},(_,i)=>image(i)),project,uid);
   assert.equal(validated.length,12);
 });
 test("reject over-limit images, duplicates and unsafe sources",()=>{
-  assert.throws(()=>validateImageUrls(Array.from({length:13},(_,i)=>image(i)),project,uid),/12/);
+  assert.throws(()=>validateImageUrls(Array.from({length:12},(_,i)=>image(i)),project,uid),/11/);
   assert.throws(()=>validateImageUrls([image(1),image(1)],project,uid),/مكرر/);
   assert.throws(()=>validateImageUrls(["https://other.example/img.jpg"],project,uid),/مسموح/);
   assert.throws(()=>validateImageUrls([image(1).replace("user_123","another_user")],project,uid),/ليست/);
