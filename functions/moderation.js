@@ -41,6 +41,9 @@ module.exports = function createModeration(db, options) {
       if (item.status !== "pending") {
         throw new HttpsError("failed-precondition", "سبق التعامل مع هذا الطلب؛ حدّث القائمة");
       }
+      if(userSnap.data().role==="specialist"&&item.ownerId===actor){
+        throw new HttpsError("permission-denied","لا يجوز لمشرف الوظائف مراجعة إعلان أرسله بنفسه");
+      }
       const ownerId = item.ownerId;
       if (typeof ownerId !== "string" || !ID_PATTERN.test(ownerId)) {
         throw new HttpsError("failed-precondition", "الطلب لا يحتوي على صاحب حساب صالح");
