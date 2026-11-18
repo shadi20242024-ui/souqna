@@ -31,6 +31,13 @@ service cloud.firestore {
         || hasRole("editor");
     }
 
+    function hasSpecialty(name) {
+      return signedIn()
+        && hasRole("specialist")
+        && get(currentUserPath()).data.get("specialties", []) is list
+        && get(currentUserPath()).data.get("specialties", []).hasAny([name]);
+    }
+
     function changedOnly(fields) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
     }
@@ -73,7 +80,10 @@ service cloud.firestore {
         && request.resource.data.role == "user"
         && request.resource.data.stars == 0
         && request.resource.data.keys().hasOnly(["name", "email", "role", "stars"]);
-      allow update: if (isAdmin() && changedOnly(["name", "role"]))
+      allow update: if (isAdmin() && changedOnly(["name", "role", "specialties"])
+          && request.resource.data.get("specialties", []) is list
+          && request.resource.data.get("specialties", []).hasOnly(["jobs", "pharmacy", "doctor", "fuel"])
+          && request.resource.data.get("specialties", []).size() <= 4)
         || (isSelf(uid) && changedOnly(["name"]));
       allow delete: if isAdmin();
     }
@@ -86,7 +96,8 @@ service cloud.firestore {
     match /ads/{id} {
       allow read: if resource.data.status == "approved"
         || (signedIn() && resource.data.ownerId == request.auth.uid)
-        || isStaff();
+        || isStaff()
+        || (hasSpecialty("jobs") && resource.data.cat == "jobs");
 
       // Trusted souqnaMarketplace callable enforces quotas and submission validation.
       allow create: if false;
@@ -196,7 +207,29 @@ service cloud.firestore {
 
     match /directory/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin()
+        || (hasSpecialty(request.resource.data.type)
+          && request.resource.data.type in ["pharmacy", "doctor", "fuel"]
+          && request.resource.data.keys().hasOnly([
+            "type", "name", "spec", "area", "phone", "stars", "onDuty", "active", "createdAt"
+          ])
+          && safeText(request.resource.data.name, 2, 120)
+          && safeText(request.resource.data.spec, 0, 500)
+          && safeText(request.resource.data.area, 0, 100)
+          && safeText(request.resource.data.phone, 0, 32)
+          && request.resource.data.stars is int
+          && request.resource.data.stars >= 0 && request.resource.data.stars <= 5
+          && request.resource.data.onDuty is bool
+          && request.resource.data.active is bool
+          && request.resource.data.createdAt is int);
+      allow update: if isAdmin()
+        || (hasSpecialty(resource.data.type)
+          && request.resource.data.type == resource.data.type
+          && changedOnly(["name", "spec", "area", "phone", "stars", "onDuty", "active"])
+          && safeText(request.resource.data.name, 2, 120)
+          && request.resource.data.onDuty is bool
+          && request.resource.data.active is bool);
+      allow delete: if isAdmin() || hasSpecialty(resource.data.type);
     }
 
     match /services/{id} {
