@@ -129,7 +129,7 @@ function boot(){
   const apps=getApps();
   if(!apps.length){root.hidden=true;return}
   const app=getApp();
-  if(["souqna-sweida","souqna-preview-disabled"].includes(app.options.projectId)){root.hidden=true;return}
+  if(app.options.projectId!=="souqna-staging"){root.hidden=true;return}
   db=getFirestore(app);
   onAuthStateChanged(getAuth(app),user=>{
     resolveRole(user).catch(error=>{
