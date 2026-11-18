@@ -55,4 +55,27 @@ function validateVideoUrl(videoUrl){
     mediaError("معرف فيديو Vimeo غير صالح");
   return parsed.href;
 }
-module.exports={validateImageUrls,validateVideoUrl,MAX_IMAGES};
+
+function extractOwnedImagePaths(images,projectId,uid){
+  if(projectId!=="souqna-staging"||typeof uid!=="string"||!/^[A-Za-z0-9_-]{1,128}$/.test(uid))
+    mediaError("المشروع أو صاحب الإعلان غير صالح");
+  if(!Array.isArray(images))return [];
+  const expectedBuckets=new Set([projectId+".firebasestorage.app",projectId+".appspot.com"]);
+  const prefix="ads/"+uid+"/";
+  const paths=[];
+  for(const value of images.slice(0,MAX_IMAGES)){
+    if(typeof value!=="string")continue;
+    try{
+      const parsed=new URL(value);
+      if(parsed.protocol!=="https:"||parsed.hostname!=="firebasestorage.googleapis.com")continue;
+      const match=parsed.pathname.match(/^\/v0\/b\/([^/]+)\/o\/([^/]+)$/);
+      if(!match||!expectedBuckets.has(decodeURIComponent(match[1])))continue;
+      const path=decodeURIComponent(match[2]);
+      const filename=path.startsWith(prefix)?path.slice(prefix.length):"";
+      if(/^[A-Za-z0-9_-]{8,100}\.(jpg|jpeg|png|webp)$/.test(filename)&&!paths.includes(path))paths.push(path);
+    }catch{}
+  }
+  return paths;
+}
+
+module.exports={validateImageUrls,validateVideoUrl,extractOwnedImagePaths,MAX_IMAGES};
