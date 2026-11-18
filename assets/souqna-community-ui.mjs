@@ -27,7 +27,9 @@ css.textContent=`
 `;
 document.head.append(css);
 const root=document.createElement("section");root.id="sq-community";root.setAttribute("aria-label","الخدمات والإعلانات المحلية");
-(document.querySelector("main")||document.body).append(root);
+const mount=document.querySelector("main");
+if(mount)mount.after(root);
+else document.body.append(root);
 let db,admin=false,sections=[...builtin],selected="jobs";
 let ready=false;
 function activeSectionCategories(all){
