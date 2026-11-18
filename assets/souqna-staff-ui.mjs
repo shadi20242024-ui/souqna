@@ -1,8 +1,8 @@
 import {getApps,getApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getFirestore,doc,getDoc,setDoc,addDoc,serverTimestamp,collection} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getFirestore,doc,getDoc,setDoc,addDoc,serverTimestamp,collection,getDocs} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-const SECTION_OPTIONS=[
+let SECTION_OPTIONS=[
  ["jobs","الوظائف"],["on_call_clinics","العيادات المناوبة"],
  ["fuel_stations","محطات الوقود"]
 ];
@@ -26,11 +26,20 @@ mount.append(root);
 const escapeText=(v)=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const titleFor=id=>SECTION_OPTIONS.find(x=>x[0]===id)?.[1]??id;
 let db,identity,role,assigned=[];
+async function refreshOptions(){
+  const docs=await getDocs(collection(db,"categories"));
+  const custom=docs.docs.map(d=>({id:d.id,...d.data()}))
+    .filter(d=>d.active!==false&&d.contentType==="localPosts"&&/^[a-z][a-z0-9_-]{2,39}$/.test(d.id)&&typeof d.name_ar==="string")
+    .map(d=>[d.id,d.name_ar]);
+  SECTION_OPTIONS=[["jobs","الوظائف"],["on_call_clinics","العيادات المناوبة"],["fuel_stations","محطات الوقود"],...custom];
+}
+
 async function resolveRole(user){
   if(!user){root.hidden=true;return}
   const profile=await getDoc(doc(db,"users",user.uid));
   role=profile.exists()?profile.data().role:"user";
   identity=user;
+  try{await refreshOptions();}catch(error){console.warn("Custom sections unavailable",error);}
   root.hidden=role!=="admin"&&role!=="moderator";
   if(root.hidden)return;
   if(role==="moderator"){
@@ -120,7 +129,7 @@ function boot(){
   const apps=getApps();
   if(!apps.length){root.hidden=true;return}
   const app=getApp();
-  if(app.options.projectId==="souqna-sweida"){root.hidden=true;return}
+  if(["souqna-sweida","souqna-preview-disabled"].includes(app.options.projectId)){root.hidden=true;return}
   db=getFirestore(app);
   onAuthStateChanged(getAuth(app),user=>{
     resolveRole(user).catch(error=>{
