@@ -11,7 +11,7 @@ const mode=process.argv[2]||"preview";
 assert.ok(["preview","staging"].includes(mode),"Usage: node scripts/build-hosting.mjs [preview|staging path/to/firebase.staging.json]");
 const publicFiles=Object.freeze([
   "index.html","assets/responsive.css","assets/admin-metrics.js",
-  "assets/souqna-local-services.mjs","assets/souqna-services-ui.mjs","assets/souqna-staff-ui.mjs","assets/souqna-community-ui.mjs",
+  "assets/souqna-local-services.mjs","assets/souqna-services-ui.mjs","assets/souqna-staff-ui.mjs","assets/souqna-community-ui.mjs","assets/souqna-gallery.mjs",
   "sw.js","manifest.webmanifest","logo.png","icon-192.png","icon-512.png"
 ]);
 
