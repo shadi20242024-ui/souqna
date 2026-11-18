@@ -23,10 +23,10 @@ test("never resolve production or another project gallery",()=>{
   assert.throws(()=>pathsFromGalleryUrls([link(user)],"souqna-sweida",user),/غير مسموحة/);
   assert.throws(()=>pathsFromGalleryUrls([link(user)],"souqna-staging-other",user),/غير مسموحة/);
 });
-test("document deletion happens before staging media cleanup",()=>{
+test("staging deletions use server callable instead of direct client cleanup",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
   const branch=html.slice(html.indexOf('else if(a=="del"){'),html.indexOf('else if(a=="savewa")'));
-  assert.ok(branch.indexOf("await deleteDoc(adRef)")>=0);
-  assert.ok(branch.indexOf("await deleteGalleryByUrls(")>branch.indexOf("await deleteDoc(adRef)"));
-  assert.match(branch,/me\?\.uid===deletedAd\.ownerId/);
+  assert.match(branch,/httpsCallable\(functions,"souqnaDeleteAd"\)/);
+  assert.match(branch,/await del\(\{id\}\)/);
+  assert.doesNotMatch(branch,/deleteGalleryByUrls/);
 });
