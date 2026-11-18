@@ -278,3 +278,4 @@ exports.souqnaFinance = onCall(OPTIONS, async request => {
 exports.souqnaMarketplace=require("./marketplace")(db,OPTIONS);
 exports.souqnaDeleteAd=require("./delete-ad")(db,OPTIONS);
 exports.souqnaRetryAdCleanup=require("./delete-ad").makeRetryCleanup(db,OPTIONS);
+exports.souqnaListAdCleanup=require("./delete-ad").makeListCleanupJobs(db,OPTIONS);
