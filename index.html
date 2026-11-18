@@ -658,18 +658,27 @@ document.addEventListener("click",async e=>{
       const mediaFiles=Array.from($("#a-gallery")?.files||[]);
       const galleryVideo=val("#a-video")?.trim()||"";
       if(galleryVideo){const {validateListingMedia}=await import("./assets/souqna-local-services.mjs");validateListingMedia({videoUrl:galleryVideo});}
-      let galleryImages=[];
+      let uploadedGallery=[];
       if(mediaFiles.length||galleryVideo){
         if(app.options.projectId==="souqna-sweida"||app.options.projectId==="souqna-preview-disabled")
           return toast("الصور المتعددة متاحة حالياً في بيئة الاختبار فقط");
+      }
+      try{
         if(mediaFiles.length){
           const {uploadGallery}=await import("./assets/souqna-gallery.mjs");
-          galleryImages=(await uploadGallery(app,me.uid,mediaFiles,{
+          uploadedGallery=await uploadGallery(app,me.uid,mediaFiles,{
             onProgress:({completed,total})=>toast("رفع الصور "+completed+" / "+total)
-          })).map(image=>image.url);
+          });
         }
+        await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...(uploadedGallery.length?{images:uploadedGallery.map(image=>image.url)}:{}),...(galleryVideo?{videoUrl:galleryVideo}:{}),...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
+      }catch(error){
+        if(uploadedGallery.length){
+          const {deleteUploadedGallery}=await import("./assets/souqna-gallery.mjs");
+          const result=await deleteUploadedGallery(app,me.uid,uploadedGallery);
+          if(result.failed)toast("تعذر حذف "+result.failed+" صورة مؤقتة؛ يلزم تنظيفها لاحقاً");
+        }
+        throw error;
       }
-      await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...(galleryImages.length?{images:galleryImages}:{}),...(galleryVideo?{videoUrl:galleryVideo}:{}),...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})});
       photo="";photoHash="";photoError="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
     else if(a=="sbreq"){
        if(!need())return;
