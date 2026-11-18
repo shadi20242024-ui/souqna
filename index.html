@@ -727,17 +727,13 @@ document.addEventListener("click",async e=>{
     else if(a=="ok"||a=="no"){await updateDoc(doc(db,"ads",id),{status:a=="ok"?"approved":"rejected"});{const x=pend.find(y=>y.id==id);if(x)await notify(x.ownerId,(a=="ok"?"تمت الموافقة على إعلانك: ":"تم رفض إعلانك: ")+x.title)}await loadPublic();await loadMine();render()}
     else if(a=="del"){
       if(!confirm("حذف الإعلان؟"))return;
-      const adRef=doc(db,"ads",id);
-      const snapshot=await getDoc(adRef);
-      if(!snapshot.exists())return toast("الإعلان غير موجود");
-      const deletedAd=snapshot.data();
-      await deleteDoc(adRef);
-      if(app.options.projectId==="souqna-staging"&&me?.uid===deletedAd.ownerId&&Array.isArray(deletedAd.images)&&deletedAd.images.length){
-        try{
-          const {deleteGalleryByUrls}=await import("./assets/souqna-gallery.mjs");
-          const outcome=await deleteGalleryByUrls(app,me.uid,deletedAd.images);
-          if(outcome.failed)toast("حُذف الإعلان، لكن تعذر تنظيف بعض صوره");
-        }catch(error){console.warn("Deleted ad image cleanup failed:",error);toast("حُذف الإعلان، لكن تعذر تنظيف صوره");}
+      if(app.options.projectId==="souqna-staging"){
+        const del=httpsCallable(functions,"souqnaDeleteAd");
+        const response=await del({id});
+        const failed=Number(response.data?.failedImages||0);
+        toast(failed?"حُذف الإعلان، لكن تعذر تنظيف "+failed+" صورة":"حُذف الإعلان وصوره الإضافية");
+      }else{
+        await deleteDoc(doc(db,"ads",id));
       }
       await loadPublic();await loadMine();render()
     }
