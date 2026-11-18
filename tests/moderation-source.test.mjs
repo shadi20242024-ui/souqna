@@ -141,6 +141,7 @@ test("missing owner identifier rejects without side effects", async () => {
 test("moderation decision UI prevents duplicate submissions and refreshes stale requests", () => {
   assert.ok(client.includes("const moderationInFlight=new Set()"));
   assert.ok(client.includes("if(moderationInFlight.has(key))return"));
+  assert.ok(client.includes("if(moderationInFlight.size>0)return"));
   assert.ok(client.includes("moderationInFlight.add(key)"));
   assert.ok(client.includes("moderationInFlight.delete(key)"));
   assert.ok(client.includes('"functions/failed-precondition","functions/not-found"'));
