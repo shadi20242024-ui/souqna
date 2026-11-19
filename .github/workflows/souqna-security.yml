@@ -1,0 +1,96 @@
+name: SOUQNA branch checks
+
+on:
+  push:
+    branches:
+      - feature/**
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules-and-syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up Java (Firestore emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned test tooling
+        run: npm install --no-audit --no-fund
+      - name: Install trusted backend test dependencies
+        run: npm --prefix functions install --no-audit --no-fund
+      - name: Check client source and Firestore security rules
+        run: npm test
+      - name: Build audited Hosting package
+        run: npm run build:hosting
+      - name: Inspect build manifest
+        run: |
+          test -f dist/index.html
+          test -f dist/sw.js
+          test -f dist/assets/responsive.css
+          test ! -e dist/functions
+          test ! -e dist/firestore.rules
+          grep -q '"projectId":"souqna-preview-disabled"' dist/index.html
+          if grep -q 'projectId:"souqna-sweida"' dist/index.html; then
+            echo 'Refusing build with production Firebase project'
+            exit 1
+          fi
+          test ! -e dist/paymentReceipts
+      - name: Save preview-only Hosting bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: souqna-hosting-preview
+          path: dist/
+          retention-days: 14
+
+
+  visual-browser-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up Java (local Firebase emulators)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install test packages
+        run: npm install --no-audit --no-fund
+      - name: Install trusted backend test dependencies
+        run: npm --prefix functions install --no-audit --no-fund
+      - name: Install headless Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Render SOUQNA at desktop and mobile sizes
+        run: npx firebase emulators:exec --project demo-souqna-rules --only auth,firestore,functions "node scripts/visual-check.mjs"
+      - name: Build isolated QA staging bundle
+        run: |
+          npm run build:staging -- ./tests/fixtures/firebase.staging.emulator.json
+          npm run preflight:staging -- demo-souqna-rules
+      - name: Browser-test the actual staging Hosting bundle
+        env:
+          SOUQNA_VISUAL_STAGING: '1'
+        run: npx firebase emulators:exec --project demo-souqna-rules --only auth,firestore,functions "node scripts/visual-check.mjs"
+      - name: Attach desktop and mobile screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: souqna-visual-smoke
+          path: artifacts/*.png
+          if-no-files-found: warn

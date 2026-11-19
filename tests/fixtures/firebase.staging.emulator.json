@@ -1,0 +1,8 @@
+{
+  "apiKey": "local-emulator-staging-only-123",
+  "authDomain": "demo-souqna-rules.firebaseapp.com",
+  "projectId": "demo-souqna-rules",
+  "storageBucket": "demo-souqna-rules.firebasestorage.app",
+  "messagingSenderId": "123456789012",
+  "appId": "1:123456789012:web:localstagingonly"
+}

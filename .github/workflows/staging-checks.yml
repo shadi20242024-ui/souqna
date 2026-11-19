@@ -1,0 +1,54 @@
+name: SOUQNA staging checks
+on:
+  push:
+    branches:
+      - feature/news-media-2026-11-16
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Install trusted function dependencies for emulator lifecycle
+        run: npm install --prefix functions --ignore-scripts --no-audit --no-fund
+      - name: Check source integrity
+        run: npm run test:source
+      - name: Run unit and security regression tests
+        run: npm run test:unit
+      - name: Check safe hosting build
+        run: npm run test:build-isolation && npm run build:hosting
+      - name: Validate owner-only Storage uploads in local emulator
+        run: npm run test:storage
+      - name: Validate scoped Firestore permissions in local emulator
+        run: npm run test:rules
+      - name: Verify staging-only trusted ad deletion rules
+        run: npm run test:staging-rules
+      - name: Validate local rate publishing and moderator security in staging emulators
+        run: npm run test:market-prices
+      - name: Verify full staging gallery lifecycle in local emulators
+        run: npm run test:gallery-e2e
+      - name: Print emulator diagnostics on failure
+        if: failure()
+        run: |
+          for file in storage-debug.log firestore-debug.log firebase-debug.log; do
+            if test -f "$file"; then
+              echo "::group::$file"
+              tail -n 140 "$file"
+              echo "::endgroup::"
+            fi
+          done

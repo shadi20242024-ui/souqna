@@ -1,0 +1,424 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function currentUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasRole(role) {
+      return signedIn()
+        && exists(currentUserPath())
+        && get(currentUserPath()).data.role == role;
+    }
+
+    function isAdmin() {
+      return hasRole("admin");
+    }
+
+    function isStaff() {
+      return hasRole("admin")
+        || hasRole("accountant")
+        || hasRole("editor");
+    }
+
+    function isMarketplaceEditor() {
+      return isAdmin() || hasRole("editor");
+    }
+
+    function assignedTo(sectionId) {
+      return hasRole("moderator")
+        && exists(/databases/$(database)/documents/staffAssignments/$(request.auth.uid))
+        && get(/databases/$(database)/documents/staffAssignments/$(request.auth.uid)).data.active == true
+        && sectionId in get(/databases/$(database)/documents/staffAssignments/$(request.auth.uid)).data.sectionIds;
+    }
+
+    function validLocalSection(sectionId) {
+      return sectionId is string && safeDocumentId(sectionId)
+        && (sectionId in ["jobs", "on_call_clinics", "fuel_stations"]
+          || (exists(/databases/$(database)/documents/categories/$(sectionId))
+            && get(/databases/$(database)/documents/categories/$(sectionId)).data.get("contentType", "") == "localPosts"
+            && get(/databases/$(database)/documents/categories/$(sectionId)).data.get("active", false) == true));
+    }
+
+    function mayEditLocalSection(sectionId) {
+      return isAdmin() || assignedTo(sectionId);
+    }
+
+    function validLocalPost(data) {
+      return data.keys().hasOnly([
+          "sectionId", "title", "description", "status", "createdBy",
+          "createdAt", "updatedAt", "contact", "area"
+        ])
+        && data.keys().hasAll([
+          "sectionId", "title", "description", "status", "createdBy",
+          "createdAt", "updatedAt"
+        ])
+        && validLocalSection(data.sectionId)
+        && safeText(data.title, 3, 140)
+        && safeText(data.description, 0, 5000)
+        && data.status in ["draft", "approved", "archived"]
+        && data.createdBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.get("contact", "") is string
+        && data.get("contact", "").size() <= 120
+        && data.get("area", "") is string
+        && data.get("area", "").size() <= 120;
+    }
+
+    function changedOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function safeDocumentId(id) {
+      return id.matches('^[A-Za-z0-9_-]{1,128}$');
+    }
+
+    function safeText(value, minimum, maximum) {
+      return value is string && value.size() >= minimum && value.size() <= maximum;
+    }
+    function safePhone(value) {
+      return value is string && value.matches('^[0-9]{9,15}$');
+    }
+    function safeImageData(value) {
+      return value is string
+        && value.size() <= 700000
+        && (value == "" || value.matches('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$'));
+    }
+
+    function ownsApprovedStore(storeId) {
+      return signedIn()
+        && storeId is string
+        && exists(/databases/$(database)/documents/stores/$(storeId))
+        && get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+        && get(/databases/$(database)/documents/stores/$(storeId)).data.status == "approved";
+    }
+
+    function ownsApprovedAd(adId) {
+      return signedIn()
+        && adId is string
+        && exists(/databases/$(database)/documents/ads/$(adId))
+        && get(/databases/$(database)/documents/ads/$(adId)).data.ownerId == request.auth.uid
+        && get(/databases/$(database)/documents/ads/$(adId)).data.status == "approved";
+    }
+
+    match /users/{uid} {
+      allow get, list: if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid)
+        && request.resource.data.role == "user"
+        && request.resource.data.stars == 0
+        && request.resource.data.keys().hasOnly(["name", "email", "role", "stars"]);
+      allow update: if (isAdmin() && changedOnly(["name", "role"]))
+        || (isSelf(uid) && changedOnly(["name"]));
+      allow delete: if isAdmin();
+    }
+
+    match /categories/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /ads/{id} {
+      allow read: if resource.data.status == "approved"
+        || (signedIn() && resource.data.ownerId == request.auth.uid)
+        || isStaff();
+
+      // Trusted souqnaMarketplace callable enforces quotas and submission validation.
+      allow create: if false;
+      allow update: if (isAdmin()
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["featuredUntil"]))
+        || (isMarketplaceEditor() && changedOnly(["status"]));
+      allow delete: if false;
+    }
+
+    match /stores/{id} {
+      allow read: if resource.data.status == "approved"
+        || (signedIn() && resource.data.ownerId == request.auth.uid)
+        || isStaff();
+      // Trusted souqnaMarketplace callable enforces quotas and submission validation.
+      allow create: if false;
+      allow update: if (isAdmin()
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["plan", "planUntil"]))
+        || (isMarketplaceEditor() && changedOnly(["status"]))
+        || (signedIn() && resource.data.ownerId == request.auth.uid
+          && changedOnly(["name", "desc", "phone", "area", "map", "logo", "cover"]));
+      allow delete: if isStaff()
+        || (signedIn() && resource.data.ownerId == request.auth.uid);
+    }
+
+    match /follows/{id} {
+      allow read: if true;
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && id == request.resource.data.storeId + "_" + request.auth.uid
+        && request.resource.data.keys().hasOnly(["storeId", "userId"]);
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /favorites/{id} {
+      // Private favorites, one record per authenticated user and approved listing.
+      allow get, list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.adId is string
+        && safeDocumentId(request.resource.data.adId)
+        && id == request.auth.uid + "_" + request.resource.data.adId
+        && request.resource.data.createdAt is int
+        && request.resource.data.keys().hasOnly(["userId", "adId", "createdAt"])
+        && exists(/databases/$(database)/documents/ads/$(request.resource.data.adId))
+        && get(/databases/$(database)/documents/ads/$(request.resource.data.adId)).data.status == "approved";
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /reviews/{id} {
+      allow read: if true;
+      allow create, update: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && id == request.resource.data.storeId + "_" + request.auth.uid
+        && request.resource.data.stars >= 1
+        && request.resource.data.stars <= 5
+        && request.resource.data.keys().hasOnly([
+          "storeId", "userId", "userName", "stars", "text", "createdAt"
+        ]);
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /packages/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /plans/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /sponsors/{id} {
+      allow read: if true;
+      // Manual admin banners are permitted; paid booking banners require backend approval.
+      allow create: if isAdmin() && !("requestId" in request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /sponsorRequests/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.days >= 1
+        && request.resource.data.days <= 90
+        && request.resource.data.days is int
+        && safeText(request.resource.data.userName, 1, 100)
+        && safeText(request.resource.data.company, 2, 100)
+        && safeText(request.resource.data.title, 3, 120)
+        && safeText(request.resource.data.desc, 0, 500)
+        && safePhone(request.resource.data.phone)
+        && safeImageData(request.resource.data.img)
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0
+        && request.resource.data.keys().hasOnly([
+          "userId", "userName", "company", "title", "desc",
+          "phone", "days", "img", "status", "createdAt"
+        ]);
+      // Payments and approvals are performed by the Admin SDK only.
+      allow update, delete: if false;
+    }
+
+    function mayManageMarketRates() {
+      return isAdmin() || assignedTo("market_prices");
+    }
+
+    function validLocalMarketRate(id, data) {
+      return id in [
+          "usd_official", "usd_parallel", "gold_24",
+          "gold_21", "gold_18", "silver_999"
+        ]
+        && data.keys().hasOnly([
+          "buy", "sell", "sourceName", "sourceUrl",
+          "observedAt", "updatedAt", "updatedBy",
+          "method", "currencyEra"
+        ])
+        && data.keys().hasAll([
+          "buy", "sell", "sourceName", "sourceUrl",
+          "observedAt", "updatedAt", "updatedBy",
+          "method", "currencyEra"
+        ])
+        && data.buy is number && data.sell is number
+        && data.buy > 0 && data.sell > 0
+        && data.buy <= data.sell
+        && data.buy <= 1000000000 && data.sell <= 1000000000
+        && data.sourceName is string
+        && data.sourceName.size() >= 3 && data.sourceName.size() <= 120
+        && data.sourceUrl is string && data.sourceUrl.size() <= 400
+        && (data.sourceUrl == "" || data.sourceUrl.matches('^https://[^ ]+$'))
+        && (id != "usd_official" || data.sourceUrl != "")
+        && data.method == "manual"
+        && data.currencyEra == "SYP_NEW"
+        && data.observedAt is timestamp
+        && data.observedAt <= request.time
+        && data.observedAt >= request.time - duration.value(7, 'd')
+        && data.updatedAt == request.time
+        && data.updatedBy == request.auth.uid;
+    }
+
+    match /localMarketRates/{id} {
+      allow get, list: if true;
+      allow create, update: if mayManageMarketRates()
+        && validLocalMarketRate(id, request.resource.data);
+      allow delete: if false;
+    }
+
+    match /directory/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /services/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /partners/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /starOrders/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.stars is int
+        && request.resource.data.stars > 0
+        && request.resource.data.stars <= 100000
+        && safeText(request.resource.data.userName, 1, 100)
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0
+        && request.resource.data.keys().hasOnly([
+          "userId", "userName", "stars", "status", "createdAt"
+        ]);
+      allow update, delete: if false;
+    }
+
+    match /promos/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && ownsApprovedAd(request.resource.data.adId);
+      allow update, delete: if false;
+    }
+
+    match /subs/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && ownsApprovedStore(request.resource.data.storeId)
+        && request.resource.data.planId is string
+        && exists(/databases/$(database)/documents/plans/$(request.resource.data.planId));
+      allow update, delete: if false;
+    }
+
+    match /sorders/{id} {
+      allow read: if isStaff()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "new";
+      allow update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    match /paymentReceipts/{id} {
+      // Manual payment proofs are finance-only: clients must never forge or edit them.
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /transactions/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      // Financial ledger is write-once from trusted server credentials.
+      allow create, update, delete: if false;
+    }
+
+    // Scoped moderation. Assignment records are written by the main administrator only.
+    match /staffAssignments/{uid} {
+      allow get: if isAdmin() || isSelf(uid);
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == "moderator"
+        && request.resource.data.keys().hasOnly(["active", "sectionIds", "displayName"])
+        && request.resource.data.keys().hasAll(["active", "sectionIds", "displayName"])
+        && request.resource.data.active is bool
+        && request.resource.data.sectionIds is list
+        && request.resource.data.sectionIds.size() <= 30
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100;
+      allow delete: if isAdmin();
+    }
+
+    // Public service updates: jobs, on-call clinics, fuel stations and dynamic sections.
+    match /localPosts/{id} {
+      allow get, list: if resource.data.status == "approved"
+        || isAdmin()
+        || assignedTo(resource.data.sectionId);
+      allow create: if signedIn()
+        && safeDocumentId(id)
+        && validLocalPost(request.resource.data)
+        && mayEditLocalSection(request.resource.data.sectionId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedIn()
+        && validLocalPost(request.resource.data)
+        && mayEditLocalSection(resource.data.sectionId)
+        && request.resource.data.sectionId == resource.data.sectionId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    match /socialPromotionJobs/{id} {
+      allow read, write: if false;
+    }
+
+    match /mediaCleanupJobs/{id} {
+      allow read, write: if false;
+    }
+
+    match /notifs/{id} {
+      // Financial and personal notifications remain private to owner and administrator.
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isStaff();
+      allow update: if isStaff()
+        || (signedIn() && resource.data.userId == request.auth.uid
+          && changedOnly(["read"]) && request.resource.data.read == true);
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -61,44 +61,233 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 .stc{flex:none;width:84px;background:none;border:0;font:inherit;font-size:12px;font-weight:bold;color:var(--t)}.stc span{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .stl{width:64px;height:64px;border-radius:18px;background:#e4ecfb center/cover;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:var(--b);border:2px solid var(--g)}
 .cv{height:140px;background:linear-gradient(120deg,#0a2a72,#1a4fc4) center/cover;border-radius:18px;position:relative;margin:10px 0 48px}.cv .stl{position:absolute;bottom:-40px;right:16px;width:80px;height:80px;background-color:#fff;margin:0}
+
+/* News ribbons: primary above hero, secondary below hero */
+.tk{display:flex;align-items:center;overflow:hidden;min-height:42px;margin:10px 0;border-radius:14px;background:linear-gradient(100deg,#061e51,#1243a8);color:#fff;border:1px solid #f4b40070}
+.tk.alt{background:#fff9e9;color:#0a2a72;border-color:#f4b400}
+.tk> b{flex:none;background:#f4b400;color:#19284a;padding:10px 12px;font-size:12px;z-index:1;white-space:nowrap}
+.tk.alt> b{background:#0a2a72;color:#fff}
+.tkw{min-width:0;flex:1;overflow:hidden;white-space:nowrap;direction:ltr}
+.tkw span{display:inline-block;white-space:nowrap;padding-left:100%;font-size:12px;animation:souqna-ticker 33s linear infinite}
+.tk:hover .tkw span,.tk:focus-within .tkw span{animation-play-state:paused}
+@keyframes souqna-ticker{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+.imgprev{display:block;max-width:100%;max-height:260px;object-fit:contain;margin:6px auto 12px;border:1px solid var(--bd);border-radius:12px}
+.imgprev[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){.tkw span{animation:none;padding-left:0}.tkw{overflow-x:auto}}
+
 </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
+<div id="desktopBar" class="desktop-bar" aria-label="شريط البحث والتنقل"></div>
 <div id="hd" class="hd"></div>
+<div id="newsHost" class="news-host"></div>
 <main id="app"></main>
 <nav id="nav"></nav>
+<dialog id="paymentDialog" class="payment-dialog" aria-labelledby="paymentDialogTitle"></dialog>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,increment}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,increment,runTransaction}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import{getFunctions,httpsCallable,connectFunctionsEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
+import{summarizeAdmin}from"./assets/admin-metrics.js";
 const app=initializeApp({apiKey:"AIzaSyALEVd7gkSla4cELvh5kH_AonlyR2SAcu4",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"714781732696",appId:"1:714781732696:web:0d5c6cccfb10873c0d3f2d"});
-const auth=getAuth(app),db=getFirestore(app);
+const auth=getAuth(app),db=getFirestore(app),functions=getFunctions(app,"us-central1");
+window.dispatchEvent(new Event("souqna:firebase-ready"));
+const finance=async (action,id,extra={})=>{
+  const call=httpsCallable(functions,"souqnaFinance");
+  const response=await call({action,...(id?{id}:{}),...extra});
+  return response.data;
+};
+const marketplace=async (action,collectionName,fields,id=doc(collection(db,collectionName)).id)=>{
+  const call=httpsCallable(functions,"souqnaMarketplace");
+  const response=await call({action,id,fields});
+  return response.data;
+};
+let pendingCleanupId="";
+let pendingCleanupJobs=[];
+let cleanupJobsLoaded=false;
+let socialQueueLoaded=false;
+let socialQueueJobs=[];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fetchCleanupJobs=async()=>{
+  const call=httpsCallable(functions,"souqnaListAdCleanup");
+  const response=await call({});
+  if(response.data?.ok!==true||!Array.isArray(response.data.jobs))
+    throw new Error("تعذر التحقق من بيانات مهام التنظيف");
+  pendingCleanupJobs=response.data.jobs.filter(item=>
+    item&&typeof item.id==="string"&&/^[A-Za-z0-9_-]{1,128}$/.test(item.id)
+  ).map(item=>({
+    id:item.id,
+    failedImages:Math.max(0,Math.min(11,Number(item.failedImages)||0)),
+    createdAt:Number.isSafeInteger(item.createdAt)?item.createdAt:0
+  }));
+  cleanupJobsLoaded=true;
+};
+const cleanupJobsHtml=()=>{
+  if(!cleanupJobsLoaded)return '<p class="mut">اضغط تحديث المهام لعرض الصور المعلّقة.</p>';
+  if(!pendingCleanupJobs.length)return '<p class="mut">لا توجد مهام تنظيف معلّقة ضمن آخر 25 مهمة.</p>';
+  return '<div class="grid">'+pendingCleanupJobs.map(item=>
+    '<div class="box"><b dir="ltr">'+esc(item.id)+'</b><p class="mut">الصور المتبقية: '+
+      item.failedImages+'</p><button class="btn" data-a="retryCleanupItem" data-id="'+
+      esc(item.id)+'">إعادة تنظيف الصور</button></div>'
+  ).join("")+'</div>';
+};
+const fetchSocialQueue=async()=>{
+  const call=httpsCallable(functions,"souqnaSocialQueueStatus");
+  const response=await call({});
+  if(response.data?.ok!==true||!Array.isArray(response.data.jobs))
+    throw new Error("تعذّر تحميل حالة المنشورات الاجتماعية");
+  socialQueueJobs=response.data.jobs.slice(0,25).map(item=>({
+    id:String(item.id||"").slice(0,128),
+    title:String(item.title||"").slice(0,150),
+    expiresAt:Number.isSafeInteger(item.expiresAt)?item.expiresAt:0,
+    facebook:String(item.facebook||"unknown").slice(0,32),
+    instagram:String(item.instagram||"unknown").slice(0,32),
+    requiresReview:item.requiresReview===true
+  }));
+  socialQueueLoaded=true;
+};
+const socialQueueHtml=()=>{
+  if(!socialQueueLoaded)return '<p class="mut">الصفحات لم تُربط بعد. اضغط تحديث الحالة لمراجعة طلبات النشر.</p>';
+  if(!socialQueueJobs.length)return '<p class="mut">لا توجد إعلانات مدفوعة تنتظر النشر الاجتماعي.</p>';
+  return '<div class="grid">'+socialQueueJobs.map(item=>
+    '<div class="box"><b>'+esc(item.title)+'</b><p class="mut">Facebook: '+esc(item.facebook)+
+    ' · Instagram: '+esc(item.instagram)+'</p><p class="mut">انتهاء التمييز: '+
+    (item.expiresAt?new Date(item.expiresAt).toLocaleString("ar-SY"):"غير محدد")+
+    '</p>'+(item.requiresReview?'<p class="mut">⚠️ يحتاج مراجعة الإدارة</p>':'')+'</div>'
+  ).join("")+'</div>';
+};
+const safeHttpUrl=raw=>{try{const url=new URL(String(raw||"").trim());return url.protocol==="https:"||url.protocol==="http:"?url.href:""}catch{return ""}};
+const safeImage=raw=>{
+  const value=String(raw||"").trim();
+  if(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value))return value;
+  return safeHttpUrl(value);
+};
+const bgImage=raw=>{const safe=safeImage(raw);return safe?`background-image:url("${esc(safe)}")`:""};
+
 const IC={real_estate:"🏠",cars:"🚗",jobs:"💼",electronics:"📱",furniture:"🛋️",services:"🛠️",community:"🤝",fashion:"🛍️",lost_found:"🔎",misc:"📦"};
 const STAFF=["admin","moderator","accountant","editor"];
-let txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false;
+let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
+const authErrorText=error=>{
+  const code=String(error?.code||"");
+  const descriptions={
+    "auth/invalid-email":"عنوان البريد الإلكتروني غير صالح.",
+    "auth/invalid-credential":"تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور، أو استخدم نسيت كلمة المرور.",
+    "auth/wrong-password":"تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور، أو استخدم نسيت كلمة المرور.",
+    "auth/user-not-found":"تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور، أو استخدم نسيت كلمة المرور.",
+    "auth/too-many-requests":"محاولات كثيرة. جرّب لاحقاً أو استخدم استعادة كلمة المرور.",
+    "auth/network-request-failed":"تعذر الاتصال بخدمة تسجيل الدخول. تحقق من الإنترنت ثم أعد المحاولة.",
+    "auth/operation-not-allowed":"تسجيل الدخول بالبريد وكلمة المرور غير مفعّل لهذا المشروع في Firebase Authentication.",
+    "auth/user-disabled":"هذا الحساب معطّل في Firebase Authentication. راجع مدير المشروع.",
+    "auth/invalid-api-key":"إعداد Firebase غير صحيح؛ أعد بناء نسخة Staging.",
+    "auth/configuration-not-found":"خدمة Firebase Authentication غير مهيأة لهذا المشروع.",
+    "auth/unauthorized-domain":"نطاق الموقع غير مصرح به في Firebase Authentication.",
+    "auth/email-already-in-use":"البريد مستخدم من قبل. اختر تسجيل الدخول أو استعادة كلمة المرور.",
+    "auth/weak-password":"كلمة المرور ضعيفة؛ اختر كلمة مرور أقوى."
+  };
+  return descriptions[code]||(code.startsWith("auth/")?"تعذر إكمال المصادقة ("+code.replace(/[^a-z0-9/-]/gi,"").slice(0,70)+").":"تعذر تسجيل الدخول.");
+};
 const isF=a=>(a.featuredUntil||0)>Date.now();
 const val=i=>($(i)?.value||"").trim();
+function startPaymentReview(action,id){
+  if(!isAdm())return toast("مراجعة الدفعات متاحة للمدير فقط");
+  const record=action==="approveTopup"?orders.find(x=>x.id===id):pendingSponsorRequests.find(x=>x.id===id);
+  if(!record)return toast("الطلب غير موجود أو لم يعد معلّقاً");
+  const dialog=$("#paymentDialog");
+  dialog.dataset.action=action;
+  dialog.dataset.requestId=id;
+  const isTopup=action==="approveTopup";
+  dialog.innerHTML=`<div class="payment-modal">
+    <div class="payment-modal-head"><h2 id="paymentDialogTitle">💳 توثيق الدفع اليدوي</h2>
+      <button class="payment-close" type="button" data-a="paycancel" aria-label="إغلاق">✕</button></div>
+    <p class="mut">${isTopup?`شحن ${Number(record.stars)} نجمة لحساب ${esc(record.userName||"العميل")}`:
+       `تفعيل بنر الشركة: ${esc(record.company||"")}`}</p>
+    <p class="payment-warning">تحقق من وصول الدفعة في حسابك أو محفظتك خارج سوقنا. إدخال مرجع وحده لا يثبت وصول المال.</p>
+    <label for="pay-method">وسيلة الدفع</label>
+    <select id="pay-method"><option value="bank_transfer">تحويل بنكي</option><option value="zain_cash">زين كاش</option>
+      <option value="asia_hawala">آسيا حوالة</option><option value="card">بطاقة دفع</option><option value="other">وسيلة أخرى</option></select>
+    <label for="pay-reference">رقم إيصال أو مرجع تحويل فريد</label>
+    <input id="pay-reference" autocomplete="off" maxlength="100" placeholder="مثال: TXN-2026-000123" dir="ltr">
+    <div class="payment-amount-grid">
+      <div><label for="pay-amount">المبلغ الذي استلمته فعلياً</label>
+        <input id="pay-amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="المبلغ" value="${isTopup?Number(record.stars):""}"></div>
+      <div><label for="pay-currency">عملة الدفع</label>
+        <select id="pay-currency"><option value="USD">USD</option><option value="SYP">SYP</option>
+          <option value="IQD">IQD</option><option value="AED">AED</option></select></div>
+    </div>
+    <label class="payment-attest"><input type="checkbox" id="pay-attest">
+      أؤكد أنني راجعت التحويل خارج التطبيق وأن المبلغ وصل فعلاً.</label>
+    <div class="payment-actions"><button class="btn l" type="button" data-a="paycancel">إلغاء</button>
+      <button class="btn g" type="button" data-a="payconfirm">اعتماد الدفع وتسجيل الإيصال</button></div>
+  </div>`;
+  dialog.showModal();
+  $("#pay-reference")?.focus();
+}
 const waLink=t=>"https://wa.me/"+wa+(t?"?text="+encodeURIComponent(t):"");
 const q2=(c,f,v)=>getDocs(query(collection(db,c),where(f,"==",v))).then(s=>s.docs.map(d=>({id:d.id,...d.data()})));
 
 const CI={electronics:"i1",jobs:"i2",cars:"i3",real_estate:"i4",misc:"i5",community:"i6",services:"i7",furniture:"i8"};
-const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس"};
+const TY={pharmacy:"صيدلية",doctor:"طبيب",lawyer:"محامٍ",engineer:"مهندس",fuel:"محطة وقود"};
 const wxTxt=c=>c==0?"صافٍ":c<4?"غائم جزئيًا":c<50?"ضباب":c<70?"أمطار":c<80?"ثلوج":c<90?"زخات مطر":"عاصفة رعدية";
 async function loadWx(){try{const j=await(await fetch("https://api.open-meteo.com/v1/forecast?latitude=32.71&longitude=36.57&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto")).json();wx={t:Math.round(j.current.temperature_2m),c:j.current.weather_code,hi:Math.round(j.daily.temperature_2m_max[0]),lo:Math.round(j.daily.temperature_2m_min[0])};if(view=="home")render()}catch(e){wx=null}}
 const wxHtml=()=>wx&&site.weatherOn!==false?`<div class="wx"><span>${wx.c==0?"☀️":wx.c<4?"⛅":wx.c<50?"🌫️":wx.c<80?"🌧️":"⛈️"}</span><div><b>طقس السويداء الآن</b><div class="mut">${wxTxt(wx.c)} · العظمى ${wx.hi}° · الصغرى ${wx.lo}°</div></div><i>${wx.t}°</i></div>`:"";
-function tkHtml(){if(site.tickerOn===false)return"";const it=[...dr.filter(x=>x.type=="pharmacy"&&x.onDuty).map(x=>`صيدلية ${x.name}${x.area?" ("+x.area+")":""} مناوبة اليوم`),...ads.filter(isF).map(a=>"⭐ "+a.title),...(site.ticker||"").split("\n").filter(Boolean)];return it.length?`<div class="tk"><b>عاجل</b><div class="tkw"><span>${it.map(esc).join(" &nbsp;•&nbsp; ")}</span></div></div>`:""}
-function spHtml(){const l=sp.filter(s=>s.active&&s.to>Date.now()),cta=wa?`<a class="cta" target="_blank" href="${waLink("أريد حجز بانر إعلاني في سوقنا")}">هل تريد إعلانك هنا؟ تواصل معنا ‹</a>`:"";if(!l.length)return cta;const s=l[spi%l.length];return `<div class="spn" style="${s.img?`background-image:linear-gradient(90deg,#0a2a72f2,#0a2a7299),url(${s.img})`:""}"><small>إعلان برعاية</small><div class="sco">${esc(s.company)}</div><b>${esc(s.title)}</b><div>${esc(s.desc||"")}</div>${s.phone?`<a class="gold" style="margin-top:8px" target="_blank" href="https://wa.me/${esc(s.phone)}">تواصل مع الشركة</a>`:""}</div>`+cta}
+function tkHtml(secondary=false){
+  const entries=secondary
+    ? [...dr.filter(x=>x.type==="fuel"&&x.active!==false).map(x=>"⛽ "+x.name+(x.area?" – "+x.area:"")+(x.spec?" | "+x.spec:"")),...(site.tickerSecondary||"").split("\n")]
+    : [...dr.filter(x=>x.type==="pharmacy"&&x.onDuty&&x.active!==false).map(x=>"💊 صيدلية "+x.name+(x.area?" ("+x.area+")":"")+" مناوبة اليوم"),...ads.filter(isF).map(a=>"⭐ "+a.title),...(site.ticker||"").split("\n")];
+  if((secondary?site.tickerSecondaryOn:site.tickerOn)===false)return "";
+  const items=entries.map(t=>String(t||"").trim()).filter(Boolean);
+  return items.length?`<div class="tk ${secondary?"alt":""}" role="region" aria-label="${secondary?"تنبيهات الخدمات والوقود":"أخبار سوقنا"}"><b>${secondary?"⛽ الخدمات":"📰 الأخبار"}</b><div class="tkw" title="${esc(items.join(" • "))}"><span>${items.map(esc).join(" • ")}</span></div></div>`:"";
+}
+function spHtml(){
+  const now=Date.now();
+  const current=sp.filter(s=>s.active===true&&Number(s.from||0)<=now&&Number(s.to||0)>now);
+  const cta=`<button class="cta" style="border:0;background:transparent;font:inherit;cursor:pointer" data-v="sponsor">📢 احجز بنرك الإعلاني المميز في سوقنا ‹</button>`;
+  if(!current.length)return `<div class="premium-banner premium-banner-empty"><div class="premium-banner-content"><small>✦ مساحة إعلانية متاحة</small><h3>أعلن عن متجرك في سوقنا</h3><p>بانر مميز أمام زوار سوق السويداء</p><button class="gold" data-v="sponsor">احجز مساحتك الإعلانية</button></div></div>`+cta;
+  const index=((spi%current.length)+current.length)%current.length,s=current[index];
+  const phone=String(s.phone||"").replace(/\D/g,"");
+  const background=safeImage(s.img)?`background-image:linear-gradient(90deg,rgba(7,25,59,.96),rgba(7,25,59,.43)),url(&quot;${esc(safeImage(s.img))}&quot;)`:"";
+  return `<section class="premium-banner" style="${background}" aria-label="إعلان برعاية ${esc(s.company||"شركة")}">
+      <div class="premium-banner-content"><small>✦ إعلان برعاية</small>
+        <div class="premium-banner-company">${esc(s.company||"")}</div>
+        <h3>${esc(s.title||"")}</h3>
+        <p>${esc(s.desc||"")}</p>
+        ${phone?`<a class="gold" target="_blank" rel="noopener noreferrer" href="https://wa.me/${phone}">تواصل مع المعلن</a>`:""}
+      </div>
+      ${current.length>1?`<div class="sponsor-switcher" aria-label="الانتقال بين البنرات">
+        <button data-a="spprev" aria-label="الإعلان السابق">❮</button>
+        <span dir="ltr">${index+1} / ${current.length}</span>
+        <button data-a="spnext" aria-label="الإعلان التالي">❯</button>
+      </div>`:""}
+    </section>`+cta;
+}
 function dirHtml(){const L=dr.filter(x=>x.type==dtype&&x.active!==false&&(dtype!="pharmacy"||x.onDuty)).sort((x,y)=>(y.stars||0)-(x.stars||0));return L.map(x=>`<div class="dr"><div class="av">${esc((x.name||"?")[0])}</div><div style="flex:1"><b>${esc(x.name)}</b> <span class="gs">${"★".repeat(x.stars||0)}</span>${x.onDuty?' <span class="tag">مناوبة اليوم</span>':""}<div class="mut">${esc(x.spec||"")}${x.area?" · "+esc(x.area):""}</div></div>${x.phone?`<a class="btn g" href="tel:${esc(x.phone)}">اتصال</a>`:""}</div>`).join("")||'<p class="mut">لا توجد بيانات بعد.</p>'}
 const adHtml=()=>site.adClient?`<ins class="adsbygoogle" style="display:block;margin:12px 0" data-ad-client="${esc(site.adClient)}" data-ad-slot="${esc(site.adSlot||"")}" data-ad-format="auto" data-full-width-responsive="true"></ins>`:"";
 function initAds(){if(site.adClient&&!document.getElementById("ads-js")){const e=document.createElement("script");e.id="ads-js";e.async=true;e.crossOrigin="anonymous";e.src="https://pagead2.googleapis.com/pagead/js/adsbygoogle.js?client="+encodeURIComponent(site.adClient);document.head.append(e)}}
 const pushAds=()=>document.querySelectorAll("ins.adsbygoogle").forEach(()=>{try{(window.adsbygoogle=window.adsbygoogle||[]).push({})}catch(e){}});
-function pick(f,k,w){if(!f)return;const im=new Image();im.onload=()=>{const r=Math.min(1,w/im.width),c=document.createElement("canvas");c.width=im.width*r;c.height=im.height*r;c.getContext("2d").drawImage(im,0,0,c.width,c.height);tmp[k]=c.toDataURL("image/jpeg",.65);toast("تم اختيار الصورة")};im.src=URL.createObjectURL(f)}
-const stImg=(s,k)=>s[k]?`background-image:url(${s[k]})`:"";
+async function pick(f,k,w){
+  tmp[k]="";
+  if(k==="sb"){const p=$("#sb-preview");if(p){p.hidden=true;p.removeAttribute("src")}}
+  if(!f)return;
+  if(!["image/jpeg","image/png","image/webp","image/avif"].includes(f.type)||f.size>12*1024*1024){toast("اختر صورة JPG/PNG/WebP حتى 12 ميغابايت");return}
+  const url=URL.createObjectURL(f);
+  try{
+    const im=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=()=>reject(Error("تعذر فتح الصورة"));i.src=url});
+    const r=Math.min(1,w/im.naturalWidth,w/im.naturalHeight);
+    const c=document.createElement("canvas");c.width=Math.max(1,Math.round(im.naturalWidth*r));c.height=Math.max(1,Math.round(im.naturalHeight*r));
+    c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+    tmp[k]=c.toDataURL("image/jpeg",.60);
+    if(k==="sb"){const p=$("#sb-preview");if(p){p.src=tmp[k];p.hidden=false}}
+    toast("تم تجهيز الصورة");
+  }catch(error){toast(error.message||"تعذر تجهيز الصورة")}
+  finally{URL.revokeObjectURL(url)}
+}
+const stImg=(s,k)=>bgImage(s?.[k]);
 const storesHtml=()=>stores.length?`<div class="sec"><b>🏪 متاجر سوقنا</b><a data-v="stores">عرض الكل ‹</a></div><div class="sr2">${[...stores].sort((x,y)=>(planOf(y)?.order||0)-(planOf(x)?.order||0)).map(s=>`<button class="stc" data-st="${s.id}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div><span>${esc(s.name)}</span>${planTag(s)}</button>`).join("")}</div>`:"";
 const planOf=s=>(s.planUntil>Date.now()&&plans.find(p=>p.id==s.plan&&p.active!==false))||plans.find(p=>p.id=="free")||null;
 const planTag=s=>{const p=planOf(s);return p&&p.id!="free"?`<span class="tag g">${esc(p.badge||p.name)}</span>`:""};
@@ -120,35 +309,95 @@ async function loadPublic(){
 }
 async function loadMine(){
   if(!me)return;
+  adminLoadWarnings=[];
+  const read=async(label,run)=>{
+    try{return await run()}
+    catch(error){
+      console.error("SOUQNA collection read failed:",label,error);
+      adminLoadWarnings.push(label+" ("+(error?.code||"unknown")+")");
+      return [];
+    }
+  };
   const u=await getDoc(doc(db,"users",me.uid));if(u.exists())Object.assign(me,u.data());
-  mine=(await q2("ads","ownerId",me.uid)).sort((x,y)=>y.createdAt-x.createdAt);myStores=await q2("stores","ownerId",me.uid).catch(()=>[]);const byT=(x,y)=>y.createdAt-x.createdAt;txs=(await q2("transactions","userId",me.uid).catch(()=>[])).sort(byT);notifs=(await q2("notifs","userId",me.uid).catch(()=>[])).sort(byT);mySorders=(await q2("sorders","userId",me.uid).catch(()=>[])).sort(byT);
-  if(isStaff()){pend=(await q2("ads","status","pending")).sort((x,y)=>y.createdAt-x.createdAt);pendStores=await q2("stores","status","pending").catch(()=>[]);sorders=(await getDocs(collection(db,"sorders")).catch(()=>({docs:[]}))).docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>y.createdAt-x.createdAt);
-    if(isAdm()){orders=await q2("starOrders","status","pending");promos=await q2("promos","status","pending");subs=await q2("subs","status","pending").catch(()=>[]);allUsers=(await getDocs(collection(db,"users"))).docs.map(d=>({id:d.id,...d.data()}));allTx=(await getDocs(collection(db,"transactions"))).docs.map(d=>d.data())}}
+  mine=(await read("إعلاناتي",()=>q2("ads","ownerId",me.uid))).sort((x,y)=>y.createdAt-x.createdAt);
+  favorites=await read("المفضلة",()=>q2("favorites","userId",me.uid));
+  myStores=await read("متاجري",()=>q2("stores","ownerId",me.uid));
+  const byT=(x,y)=>y.createdAt-x.createdAt;
+  txs=(await read("معاملاتي",()=>q2("transactions","userId",me.uid))).sort(byT);
+  notifs=(await read("الإشعارات",()=>q2("notifs","userId",me.uid))).sort(byT);
+  mySponsorRequests=(await read("حجوزات البنرات",()=>q2("sponsorRequests","userId",me.uid))).sort(byT);
+  mySorders=(await read("طلبات الخدمات الخاصة",()=>q2("sorders","userId",me.uid))).sort(byT);
+  if(isStaff()){pend=(await read("مراجعة الإعلانات",()=>q2("ads","status","pending"))).sort((x,y)=>y.createdAt-x.createdAt);
+    pendStores=await read("مراجعة المتاجر",()=>q2("stores","status","pending"));
+    sorders=(await read("طلبات الخدمات",async()=>{const s=await getDocs(collection(db,"sorders"));return s.docs.map(d=>({id:d.id,...d.data()}))})).sort((x,y)=>y.createdAt-x.createdAt);
+    if(isAdm()){orders=await read("طلبات النجوم",()=>q2("starOrders","status","pending"));
+      promos=await read("طلبات الترويج",()=>q2("promos","status","pending"));
+      subs=await read("طلبات الاشتراكات",()=>q2("subs","status","pending"));
+      pendingSponsorRequests=(await read("طلبات رعاية البنرات",()=>q2("sponsorRequests","status","pending"))).sort(byT);
+      allUsers=await read("المستخدمون",async()=>{const s=await getDocs(collection(db,"users"));return s.docs.map(d=>({id:d.id,...d.data()}))});
+      allTx=await read("سجل المعاملات",async()=>{const s=await getDocs(collection(db,"transactions"));return s.docs.map(d=>({id:d.id,...d.data()}))})}}
+    adminUpdatedAt=Date.now();
 }
+const adminErrorBanner=()=>adminLoadWarnings.length?
+  '<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تعذر تحميل بعض بيانات الإدارة</b><p>تأكد من نشر قواعد Firestore الصحيحة لمشروع souqna-staging. لا تعدّل الصلاحيات أو قواعد الحماية لتجاوز الخطأ.</p><ul>'+
+    adminLoadWarnings.map(v=>'<li>'+esc(v)+'</li>').join("")+'</ul></div>':"";
+
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
   const msg="مرحبًا، بخصوص إعلانك في سوقنا: "+a.title;
-  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${a.img?`background-image:url(${a.img})`:""}">${a.img?"":IC[a.cat]||"🛍️"}</div><div class="bd">
+  const expires=Number(a.featuredUntil);
+  const featuredDate=Number.isSafeInteger(expires)&&expires>0&&expires<8640000000000000?new Date(expires).toLocaleString("ar-SY",{dateStyle:"medium",timeStyle:"short"}):"";
+  return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":IC[a.cat]||"🛍️"}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
+  ${m=="mine"&&featuredDate?`<div class="mut">${isF(a)?"⭐ التمييز ساري حتى: ":"انتهى التمييز بتاريخ: "}${esc(featuredDate)}</div>`:""}
+  ${Array.isArray(a.images)&&a.images.length?`<details style="margin-top:8px"><summary style="cursor:pointer;color:#1747b8">📷 معرض الصور (${a.images.length})</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${a.images.filter(u=>safeHttpUrl(u)).slice(0,12).map((u,i)=>`<a href="${esc(safeHttpUrl(u))}" target="_blank" rel="noopener noreferrer" aria-label="فتح صورة الإعلان ${i+1}"><img src="${esc(safeHttpUrl(u))}" loading="lazy" alt="صورة الإعلان ${i+1}" style="width:74px;height:74px;object-fit:cover;border-radius:9px"></a>`).join("")}</div></details>`:""}
+  ${a.videoUrl&&safeHttpUrl(a.videoUrl)?`<div><a href="${esc(safeHttpUrl(a.videoUrl))}" target="_blank" rel="noopener noreferrer">▶ فيديو الإعلان</a></div>`:""}
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
   :m=="mine"?`<button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
-  :`<a class="btn wa" target="_blank" href="https://wa.me/${esc(a.phone)}?text=${encodeURIComponent(msg)}">واتساب</a>`}</div></div></div>`}
+  :`<button class="favorite-button ${favorites.some(f=>f.adId===a.id)?"saved":""}" data-a="toggleFav" data-id="${esc(a.id)}" aria-label="${favorites.some(f=>f.adId===a.id)?"إزالة الإعلان من المفضلة":"حفظ الإعلان في المفضلة"}" aria-pressed="${favorites.some(f=>f.adId===a.id)}">${favorites.some(f=>f.adId===a.id)?"♥":"♡"} <span>${favorites.some(f=>f.adId===a.id)?"محفوظ":"حفظ"}</span></button><a class="btn wa" rel="noopener noreferrer" target="_blank" href="https://wa.me/${esc(a.phone)}?text=${encodeURIComponent(msg)}">واتساب</a>`}</div></div></div>`}
 
 function drawHd(){
   const H=$("#hd");
   if(view=="home"){H.className="hd big";
-    H.innerHTML=`<div class="top">${site.logo?`<img class="lgi" src="${site.logo}" alt="">`:'<div class="sp lg"></div>'}<div></div><a class="ic" ${wa?`href="${waLink()}" target="_blank"`:""}>📞</a></div><div class="sr"><span>🇸🇾</span><input id="q" placeholder="ابحث في سوقنا ..." value="${esc(q)}"><i>🔍</i></div>`;
+    H.innerHTML=`<div class="top">${safeImage(site.logo)?`<img class="lgi" src="${esc(safeImage(site.logo))}" alt="">`:'<div class="sp lg desktop-logo"></div><img class="lgi mobile-logo" src="logo.png" alt="سوقنا">'}<div></div><a class="ic" ${wa?`href="${waLink()}" target="_blank"`:""}>📞</a></div><div class="sr"><span>🇸🇾</span><input id="q" placeholder="ابحث في سوقنا ..." value="${esc(q)}"><i>🔍</i></div>`;
     $("#q").oninput=e=>{q=e.target.value;drawList()};
   }else{H.className="hd";H.innerHTML='<img class="s" src="logo.png" alt=""><h2>سوقنا | Souqna</h2>'}
 }
 function drawNav(){
-  const b=[["home","🏠","الرئيسية"],["mine","📋","إعلاناتي"],["add","<i>＋</i>","أضف إعلان","pl"],["stars","⭐","النجوم"],["acc","👤"+(notifs.some(n=>!n.read)?'<b style="color:#c0392b">●</b>':""),"حسابي"]];
-  $("#nav").innerHTML=b.map(x=>`<button data-v="${x[0]}" class="${x[3]||""} ${view==x[0]?"on":""}">${x[1]}<br>${x[2]}</button>`).join("");
+  const b=[
+    ["home","🏠","الرئيسية"],
+    ["mine","📋","إعلاناتي"],
+    ["add","<i>＋</i>","أضف إعلان","pl"],
+    ["stars","⭐","النجوم"],
+    ["acc","👤"+(notifs.some(n=>!n.read)?'<b style="color:#c0392b">●</b>':""),"حسابي"],
+    ["ads","🚘","كل الإعلانات","desktop-only"],
+    ["stores","🏬","المتاجر","desktop-only"],
+    ["favorites","♥","المفضلة","desktop-only"],
+    ["orders","🧾","طلبات الخدمات","desktop-only"],
+    ["utilities","🧮","الحاسبة والأسعار","desktop-only"],
+    ...(isStaff()?[["admin","⚙️","لوحة الإدارة","desktop-only"]]:[])
+  ];
+  $("#nav").innerHTML=b.map(x=>`<button data-v="${x[0]}" class="${x[3]||""} ${view==x[0]?"on":""}" aria-label="${x[2]}">${x[1]}<br>${x[2]}</button>`).join("");
+}
+function drawDesktopBar(){
+  const bar=$("#desktopBar");
+  bar.innerHTML=`<div class="desktop-bar-brand"><span>✦</span> سوقنا <small>SOUQNA</small></div>
+    <label class="desktop-search" for="globalSearch"><span>⌕</span><input id="globalSearch" type="search" placeholder="ابحث عن سيارات، عقارات، ومتاجر..." aria-label="ابحث في الإعلانات" value="${esc(q)}"></label>
+    <button class="desktop-add" data-v="add">＋ أضف إعلانك</button>
+    <button class="desktop-account" data-v="acc" aria-label="الذهاب إلى حسابي">${me?"👤 "+esc(me.name):"👤 تسجيل الدخول"}</button>`;
+  $("#globalSearch").oninput=e=>{
+    q=e.target.value;
+    if(view!=="ads"){
+      view="ads";feat=false;cur="all";render();
+      const input=$("#globalSearch");input?.focus();input?.setSelectionRange(q.length,q.length);
+    }else drawList();
+  };
 }
 function drawList(){
   const l=ads.filter(a=>(cur=="all"||a.cat==cur)&&(!feat||isF(a))&&(!q||(a.title+a.desc+a.area).includes(q))).sort((x,y)=>isF(y)-isF(x)||y.createdAt-x.createdAt);
-  $("#list").innerHTML=l.map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات.</p>';
+  const target=$("#list");
+  if(target)target.innerHTML=l.map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات مطابقة للبحث.</p>';
 }
 function loginBox(){
   const r=mode=="reg";
@@ -157,29 +406,128 @@ function loginBox(){
   <button class="btn" style="width:100%" data-a="auth">${r?"إنشاء الحساب":"دخول"}</button>
   <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
 
+function adminReportRows(){
+  const summary=summarizeAdmin({
+    ads,stores,pend,pendStores,sorders,sp,orders,promos,subs,pendingSponsorRequests,
+    users:isAdm()?allUsers:[],transactions:isAdm()?allTx:[],isOwner:isAdm()
+  });
+  const p=summary.publicStats,m=summary.pending,a=summary.owner;
+  return [
+    ["الإعلانات المنشورة",p.publishedAds],["المتاجر المنشورة",p.publishedStores],
+    ["الإعلانات المميزة حالياً",p.featuredAds],["اشتراكات المتاجر الفعالة",p.activeStorePlans],
+    ["بنرات الرعاية النشطة",p.activeSponsors],["الإعلانات بانتظار المراجعة",m.ads],
+    ["المتاجر بانتظار المراجعة",m.stores],["طلبات الخدمات المفتوحة",m.serviceOrders],
+    ...(a?[["الطلبات المالية المعلقة",m.finance],["الحسابات المسجلة",a.users],
+      ["النجوم في المحافظ",a.walletStars],["النجوم المضافة في الدفتر",a.creditedStars],
+      ["النجوم المخصومة في الدفتر",a.debitedStars],["قيود دفتر النجوم",a.ledgerEntries]]:[])
+  ];
+}
+function exportAdminSummary(){
+  if(!isStaff())throw Error("غير مصرح بتصدير تقرير الإدارة");
+  const rows=[["المؤشر","القيمة"],...adminReportRows(),["وقت جلب البيانات",new Date(adminUpdatedAt||Date.now()).toISOString()]];
+  const csv="\uFEFF"+rows.map(row=>row.map(value=>{
+    const raw=String(value??"");
+    const safe=/^\s*[=+@-]/.test(raw)?"'"+raw:raw;
+    return '"'+safe.replace(/"/g,'""')+'"';
+  }).join(",")).join("\r\n");
+  const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  const link=document.createElement("a");
+  link.href=url;link.download="souqna-admin-summary-"+new Date().toISOString().slice(0,10)+".csv";
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+function adminDashboardHtml(){
+  if(!isStaff())return "";
+  const results=summarizeAdmin({
+    ads,stores,pend,pendStores,sorders,sp,orders,promos,subs,pendingSponsorRequests,
+    users:isAdm()?allUsers:[],
+    transactions:isAdm()?allTx:[],
+    isOwner:isAdm()
+  });
+  const card=(icon,label,value,description)=>`<div class="admin-stat" data-value="${Number(value)}" role="group" aria-label="${esc(label)}">
+    <span class="admin-stat-icon" aria-hidden="true">${icon}</span>
+    <div class="admin-stat-name">${esc(label)}</div>
+    <strong class="admin-stat-value" dir="ltr">${Number(value).toLocaleString("ar-SY")}</strong>
+    <small>${esc(description)}</small>
+  </div>`;
+  const p=results.publicStats,m=results.pending,a=results.owner;
+  const publicCards=[
+    ["📢","الإعلانات المنشورة",p.publishedAds,"إعلانات وافقت الإدارة على نشرها"],
+    ["🏪","المتاجر المنشورة",p.publishedStores,"متاجر معتمدة من الإدارة"],
+    ["⭐","إعلانات مميزة الآن",p.featuredAds,"ضمن فترة التمييز الحالية"],
+    ["💎","اشتراكات متاجر فعالة",p.activeStorePlans,"باقات صالحة بتاريخ اليوم"],
+    ["🏅","بنرات رعاية نشطة",p.activeSponsors,"بانرات ضمن فترة العرض"]
+  ];
+  const queue=[
+    ["🕓","إعلانات للمراجعة",m.ads,"بانتظار قرار فريق الإشراف"],
+    ["🏬","متاجر للمراجعة",m.stores,"بانتظار قرار فريق الإشراف"],
+    ["🎨","طلبات خدمات مفتوحة",m.serviceOrders,"جديدة أو قيد التنفيذ"],
+    ...(a?[["💳","طلبات مالية معلّقة",m.finance,"نجوم، تمييز، اشتراكات وبنرات"]]:[])
+  ];
+  const financeCards=a?[
+    ["👥","الحسابات المسجلة",a.users,"عدد ملفات المستخدمين الموجودة"],
+    ["💰","نجوم في المحافظ",a.walletStars,"مجموع أرصدة المستخدمين"],
+    ["➕","نجوم أُضيفت",a.creditedStars,"حركات إضافة في دفتر النجوم"],
+    ["➖","نجوم خُصمت",a.debitedStars,"حركات خصم في دفتر النجوم"],
+    ["📑","قيود دفتر النجوم",a.ledgerEntries,"عدد العمليات المسجلة"]
+  ]:[];
+  const cards=x=>x.map(row=>card(...row)).join("");
+  const updated=adminUpdatedAt?new Date(adminUpdatedAt).toLocaleString("ar-SY"):"لم يكتمل التحديث";
+  return `<section id="adminDashboard" class="admin-dashboard" aria-label="إحصاءات إدارة سوقنا">
+    <div class="admin-dashboard-head">
+      <div><span class="admin-eyebrow">SOUQNA CONTROL CENTER</span>
+        <h2>📊 لوحة تحكم سوقنا</h2>
+        <p>مؤشرات مأخوذة من سجلات Firebase المتاحة لصلاحيات حسابك.</p>
+      </div>
+      <button class="btn g" data-a="refreshAdmin" id="refreshAdmin" aria-label="تحديث إحصاءات الإدارة">⟳ تحديث البيانات</button><button class="btn l" data-a="exportAdmin" aria-label="تنزيل ملخص إحصاءات سوقنا CSV">⬇ تنزيل CSV</button>
+    </div>
+    <div class="admin-refresh-time">آخر جلب للبيانات: ${esc(updated)} · ليست إحصاءات متدفقة لحظياً</div>
+    <h3>حالة السوق والإعلانات</h3><div class="admin-stat-grid">${cards(publicCards)}</div>
+    <h3>المتابعة والمراجعة</h3><div class="admin-stat-grid">${cards(queue)}</div>
+    ${a?`<h3>حركة النجوم والمستخدمين</h3><div class="admin-stat-grid">${cards(financeCards)}</div>
+      <p class="admin-finance-disclaimer">تنبيه مالي: حركة النجوم ليست إجمالي مبيعات أو أرباح بالدولار. أي إيراد نقدي يحتاج توثيق إيصال الدفع وتسوية محاسبية منفصلة.</p>`:""}
+  </section>`;
+}
+
 function render(){
-  drawHd();drawNav();const A=$("#app");
+  drawHd();drawNav();drawDesktopBar();$("#newsHost").innerHTML=tkHtml();const A=$("#app");
   if(view=="home"){
-    A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>a.img).slice(0,8).map(a=>`<button class="sc" data-c="${a.cat}" aria-label="${esc(a.title)}" style="background-image:url(${a.img})"></button>`).join("")}</div>
-    ${site.banner?`<img class="bnr" src="${site.banner}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
-    ${tkHtml()}${wxHtml()}<div id="spw">${spHtml()}</div>${storesHtml()}
+    A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>safeImage(a.img)).slice(0,8).map(a=>`<button class="sc" data-c="${esc(a.cat)}" aria-label="${esc(a.title)}" style="${bgImage(a.img)}"></button>`).join("")}</div>
+    ${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div style="flex:1"><b>كل ما تحتاجه .. في مكان واحد</b><button class="gold" data-c="all">تسوق الآن ‹</button></div><div class="sp bp"></div><em>📍 السويداء</em></div>`}
+    ${wxHtml()}<div id="spw">${spHtml()}</div>${tkHtml(true)}${storesHtml()}
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
     <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
-    <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
-    <div class="qt"><button data-a="feat"><i>📢</i>إعلانات مميزة</button><button data-c="services"><i>📍</i>دليل الخدمات</button><button data-v="add"><i>⭐</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}><i>🎧</i>دعم فني</a></div>
+    <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"],["fuel","محطات الوقود"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
+    <div class="qt"><button data-a="feat"><i>📢</i>إعلانات مميزة</button><button data-v="utilities"><i>🧮</i>الحاسبة والأسعار</button><button data-c="services"><i>📍</i>دليل الخدمات</button><button data-v="add"><i>⭐</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}><i>🎧</i>دعم فني</a></div>
     <div class="cm"><b>معاً .. نبني مجتمعاً أفضل في السويداء 👥</b><button class="gold" data-c="community">انضم إلينا</button></div>
     <button class="cm" style="width:100%;border:0;font:inherit;cursor:pointer;text-align:right" data-v="services"><b>🎨 خدمات التصميم والفيديو والحملات التسويقية</b><span class="gold">اطلب الآن</span></button>
     <div class="sec"><b>${feat?"الإعلانات المميزة":"أحدث الإعلانات"}</b></div><div class="grid" id="list"></div>${adHtml()}`;pushAds();
+    drawList();
+  }else if(view=="utilities"){
+    A.innerHTML='<button class="btn l" data-v="home">‹ الرئيسية</button><div id="sq-utilities-root" role="region" aria-label="أدوات سوقنا"><div class="box">جارٍ تحميل أدوات سوقنا...</div></div>';
+    import("./assets/souqna-utilities-ui.mjs").then(({mountSouqnaUtilities})=>{
+      const root=document.querySelector("#sq-utilities-root");
+      if(root&&view==="utilities")mountSouqnaUtilities(root);
+    }).catch(error=>{
+      console.error("SOUQNA visitor tools loading failed:",error);
+      const root=document.querySelector("#sq-utilities-root");
+      if(root)root.textContent="تعذّر تحميل الأدوات. يُرجى إعادة فتح الصفحة.";
+    });
+  }else if(view=="ads"){
+    A.innerHTML=`<div class="desktop-page-title"><h2>🚘 سوق الإعلانات</h2><p>اكتشف العروض الجديدة في السويداء ومناطقها</p></div>
+      <div class="filter-chips"><button class="${cur==="all"?"on":""}" data-c="all">جميع الأقسام</button>${cats.map(c=>`<button class="${cur===c.id?"on":""}" data-c="${esc(c.id)}">${esc(c.name_ar)}</button>`).join("")}</div>
+      <div class="sec"><b>${feat?"الإعلانات المميزة":"الإعلانات المتاحة"}</b><button class="btn l" data-a="feat">⭐ ${feat?"عرض الكل":"المميزة فقط"}</button></div>
+      <div id="list" class="grid"></div>`;
     drawList();
   }else if(view=="add"){
     A.innerHTML=!me?loginBox():`<div class="box"><h3>➕ أضف إعلانك</h3><select id="a-cat">${cats.map(c=>`<option value="${c.id}">${esc(c.name_ar)}</option>`).join("")}</select>${myStores.some(s=>s.status=="approved")?`<select id="a-st"><option value="">إعلان شخصي (بدون متجر)</option>${myStores.filter(s=>s.status=="approved").map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>`:""}
     <input id="a-title" placeholder="عنوان الإعلان"><div class="row"><input id="a-price" type="number" placeholder="السعر"><select id="a-cur"><option>$</option><option>ل.س</option></select></div>
     <input id="a-area" placeholder="المنطقة (السويداء، شهبا، صلخد...)"><textarea id="a-desc" rows="3" placeholder="التفاصيل"></textarea>
-    <input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><input id="a-img" type="file" accept="image/*">
+    <input id="a-phone" inputmode="tel" dir="ltr" placeholder="رقم واتساب مع رمز الدولة (9639XXXXXXXX)"><input id="a-img" type="file" accept="image/jpeg,image/png,image/webp,image/avif"><label for="a-gallery">صور إضافية (حتى 11 صورة إلى جانب الرئيسية، كل منها حتى 5 ميغابايت)</label><input id="a-gallery" type="file" accept="image/jpeg,image/png,image/webp" multiple><input id="a-video" type="url" dir="ltr" placeholder="رابط فيديو YouTube أو Vimeo (اختياري)"><img class="imgprev" id="a-preview" hidden alt="معاينة صورة الإعلان"><div class="mut">📷 صورة حتى 12 ميغابايت؛ تُضغط تلقائيًا لتوفير مساحة قاعدة البيانات.</div><button class="btn l" type="button" data-a="clearphoto">إزالة الصورة</button>
     <button class="btn g" style="width:100%" data-a="post">إرسال للمراجعة</button><p class="mut">يظهر إعلانك بعد موافقة الإدارة.</p></div>`;
-    const f=$("#a-img");if(f)f.onchange=()=>shrink(f.files[0]);
+    const f=$("#a-img");if(f)f.onchange=()=>{photoReady=shrink(f.files[0]);};
   }else if(view=="store"){const s=stores.find(x=>x.id==curStore)||myStores.find(x=>x.id==curStore)||{};
-    A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><div class="cv" style="${stImg(s,"cover")}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div></div><h2 style="margin:0">${esc(s.name)} ${planTag(s)}</h2><div class="mut">${esc(s.desc||"")}</div><div class="mut">📍 ${esc(s.area||"")}</div><div class="acts">${s.phone?`<a class="btn wa" target="_blank" href="https://wa.me/${esc(s.phone)}">واتساب</a><a class="btn" href="tel:${esc(s.phone)}">اتصال</a>`:""}${s.map?`<a class="btn l" target="_blank" href="${esc(s.map)}">الموقع على الخريطة</a>`:""}</div>${xHtml(s)}<div class="sec"><b>إعلانات المتجر</b></div><div class="grid">${ads.filter(a=>a.storeId==s.id).map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات للمتجر.</p>'}</div>`;
+    A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><div class="cv" style="${stImg(s,"cover")}"><div class="stl" style="${stImg(s,"logo")}">${s.logo?"":esc((s.name||"?")[0])}</div></div><h2 style="margin:0">${esc(s.name)} ${planTag(s)}</h2><div class="mut">${esc(s.desc||"")}</div><div class="mut">📍 ${esc(s.area||"")}</div><div class="acts">${s.phone?`<a class="btn wa" target="_blank" href="https://wa.me/${esc(s.phone)}">واتساب</a><a class="btn" href="tel:${esc(s.phone)}">اتصال</a>`:""}${safeHttpUrl(s.map)?`<a class="btn l" rel="noopener noreferrer" target="_blank" href="${esc(safeHttpUrl(s.map))}">الموقع على الخريطة</a>`:""}</div>${xHtml(s)}<div class="sec"><b>إعلانات المتجر</b></div><div class="grid">${ads.filter(a=>a.storeId==s.id).map(a=>card(a)).join("")||'<p class="mut">لا توجد إعلانات للمتجر.</p>'}</div>`;
   }else if(view=="mystores"){
     A.innerHTML=!me?loginBox():`<button class="btn l" data-v="acc">‹ رجوع</button><div style="height:10px"></div>${myStores.map(s=>`<div class="box"><b>${esc(s.name)}</b> ${stTag(s.status)} ${planTag(s)}<div class="mut">${esc(s.desc||"")}</div><div class="mut">الاشتراك: ${esc(planOf(s)?.name||"—")}${s.planUntil>Date.now()?" · حتى "+new Date(s.planUntil).toLocaleDateString("ar"):""}</div>${s.status=="approved"&&plans.some(p=>p.id!="free"&&p.active!==false)?`<div class="row"><select id="pl-${s.id}">${plans.filter(p=>p.id!="free"&&p.active!==false).map(p=>`<option value="${p.id}">${esc(p.name)} · ${p.stars}★ / ${p.days} يوم</option>`).join("")}</select><button class="btn g" data-a="subreq" data-id="${s.id}">اشترك / جدّد</button></div>`:""}<div class="acts"><button class="btn" data-st="${s.id}">فتح</button><button class="btn l" data-a="edst" data-id="${s.id}">تعديل</button><button class="btn r" data-a="delst" data-id="${s.id}">حذف</button></div></div>`).join("")}
     <div class="box"><h3>${editSt?"تعديل المتجر":"🏪 متجر جديد"}</h3><input id="t-n" placeholder="اسم المتجر / النشاط" value="${esc(editSt?.name||"")}"><textarea id="t-d" rows="3" placeholder="وصف النشاط">${esc(editSt?.desc||"")}</textarea><input id="t-p" dir="ltr" placeholder="واتساب/هاتف مع رمز الدولة" value="${esc(editSt?.phone||"")}"><input id="t-a" placeholder="المنطقة / العنوان" value="${esc(editSt?.area||"")}"><input id="t-m" dir="ltr" placeholder="رابط الموقع من خرائط Google (اختياري)" value="${esc(editSt?.map||"")}">
@@ -193,71 +541,251 @@ function render(){
     A.innerHTML=!me?loginBox():`<button class="btn l" data-v="acc">‹ رجوع</button><div style="height:8px"></div>${notifs.map(n=>`<div class="box" style="${n.read?"":"border-color:var(--g)"}">${esc(n.text)}<div class="mut">${new Date(n.createdAt).toLocaleString("ar")}</div></div>`).join("")||'<p class="mut">لا إشعارات.</p>'}`;
   }else if(view=="orders"){
     A.innerHTML=!me?loginBox():`<button class="btn l" data-v="acc">‹ رجوع</button><div style="height:8px"></div>${mySorders.map(x=>`<div class="box"><b>${esc(x.serviceName)}</b> <span class="tag g">${SL[x.status]||x.status}</span><div class="mut">${esc(x.details)}</div>${x.note?`<div class="mut">ملاحظة الإدارة: ${esc(x.note)}</div>`:""}</div>`).join("")||'<p class="mut">لا طلبات بعد.</p>'}`;
-  }else if(view=="services"){
+  }else if(view=="sponsor"){
+     A.innerHTML=`<button class="btn l" data-v="home">‹ الرئيسية</button><div class="box" style="margin-top:10px"><h3>📢 احجز بنرك الإعلاني المميز</h3><p class="mut">أرسل طلبك لتحديد السعر ومدة العرض مع الإدارة. لن يُنشر البنر قبل التحقق اليدوي من الدفع والموافقة.</p>
+     ${!me?loginBox():`<input id="sb-co" maxlength="100" placeholder="اسم المتجر أو الشركة"><input id="sb-ti" maxlength="120" placeholder="عنوان الحملة"><textarea id="sb-de" rows="3" maxlength="500" placeholder="تفاصيل الإعلان"></textarea><div class="row"><input id="sb-ph" dir="ltr" inputmode="tel" placeholder="واتساب مع رمز الدولة"><input id="sb-days" type="number" min="1" max="90" placeholder="المدة بالأيام"></div><label class="mut">صورة البنر (اختيارية)</label><input type="file" accept="image/jpeg,image/png,image/webp" data-img="sb"><img class="imgprev" id="sb-preview" hidden alt="معاينة البنر"><button class="btn g" data-a="sbreq" style="width:100%">إرسال طلب حجز البنر</button>`}
+     </div>${me?`<h3>طلباتي السابقة</h3>${mySponsorRequests.map(r=>`<div class="box"><b>${esc(r.company)}</b> · ${esc(r.title)}<div class="mut">المدة: ${r.days} يوم · الحالة: ${r.status==="approved"?"مقبول ومفعّل":r.status==="rejected"?"مرفوض":"قيد المراجعة"}</div></div>`).join("")||'<p class="mut">لم ترسل طلبات بنر بعد.</p>'}`:""}`;
+   }else if(view=="services"){
     A.innerHTML=`<button class="btn l" data-v="home">‹ رجوع</button><div class="sec"><b>🎨 خدمات سوقنا</b></div>${services.filter(x=>x.active!==false).map(x=>`<div class="box"><b>${esc(x.name)}</b> <span class="tag g">${x.price?esc(x.price)+" $":"حسب الاتفاق"}</span><div class="mut">${esc(x.desc||"")}</div></div>`).join("")||'<p class="mut">لا خدمات متاحة حاليًا.</p>'}
     <div class="sec"><b>📣 شبكة شركاء النشر</b></div>${partners.filter(x=>x.active!==false).map(x=>`<div class="dr"><div class="av">${esc((x.platform||"?")[0].toUpperCase())}</div><div style="flex:1"><b>${esc(x.name)}</b><div class="mut">${esc(x.platform||"")} · ${esc(x.region||"")} · ${esc(x.audience||"")}</div></div><span class="tag g">${x.price?esc(x.price)+" $":"حسب الاتفاق"}</span></div>`).join("")||'<p class="mut">قريبًا.</p>'}
     <div class="box"><h3>طلب خدمة أو حملة</h3>${me?`<select id="o-s">${services.filter(x=>x.active!==false).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select><select id="o-p"><option value="">بدون شريك نشر</option>${partners.filter(x=>x.active!==false).map(x=>`<option value="${x.id}">${esc(x.name)} (${esc(x.platform||"")})</option>`).join("")}</select><textarea id="o-d" rows="3" placeholder="تفاصيل الطلب: النص، المقاس، الجمهور المستهدف..."></textarea><button class="btn g" style="width:100%" data-a="sorder">إرسال الطلب</button>`:"<p class='mut'>سجّل الدخول لإرسال طلب.</p>"}</div>`;
+  }else if(view=="favorites"){
+    if(!me)A.innerHTML=loginBox();
+    else {
+      const saved=ads.filter(a=>favorites.some(f=>f.adId===a.id));
+      const missing=favorites.filter(f=>!ads.some(a=>a.id===f.adId));
+      A.innerHTML=`<div class="desktop-page-title"><h2>♥ إعلاناتي المفضلة</h2><p>الإعلانات المحفوظة خاصة بحسابك ولا يراها الآخرون</p></div>
+        <div class="sec"><b>الإعلانات المحفوظة (${favorites.length})</b><button class="btn l" data-v="ads">تصفح الإعلانات</button></div>
+        <div class="grid">${saved.map(a=>card(a)).join("")}${missing.map(f=>`<div class="box"><b>لم يعد هذا الإعلان متاحاً</b><p class="mut">يمكنك إزالته من مفضلتك.</p><button class="btn l" data-a="toggleFav" data-id="${esc(f.adId)}">إزالة من المفضلة</button></div>`).join("")}</div>
+        ${!favorites.length?'<div class="box favorite-empty"><div>♡</div><h3>لا توجد إعلانات محفوظة بعد</h3><p>اضغط على رمز القلب في أي إعلان ليظهر هنا.</p><button class="btn g" data-v="ads">اكتشف الإعلانات</button></div>':""}`;
+    }
   }else if(view=="mine"){
     A.innerHTML=!me?loginBox():`<div class="grid">${mine.map(a=>card(a,"mine")).join("")||'<p class="mut">لا توجد إعلانات لك.</p>'}</div>`;
   }else if(view=="stars"){
     const ok=mine.filter(a=>a.status=="approved");
     A.innerHTML=`<div class="box"><h3>⭐ رصيدك: ${me?me.stars||0:"—"} نجمة</h3><p class="mut">النجمة الواحدة = 1 دولار. الدفع بتحويل محلي، وتؤكده الإدارة عبر واتساب ثم تُضاف النجوم لرصيدك.</p>
     <div class="row"><input id="n-st" type="number" min="1" placeholder="عدد النجوم"><button class="btn g" data-a="buy">اطلب شراء</button></div></div>
-    <h3>🚀 باقات تمييز الإعلان</h3>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
+    <h3>🚀 باقات تمييز الإعلان</h3><p class="mut">التمييز المدفوع يعمل داخل سوقنا. النشر التلقائي على فيسبوك وإنستغرام غير متاح حتى ربط صفحات سوقنا الرسمية وتفعيل صلاحيات Meta؛ سنعرض حالة النشر بوضوح بعد تفعيله.</p>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
-    A.innerHTML=(isAdm()?`<div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
+    A.innerHTML=adminErrorBanner()+adminDashboardHtml()+(isAdm()?`<div class="box"><h3>🧹 متابعة تنظيف صور الإعلانات</h3><p class="mut">خاص ببيئة الاختبار. أدخل معرّف إعلان محذوف له صور قيد التنظيف.</p><div class="row"><input id="cleanup-ad-id" dir="ltr" maxlength="128" placeholder="معرّف الإعلان" value="${esc(pendingCleanupId)}"><button class="btn" data-a="retryCleanup">إعادة محاولة تنظيف الصور</button><button class="btn" data-a="loadCleanupJobs">تحديث المهام المعلّقة</button></div>${cleanupJobsHtml()}</div>
+    <div class="box"><h3>📣 النشر الاجتماعي للإعلانات المميزة</h3><p class="mut">الربط مع صفحات سوقنا الرسمية قيد التجهيز. يُنشر الإعلان بعد تفعيل التمييز المدفوع وتُزال منشوراته عند انتهاء المدة إذا سمحت صلاحيات Meta.</p><button class="btn" data-a="loadSocialQueue">تحديث حالة المنشورات</button>${socialQueueHtml()}</div>
+    <div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
-    <div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label class="mut">أخبار الشريط العاجل (سطر لكل خبر)</label><textarea id="s-tk" rows="3">${esc(site.ticker||"")}</textarea>
-    <label><input type="checkbox" id="s-tkon" style="width:auto" ${site.tickerOn!==false?"checked":""}> إظهار الشريط العاجل</label><br><label><input type="checkbox" id="s-wxon" style="width:auto" ${site.weatherOn!==false?"checked":""}> إظهار الطقس</label>
+    <div class="box"><h3>🎨 المظهر والإعدادات</h3><label class="mut">الشعار (يستبدل شعار الهيدر)</label><input type="file" accept="image/*" data-img="logo"><label class="mut">بانر الرئيسية (صورة)</label><input type="file" accept="image/*" data-img="banner"><label class="mut">أخبار الشريط العاجل (سطر لكل خبر)</label><textarea id="s-tk" rows="3">${esc(site.ticker||"")}</textarea><label class="mut">شريط الخدمات والوقود أسفل البنر (خبر في كل سطر)</label><textarea id="s-tk2" rows="3">${esc(site.tickerSecondary||"")}</textarea>
+    <label><input type="checkbox" id="s-tkon" style="width:auto" ${site.tickerOn!==false?"checked":""}> إظهار الشريط العاجل</label><br><label><input type="checkbox" id="s-tk2on" style="width:auto" ${site.tickerSecondaryOn!==false?"checked":""}> إظهار شريط الخدمات والوقود</label><br><label><input type="checkbox" id="s-wxon" style="width:auto" ${site.weatherOn!==false?"checked":""}> إظهار الطقس</label>
     <input id="s-adc" dir="ltr" placeholder="Google AdSense: ca-pub-XXXXXXXXXXXXXXXX" value="${esc(site.adClient||"")}"><input id="s-ads" dir="ltr" placeholder="رقم وحدة الإعلان (slot)" value="${esc(site.adSlot||"")}"><label class="mut">الحد الأقصى لمتاجر الحساب الواحد</label><input id="s-mx" type="number" min="1" value="${site.maxStores??3}"><div class="acts"><button class="btn" data-a="savesite">حفظ</button><button class="btn l" data-a="clrimg">حذف الشعار والبانر المخصصين</button></div></div>
     <div class="box"><h3>📢 بانرات الشركات (مدفوعة)</h3>${sp.map(s=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(s.company)} · ${Math.max(0,Math.ceil((s.to-Date.now())/864e5))} يوم</span><button class="btn l" data-a="togsp" data-id="${s.id}">${s.active?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="delsp" data-id="${s.id}">حذف</button></div>`).join("")}
     <input id="p-co" placeholder="اسم الشركة"><input id="p-ti" placeholder="عنوان العرض"><input id="p-de" placeholder="تفاصيل قصيرة"><input id="p-ph" dir="ltr" placeholder="واتساب الشركة (اختياري)"><input id="p-days" type="number" placeholder="مدة الإعلان بالأيام"><input type="file" accept="image/*" data-img="sp"><button class="btn g" data-a="addsp">إضافة البانر</button></div>
     <div class="box"><h3>📋 الدليل المميز</h3>${dr.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} (${TY[x.type]||""}) ${"★".repeat(x.stars||0)}</span>${x.type=="pharmacy"?`<button class="btn ${x.onDuty?"g":"l"}" data-a="duty" data-id="${x.id}">${x.onDuty?"مناوبة اليوم":"غير مناوبة"}</button>`:""}<button class="btn r" data-a="deldir" data-id="${x.id}">حذف</button></div>`).join("")}
-    <select id="d-t"><option value="pharmacy">صيدلية</option><option value="doctor">طبيب</option><option value="lawyer">محامٍ</option><option value="engineer">مهندس</option></select><input id="d-n" placeholder="الاسم"><input id="d-s" placeholder="الاختصاص"><input id="d-a" placeholder="الحي / المنطقة"><input id="d-p" dir="ltr" placeholder="رقم الهاتف"><select id="d-st"><option value="1">★</option><option value="2">★★</option><option value="3" selected>★★★</option></select><button class="btn g" data-a="adddir">إضافة</button></div>
-    <div class="box"><h3>📊 التقارير</h3>${(()=>{const cr=allTx.filter(t=>t.amount>0).reduce((q,t)=>q+t.amount,0),sx=allTx.filter(t=>t.amount<0).reduce((q,t)=>q-t.amount,0);return [["المستخدمون",allUsers.length],["نجوم مشحونة (≈ دولار)",cr],["نجوم مُنفقة",sx],["نجوم في المحافظ",allUsers.reduce((q,u)=>q+(u.stars||0),0)],["إعلانات منشورة",ads.length],["متاجر منشورة",stores.length],["اشتراكات فعّالة",stores.filter(x=>x.planUntil>Date.now()).length],["بانرات نشطة",sp.filter(x=>x.active&&x.to>Date.now()).length],["طلبات خدمات جديدة",sorders.filter(x=>x.status=="new").length]].map(([k,v])=>`<div class="row"><span>${k}</span><b>${v}</b></div>`).join("")})()}</div>
+    <select id="d-t"><option value="pharmacy">صيدلية</option><option value="doctor">طبيب</option><option value="lawyer">محامٍ</option><option value="engineer">مهندس</option><option value="fuel">محطة وقود</option></select><input id="d-n" placeholder="الاسم"><input id="d-s" placeholder="الاختصاص"><input id="d-a" placeholder="الحي / المنطقة"><input id="d-p" dir="ltr" placeholder="رقم الهاتف"><select id="d-st"><option value="1">★</option><option value="2">★★</option><option value="3" selected>★★★</option></select><button class="btn g" data-a="adddir">إضافة</button></div>
     <div class="box"><h3>👥 المستخدمون</h3>${allUsers.slice(0,60).map(u=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(u.name)} · ${esc(u.role)} · ⭐${u.stars||0}</span><button class="btn l" data-a="ustars" data-id="${u.id}">± نجوم</button><button class="btn l" data-a="urole" data-id="${u.id}">الدور</button></div>`).join("")}</div>
     <div class="box"><h3>🎨 الخدمات</h3>${services.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${x.price||"اتفاق"}</span><button class="btn l" data-a="svprice" data-id="${x.id}">السعر</button><button class="btn l" data-a="svtog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="svdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="sv-n" placeholder="اسم الخدمة"><input id="sv-d" placeholder="الوصف"><input id="sv-p" type="number" placeholder="السعر بالدولار (فارغ = حسب الاتفاق)"><div class="acts"><button class="btn g" data-a="svadd">إضافة</button>${services.length?"":'<button class="btn" data-a="svseed">الخدمات الافتراضية</button>'}</div></div>
     <div class="box"><h3>📣 شركاء النشر</h3>${partners.map(x=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(x.name)} · ${esc(x.platform||"")}</span><button class="btn l" data-a="pttog" data-id="${x.id}">${x.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="ptdel" data-id="${x.id}">حذف</button></div>`).join("")}<input id="pt-n" placeholder="اسم الصفحة / الشريك"><select id="pt-pl"><option>facebook</option><option>instagram</option><option>tiktok</option><option>other</option></select><input id="pt-r" placeholder="المنطقة (مثل: ألمانيا، الخليج)"><input id="pt-a" placeholder="الجمهور / عدد المتابعين"><input id="pt-p" type="number" placeholder="السعر بالدولار"><button class="btn g" data-a="ptadd">إضافة</button></div>
     <div class="box"><h3>💎 باقات اشتراك المتاجر</h3>${plans.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>${esc(p.name)} · ${p.stars}★ · ${p.days||"∞"} يوم · ${p.maxAds||"∞"} إعلان</span><button class="btn l" data-a="edpl" data-id="${p.id}">تعديل</button><button class="btn l" data-a="togpl" data-id="${p.id}">${p.active!==false?"إيقاف":"تشغيل"}</button><button class="btn r" data-a="delpl" data-id="${p.id}">حذف</button></div>`).join("")}${plans.length?"":'<button class="btn g" data-a="seedpl">إنشاء الباقات الافتراضية</button>'}
     <h4>${editPl?"تعديل: "+esc(editPl.name):"باقة جديدة"}</h4>${editPl?"":'<input id="pl-id" dir="ltr" placeholder="المعرّف بالإنجليزية (مثل: silver)">'}<input id="pl-n" placeholder="الاسم" value="${esc(editPl?.name||"")}"><div class="row"><input id="pl-s" type="number" placeholder="السعر بالنجوم" value="${editPl?.stars??""}"><input id="pl-d" type="number" placeholder="المدة بالأيام" value="${editPl?.days??""}"></div><div class="row"><input id="pl-m" type="number" placeholder="حد الإعلانات (0 = بلا حد)" value="${editPl?.maxAds??""}"><input id="pl-o" type="number" placeholder="الترتيب" value="${editPl?.order??""}"></div><input id="pl-b" placeholder="الشارة (مثل: ذهبي)" value="${esc(editPl?.badge||"")}"><input id="pl-f" placeholder="الميزات (نص حر)" value="${esc(editPl?.features||"")}"><div class="acts"><button class="btn g" data-a="savepl">حفظ</button>${editPl?'<button class="btn l" data-a="cancelpl">إلغاء</button>':""}</div></div>
     <h3>طلبات الاشتراك (${subs.length})</h3>${subs.map(r=>`<div class="box"><b>${esc(r.userName)}</b> · ${esc(r.storeName)}<div class="mut">${esc(r.planName)} · ${r.stars}★ · ${r.days} يوم</div><div class="acts"><button class="btn" data-a="subok" data-id="${r.id}">موافقة وخصم</button><button class="btn l" data-a="subno" data-id="${r.id}">رفض</button></div></div>`).join("")}
-    <h3>طلبات شراء النجوم (${orders.length})</h3>${orders.map(o=>`<div class="box"><b>${esc(o.userName)}</b> يطلب ${o.stars} نجمة (${o.stars}$)<div class="acts"><button class="btn" data-a="ordok" data-id="${o.id}">تأكيد الاستلام</button><button class="btn l" data-a="ordno" data-id="${o.id}">رفض</button></div></div>`).join("")}
+    <h3>طلبات حجوزات البنر (${pendingSponsorRequests.length})</h3>${pendingSponsorRequests.map(r=>`<div class="box"><b>${esc(r.company)}</b> · ${esc(r.title)}<div class="mut">${esc(r.userName)} · ${r.days} يوم · ${esc(r.desc||"")}</div><div class="acts"><button class="btn g" data-a="sbapprove" data-id="${r.id}">تأكيد استلام الدفع وتفعيل البنر</button><button class="btn l" data-a="sbreject" data-id="${r.id}">رفض الطلب</button></div></div>`).join("")||'<p class="mut">لا توجد طلبات بنر جديدة.</p>'}
+     <h3>طلبات شراء النجوم (${orders.length})</h3>${orders.map(o=>`<div class="box"><b>${esc(o.userName)}</b> يطلب ${o.stars} نجمة (${o.stars}$)<div class="acts"><button class="btn" data-a="ordok" data-id="${o.id}">تأكيد الاستلام</button><button class="btn l" data-a="ordno" data-id="${o.id}">رفض</button></div></div>`).join("")}
     <h3>طلبات التمييز (${promos.length})</h3>${promos.map(p=>`<div class="box"><b>${esc(p.userName)}</b>: ${esc(p.adTitle)}<div class="mut">${p.stars} نجوم · ${p.days} يوم</div><div class="acts"><button class="btn" data-a="prok" data-id="${p.id}">موافقة وخصم</button><button class="btn l" data-a="prno" data-id="${p.id}">رفض</button></div></div>`).join("")}`:"")+
     `<h3>طلبات الخدمات (${sorders.filter(x=>x.status=="new"||x.status=="progress").length})</h3>${sorders.filter(x=>x.status=="new"||x.status=="progress").map(x=>`<div class="box"><b>${esc(x.userName)}</b> · ${esc(x.serviceName)}${x.partnerName?" · "+esc(x.partnerName):""} <span class="tag g">${SL[x.status]}</span><div class="mut">${esc(x.details)}</div><div class="acts"><button class="btn" data-a="sost" data-s="progress" data-id="${x.id}">قيد التنفيذ</button><button class="btn g" data-a="sost" data-s="done" data-id="${x.id}">مكتمل</button><button class="btn l" data-a="sost" data-s="rejected" data-id="${x.id}">رفض</button></div></div>`).join("")}
     <h3>متاجر بانتظار المراجعة (${pendStores.length})</h3>${pendStores.map(s=>`<div class="box"><b>${esc(s.name)}</b> · ${esc(s.ownerName)}<div class="mut">${esc(s.desc||"")}</div><div class="acts"><button class="btn" data-a="stok" data-id="${s.id}">قبول</button><button class="btn l" data-a="stno" data-id="${s.id}">رفض</button><button class="btn r" data-a="delst" data-id="${s.id}">حذف</button></div></div>`).join("")||'<p class="mut">لا توجد متاجر بانتظار المراجعة.</p>'}<h3>إعلانات بانتظار المراجعة (${pend.length})</h3><div class="grid">${pend.map(a=>card(a,"pend")).join("")||'<p class="mut">لا شيء بانتظار المراجعة.</p>'}</div>`;
   }else{
-    A.innerHTML=!me?loginBox():`<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
+    A.innerHTML=!me?loginBox():`<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="favorites">♥ المفضلة (${favorites.length})</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="sponsor">📢 حجوزات البنر</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
   }
 }
-function shrink(f){if(!f)return;const im=new Image();im.onload=()=>{const k=Math.min(1,600/im.width),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);photo=c.toDataURL("image/jpeg",.6)};im.src=URL.createObjectURL(f)}
+async function shrink(file){
+  const selection=++photoSeq;
+  photo="";photoHash="";photoError="";
+  const preview=$("#a-preview");if(preview){preview.hidden=true;preview.removeAttribute("src")}
+  if(!file)return;
+  if(!["image/jpeg","image/png","image/webp","image/avif"].includes(file.type)){
+    photoError="صيغة غير مدعومة. استخدم JPG أو PNG أو WebP أو AVIF";return toast(photoError);
+  }
+  if(file.size>12*1024*1024){photoError="حجم الصورة أكبر من 12 ميغابايت";return toast(photoError)}
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=()=>reject(Error("تعذر قراءة الصورة"));i.src=url});
+    if(!img.naturalWidth||!img.naturalHeight)throw Error("أبعاد الصورة غير صالحة");
+    const scale=Math.min(1,1280/img.naturalWidth,1280/img.naturalHeight);
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+    canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+    const context=canvas.getContext("2d");if(!context)throw Error("المتصفح لا يدعم معالجة هذه الصورة");
+    context.drawImage(img,0,0,canvas.width,canvas.height);
+    let encoded="";
+    for(const format of ["image/webp","image/jpeg"]){
+      for(const quality of [.82,.68,.55,.42,.32]){
+        const trial=canvas.toDataURL(format,quality);
+        if(!trial.startsWith("data:"+format+";"))break;
+        encoded=trial;
+        const dataBytes=Math.ceil((encoded.length-encoded.indexOf(",")-1)*3/4);
+        if(dataBytes<=360*1024)break;
+      }
+      if(encoded&&Math.ceil((encoded.length-encoded.indexOf(",")-1)*3/4)<=360*1024)break;
+    }
+    if(!encoded||Math.ceil((encoded.length-encoded.indexOf(",")-1)*3/4)>550*1024)throw Error("الصورة كبيرة بعد الضغط، جرّب صورة أصغر");
+    if(selection!==photoSeq)return;
+    photo=encoded;
+    if(crypto?.subtle){
+      const digest=await crypto.subtle.digest("SHA-256",await file.arrayBuffer());
+      if(selection!==photoSeq)return;
+      photoHash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,"0")).join("");
+    }
+    if(preview){preview.src=photo;preview.hidden=false}
+    toast("✅ جُهّزت الصورة وعُرضت المعاينة");
+  }catch(error){if(selection===photoSeq){photo="";photoHash="";photoError=error.message||"فشل تجهيز الصورة";toast(photoError)}}
+  finally{URL.revokeObjectURL(url)}
+}
 const need=()=>{if(!me){toast("سجّل الدخول أولًا");view="acc";render();return false}return true};
 
 document.addEventListener("click",async e=>{
-  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc"].includes(view))await loadMine();feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
+  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc","favorites"].includes(view)){
+    try{await loadMine()}catch(error){
+      console.error("SOUQNA account load failed:",error);
+      adminLoadWarnings=["قراءة ملف الحساب ("+(error?.code||"unknown")+")"];
+      toast("تعذر تحميل الحساب: "+(error?.code||"unknown"));
+    }
+  }feat=false;if(view=="notifs"){const u=notifs.filter(n=>!n.read);render();u.forEach(n=>{n.read=true;updateDoc(doc(db,"notifs",n.id),{read:true}).catch(()=>{})});return}if(view=="stores")sq="";return render()}
   const ss=e.target.closest("[data-st]");if(ss){curStore=ss.dataset.st;view="store";stx={f:[],r:[]};await loadStoreX(curStore);render();return scrollTo(0,0)}
   const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;$("#dir").innerHTML=dirHtml();document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt==dtype));return}
-  const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view="home";feat=false;render();return scrollTo(0,0)}
+  const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view=view==="ads"?"ads":"home";feat=false;render();return scrollTo(0,0)}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
   try{
-    if(a=="more"){more=!more;render()}
+    if(a=="toggleFav"){
+      if(!need())return;
+      if(typeof id!=="string"||!/^[A-Za-z0-9_-]{1,128}$/.test(id))return toast("الإعلان غير صالح");
+      const ref=doc(db,"favorites",me.uid+"_"+id);
+      if(favorites.some(f=>f.adId===id)){
+        await deleteDoc(ref);
+        favorites=favorites.filter(f=>f.adId!==id);
+        toast("أُزيل الإعلان من المفضلة");
+      }else{
+        if(!ads.some(a=>a.id===id))return toast("الإعلان غير متاح حالياً");
+        await setDoc(ref,{userId:me.uid,adId:id,createdAt:Date.now()});
+        favorites.push({id:me.uid+"_"+id,userId:me.uid,adId:id,createdAt:Date.now()});
+        toast("أُضيف الإعلان إلى المفضلة");
+      }
+      render();
+    }
+    else if(a=="clearphoto"){photoSeq++;photo="";photoHash="";photoError="";photoReady=Promise.resolve();const f=$("#a-img"),p=$("#a-preview");if(f)f.value="";if(p){p.hidden=true;p.removeAttribute("src")}toast("أُزيلت صورة الإعلان")}
+     else if(a=="spnext"||a=="spprev"){
+      const count=sp.filter(x=>x.active===true&&Number(x.from||0)<=Date.now()&&Number(x.to||0)>Date.now()).length;
+      if(!count)return;
+      spi=(spi+(a==="spnext"?1:count-1))%count;
+      const target=$("#spw");if(target)target.innerHTML=spHtml();
+    }
+    else if(a=="exportAdmin"){if(!isStaff())return toast("غير مصرح");exportAdminSummary();toast("تم تجهيز ملف الإحصاءات")}
+    else if(a=="paycancel"){
+      $("#paymentDialog")?.close();
+    }
+    else if(a=="payconfirm"){
+      if(!isAdm())return toast("غير مصرح");
+      const dialog=$("#paymentDialog");
+      if(!dialog?.open)return;
+      const action=dialog.dataset.action,id=dialog.dataset.requestId;
+      const reference=val("#pay-reference"),amount=Number(val("#pay-amount"));
+      const method=val("#pay-method"),currency=val("#pay-currency");
+      if(!/^[A-Za-z0-9][A-Za-z0-9._-]{5,99}$/.test(reference))return toast("أدخل رقم إيصال فريداً من 6 إلى 100 حرف");
+      if(!Number.isFinite(amount)||amount<=0||Math.round(amount*100)/100!==amount)return toast("أدخل مبلغاً موجباً حتى منزلتين عشريتين");
+      if(!$("#pay-attest")?.checked)return toast("يجب التأكيد أن الدفعة وصلت فعلاً بعد مراجعة الحساب");
+      b.disabled=true;
+      try {
+        await finance(action,id,{payment:{method,reference,amount,currency}});
+        dialog.close();
+        await loadPublic();await loadMine();render();
+        toast(action==="approveTopup"?"تم توثيق الإيصال وإضافة النجوم":"تم توثيق الإيصال وتفعيل البنر");
+      }finally{b.disabled=false}
+    }
+    else if(a=="refreshAdmin"){if(!isStaff())return toast("المدير فقط يمكنه تحديث اللوحة");await loadPublic();await loadMine();render();toast("تم تحديث مؤشرات لوحة الإدارة")}
+    else if(a=="more"){more=!more;render()}
     else if(a=="feat"){feat=!feat;cur="all";render()}
     else if(a=="swap"){mode=mode=="reg"?"login":"reg";render()}
     else if(a=="auth"){
       if(mode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");
         const u=await createUserWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
-        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0})}
+        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0});
+        me={uid:u.user.uid,name:n,email:u.user.email,role:"user",stars:0};
+        await loadMine();render()}
       else await signInWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
     }
-    else if(a=="reset"){await sendPasswordResetEmail(auth,val("#l-mail"));toast("أُرسل رابط استعادة كلمة المرور إلى بريدك")}
+    else if(a=="reset"){
+      const email=val("#l-mail");
+      if(!email)return toast("اكتب بريد حسابك أولاً ثم اضغط نسيت كلمة المرور");
+      await sendPasswordResetEmail(auth,email);
+      toast("إذا كان البريد مسجّلاً، ستصل إليه رسالة استعادة كلمة المرور. افحص أيضاً الرسائل غير المرغوبة.");
+    }
     else if(a=="out"){await signOut(auth)}
     else if(a=="post"){
+       await photoReady;
+       if(photoError)return toast(photoError);
+       if(photoHash&&mine.some(x=>x.imgHash===photoHash&&x.status!=="rejected"))return toast("الصورة نفسها مستخدمة في إعلان سابق. اختر صورة أخرى.");
       const t=val("#a-title"),p=val("#a-phone").replace(/\D/g,"");
-      if(!t||!val("#a-price")||p.length<9)return toast("أكمل العنوان والسعر ورقم واتساب صحيح");
+      if(t.length<3||t.length>150||!val("#a-price")||!Number.isFinite(+val("#a-price"))||+val("#a-price")<0||+val("#a-price")>1000000000000||p.length<9||p.length>15)return toast("تحقق من عنوان الإعلان (3–150 حرفاً)، السعر ورقم الهاتف");
       const sid=$("#a-st")?$("#a-st").value:"";if(sid){const mx=planOf(myStores.find(x=>x.id==sid))?.maxAds||0;if(mx&&mine.filter(x=>x.storeId==sid).length>=mx)return toast("وصل متجرك للحد الأقصى من الإعلانات في باقته ("+mx+")، رقِّ الاشتراك")}
-      await addDoc(collection(db,"ads"),{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{}),ownerId:me.uid,ownerName:me.name,status:"pending",createdAt:Date.now()});
-      photo="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
+      const mediaFiles=Array.from($("#a-gallery")?.files||[]);
+      const galleryVideo=val("#a-video")?.trim()||"";
+      if(galleryVideo){const {validateListingMedia}=await import("./assets/souqna-local-services.mjs");validateListingMedia({videoUrl:galleryVideo});}
+      let uploadedGallery=[];
+      const adRequestId=doc(collection(db,"ads")).id;
+      let adConfirmed=false;
+      if(mediaFiles.length||galleryVideo){
+        if(app.options.projectId!=="souqna-staging")
+          return toast("الصور المتعددة متاحة حالياً في مشروع souqna-staging فقط");
+      }
+      try{
+        if(mediaFiles.length){
+          const {uploadGallery}=await import("./assets/souqna-gallery.mjs");
+          uploadedGallery=await uploadGallery(app,me.uid,mediaFiles,{
+            onProgress:({completed,total})=>toast("رفع الصور "+completed+" / "+total)
+          });
+        }
+        await marketplace("createAd","ads",{title:t,price:+val("#a-price"),cur:$("#a-cur").value,cat:$("#a-cat").value,area:val("#a-area")||"السويداء",desc:val("#a-desc"),phone:p,img:photo,...(uploadedGallery.length?{images:uploadedGallery.map(image=>image.url)}:{}),...(galleryVideo?{videoUrl:galleryVideo}:{}),...(photoHash?{imgHash:photoHash}:{}),...($("#a-st")&&$("#a-st").value?{storeId:$("#a-st").value}:{})},adRequestId);
+        adConfirmed=true;
+      }catch(error){
+        const confirmedFailure=["functions/invalid-argument","functions/permission-denied",
+          "functions/unauthenticated","functions/failed-precondition","functions/resource-exhausted"]
+          .includes(String(error?.code||""));
+        if(uploadedGallery.length&&!confirmedFailure){
+          try{
+            const record=await getDoc(doc(db,"ads",adRequestId));
+            adConfirmed=record.exists()&&record.data()?.ownerId===me.uid;
+          }catch(readError){
+            console.warn("Unable to reconcile ad submission:",readError);
+          }
+        }
+        if(!adConfirmed){
+          if(uploadedGallery.length&&confirmedFailure){
+            try{
+              const {deleteUploadedGallery}=await import("./assets/souqna-gallery.mjs");
+              const result=await deleteUploadedGallery(app,me.uid,uploadedGallery);
+              if(result.failed)toast("تعذر حذف "+result.failed+" صورة مؤقتة؛ يلزم تنظيفها لاحقاً");
+            }catch(cleanupError){console.warn("Photo cleanup failed:",cleanupError);}
+          }
+          if(uploadedGallery.length&&!confirmedFailure)
+            throw Object.assign(new Error("تعذر تأكيد الإعلان؛ احتفظنا بصوره. تحقق من إعلاناتي قبل إعادة الإرسال"),{code:"souqna/submission-uncertain"});
+          throw error;
+        }
+      }
+      photo="";photoHash="";photoError="";toast("تم الإرسال، بانتظار موافقة الإدارة");view="mine";await loadMine();render()}
+    else if(a=="sbreq"){
+       if(!need())return;
+       await pickReady;
+       const company=val("#sb-co"),title=val("#sb-ti"),days=Math.floor(+val("#sb-days")),phone=val("#sb-ph").replace(/\D/g,"");
+       if(company.length<2||title.length<3||!Number.isInteger(days)||days<1||days>90||phone.length<9)return toast("أدخل اسم الشركة والعنوان والمدة (1 إلى 90 يوماً) ورقم واتساب صحيح");
+       await addDoc(collection(db,"sponsorRequests"),{userId:me.uid,userName:me.name,company,title,desc:val("#sb-de"),phone,days,img:tmp.sb||"",status:"pending",createdAt:Date.now()});
+       tmp.sb="";toast("تم إرسال الحجز، وستتواصل الإدارة معك لتأكيد السعر والدفع");await loadMine();render();
+     }
+     else if(a=="sbapprove"){
+       startPaymentReview("approveSponsor",id);
+     }
+    else if(a=="sbreject"){
+       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
+       if(!confirm("رفض طلب حجز البنر؟"))return;
+       await finance("rejectSponsor",id);
+       await loadMine();toast("رُفض الطلب");render();
+     }
     else if(a=="buy"){if(!need())return;const n=Math.floor(+val("#n-st"));if(!(n>0))return toast("اكتب عدد النجوم");
       await addDoc(collection(db,"starOrders"),{userId:me.uid,userName:me.name,stars:n,status:"pending",createdAt:Date.now()});
       toast("أُرسل الطلب، أكمل الدفع عبر واتساب");if(wa)open(waLink(`طلب شراء ${n} نجمة (${n}$) في سوقنا\nالاسم: ${me.name}\nالبريد: ${me.email}`),"_blank")}
@@ -266,7 +794,54 @@ document.addEventListener("click",async e=>{
       await addDoc(collection(db,"promos"),{userId:me.uid,userName:me.name,adId,adTitle:ad.title,pkgId:p.id,stars:p.stars,days:p.days,status:"pending",createdAt:Date.now()});
       toast("أُرسل طلب التمييز وسيُفعّل بعد موافقة الإدارة")}
     else if(a=="ok"||a=="no"){await updateDoc(doc(db,"ads",id),{status:a=="ok"?"approved":"rejected"});{const x=pend.find(y=>y.id==id);if(x)await notify(x.ownerId,(a=="ok"?"تمت الموافقة على إعلانك: ":"تم رفض إعلانك: ")+x.title)}await loadPublic();await loadMine();render()}
-    else if(a=="del"){if(!confirm("حذف الإعلان؟"))return;await deleteDoc(doc(db,"ads",id));await loadPublic();await loadMine();render()}
+    else if(a=="del"){
+      if(!confirm("حذف الإعلان؟"))return;
+      if(app.options.projectId==="souqna-staging"){
+        const del=httpsCallable(functions,"souqnaDeleteAd");
+        const response=await del({id});
+        const failed=Number(response.data?.failedImages||0);
+        pendingCleanupId=failed?id:"";
+        toast(failed?"حُذف الإعلان، لكن تعذر تنظيف "+failed+" صورة":"حُذف الإعلان وصوره الإضافية");
+      }else{
+        await deleteDoc(doc(db,"ads",id));
+      }
+      await loadPublic();await loadMine();render()
+    }
+    else if(a=="loadSocialQueue"){
+      if(!isAdm()||app.options.projectId!=="souqna-staging")
+        return toast("هذه الخدمة متاحة لمدير سوقنا التجريبي فقط");
+      await fetchSocialQueue();
+      render();
+      toast("تم تحديث حالة النشر الاجتماعي");
+    }
+    else if(a=="loadCleanupJobs"){
+      if(!isAdm()||app.options.projectId!=="souqna-staging")
+        return toast("هذه العملية متاحة لمدير بيئة الاختبار فقط");
+      await fetchCleanupJobs();
+      render();
+      toast("تم تحديث مهام تنظيف الصور");
+    }
+    else if(a=="retryCleanup"||a=="retryCleanupItem"){
+      if(!isAdm()||app.options.projectId!=="souqna-staging")
+        return toast("هذه العملية متاحة لمدير بيئة الاختبار فقط");
+      const cleanupId=a=="retryCleanupItem"?id:(val("#cleanup-ad-id")||"").trim();
+      if(!/^[A-Za-z0-9_-]{1,128}$/.test(cleanupId))
+        return toast("أدخل معرّف إعلان صالح");
+      const retry=httpsCallable(functions,"souqnaRetryAdCleanup");
+      const result=await retry({id:cleanupId});
+      const failed=Number(result.data?.failedImages||0);
+      pendingCleanupId=failed?cleanupId:"";
+      if(cleanupJobsLoaded){
+        try{await fetchCleanupJobs()}
+        catch(error){
+          console.warn("SOUQNA cleanup queue refresh failed:",error);
+          cleanupJobsLoaded=false;
+          pendingCleanupJobs=[];
+        }
+      }
+      toast(failed?"ما زال تنظيف "+failed+" صورة معلقاً":"اكتمل تنظيف الصور المتبقية");
+      render()
+    }
     else if(a=="savewa"){const n=val("#s-wa").replace(/\D/g,"");await setDoc(doc(db,"settings","contact"),{whatsapp:n});wa=n;toast("تم الحفظ")}
     else if(a=="seed"){for(const [s,d] of [[5,15],[10,30],[15,30],[20,30],[25,30]])await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
     else if(a=="addpk"){const s=+val("#k-s"),d=+val("#k-d");if(!(s>0&&d>0))return toast("أدخل النجوم والأيام");await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
@@ -275,7 +850,18 @@ document.addEventListener("click",async e=>{
     else if(a=="rate"){if(!need())return;await setDoc(doc(db,"reviews",id+"_"+me.uid),{storeId:id,userId:me.uid,userName:me.name,stars:+$("#rv-s").value,text:val("#rv-t"),createdAt:Date.now()});await loadStoreX(id);toast("شكرًا لتقييمك");render()}
     else if(a=="sorder"){if(!need())return;const sv=services.find(x=>x.id==$("#o-s").value);if(!sv||!val("#o-d"))return toast("اختر الخدمة واكتب التفاصيل");const pt=partners.find(x=>x.id==$("#o-p").value);await addDoc(collection(db,"sorders"),{userId:me.uid,userName:me.name,serviceId:sv.id,serviceName:sv.name,partnerName:pt?pt.name:"",details:val("#o-d"),status:"new",createdAt:Date.now()});toast("أُرسل طلبك، ستتواصل معك الإدارة");if(wa)open(waLink("طلب خدمة: "+sv.name+(pt?" · شريك: "+pt.name:"")+"\n"+val("#o-d")+"\nالاسم: "+me.name),"_blank");await loadMine();view="orders";render()}
     else if(a=="sost"){const o=sorders.find(x=>x.id==id),st=b.dataset.s;await updateDoc(doc(db,"sorders",id),{status:st,note:st=="rejected"?(prompt("سبب الرفض:")||""):""});await notify(o.userId,"طلبك ("+o.serviceName+"): "+SL[st]);await loadMine();render()}
-    else if(a=="ustars"){const n=+prompt("عدد النجوم (سالب للخصم):");if(!n)return;const nt=prompt("السبب:")||"تعديل من الإدارة";await updateDoc(doc(db,"users",id),{stars:increment(n)});await ledger(id,n>0?"credit":"debit",n,nt);await notify(id,(n>0?"أُضيف ":"خُصم ")+Math.abs(n)+" نجمة: "+nt);await loadMine();render()}
+    else if(a=="ustars"){
+       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
+       const raw=prompt("عدد النجوم (سالب للخصم):");if(raw===null)return;
+       const n=Number(raw);
+       if(!Number.isSafeInteger(n)||n===0||Math.abs(n)>100000)return toast("العدد غير صحيح (الحد 100,000 نجمة)");
+       const note=prompt("سبب التعديل (مطلوب، خمسة أحرف على الأقل):");
+       if(note===null)return;
+       if(note.trim().length<5)return toast("أدخل سبب تعديل واضحاً");
+       if(!confirm("تأكيد تعديل رصيد المستخدم بـ "+n+" نجمة؟"))return;
+       await finance("adjustBalance",null,{userId:id,delta:n,note:note.trim(),operationId:doc(collection(db,"transactions")).id});
+       await loadMine();toast("حُفظ تعديل الرصيد");render();
+     }
     else if(a=="urole"){const r=prompt("الدور: user / moderator / accountant / editor / admin");if(!["user","moderator","accountant","editor","admin"].includes(r))return toast("دور غير صحيح");await updateDoc(doc(db,"users",id),{role:r});await loadMine();render()}
     else if(a=="svadd"){if(!val("#sv-n"))return toast("اكتب اسم الخدمة");await addDoc(collection(db,"services"),{name:val("#sv-n"),desc:val("#sv-d"),price:+val("#sv-p")||0,active:true});await loadPublic();render()}
     else if(a=="svseed"){for(const n of ["تصميم إعلان","تصميم شعار وهوية","فيديو إعلاني","مونتاج فيديو","حملة تسويقية"])await addDoc(collection(db,"services"),{name:n,desc:"",price:0,active:true});await loadPublic();render()}
@@ -286,49 +872,88 @@ document.addEventListener("click",async e=>{
     else if(a=="pttog"){await updateDoc(doc(db,"partners",id),{active:partners.find(x=>x.id==id).active===false});await loadPublic();render()}
     else if(a=="ptdel"){await deleteDoc(doc(db,"partners",id));await loadPublic();render()}
     else if(a=="subreq"){const p=plans.find(x=>x.id==$("#pl-"+id).value),st=myStores.find(x=>x.id==id);if((me.stars||0)<p.stars)return toast("رصيدك لا يكفي، اشترِ نجومًا أولًا");await addDoc(collection(db,"subs"),{userId:me.uid,userName:me.name,storeId:id,storeName:st.name,planId:p.id,planName:p.name,stars:p.stars,days:p.days,status:"pending",createdAt:Date.now()});toast("أُرسل طلب الاشتراك وسيُفعّل بعد موافقة الإدارة")}
-    else if(a=="subok"){const r=subs.find(x=>x.id==id),u=await getDoc(doc(db,"users",r.userId));if((u.data().stars||0)<r.stars)return toast("رصيد المستخدم لا يكفي");const b=(await getDoc(doc(db,"stores",r.storeId))).data(),base=b.plan==r.planId?Math.max(Date.now(),b.planUntil||0):Date.now();await updateDoc(doc(db,"users",r.userId),{stars:increment(-r.stars)});await updateDoc(doc(db,"stores",r.storeId),{plan:r.planId,planUntil:base+r.days*864e5});await ledger(r.userId,"debit",-r.stars,"اشتراك "+r.planName+" - "+r.storeName);await notify(r.userId,"تم تفعيل اشتراك "+r.planName+" لمتجر "+r.storeName);await updateDoc(doc(db,"subs",id),{status:"done"});await loadPublic();await loadMine();toast("فُعّل الاشتراك");render()}
-    else if(a=="subno"){await updateDoc(doc(db,"subs",id),{status:"rejected"});await loadMine();render()}
+    else if(a=="subok"){
+       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
+       const r=subs.find(x=>x.id===id);
+       if(!r)return toast("الطلب غير موجود");
+       if(!confirm("تفعيل اشتراك "+r.storeName+"؟ سيُخصم سعر الباقة الحالي من رصيد العميل."))return;
+       await finance("approveSubscription",id);
+       await loadPublic();await loadMine();toast("تم تفعيل الاشتراك");render();
+     }
+    else if(a=="subno"){await finance("rejectSubscription",id);await loadMine();render()}
     else if(a=="seedpl"){for(const [i,n,st,d,m,bd,o] of [["free","مجانية",0,0,5,"",0],["silver","فضية",10,30,30,"فضي",1],["gold","ذهبية",25,30,100,"ذهبي",2],["vip","VIP",50,30,0,"VIP",3]])await setDoc(doc(db,"plans",i),{name:n,stars:st,days:d,maxAds:m,badge:bd,order:o,active:true,features:""});await loadPublic();render()}
     else if(a=="savepl"){const k=editPl?editPl.id:val("#pl-id").toLowerCase().replace(/[^a-z0-9_]/g,"");if(!k||!val("#pl-n"))return toast("اكتب المعرّف (إنجليزي) والاسم");await setDoc(doc(db,"plans",k),{name:val("#pl-n"),stars:+val("#pl-s")||0,days:+val("#pl-d")||0,maxAds:+val("#pl-m")||0,badge:val("#pl-b"),order:+val("#pl-o")||0,features:val("#pl-f"),active:editPl?editPl.active!==false:true});editPl=null;await loadPublic();render()}
     else if(a=="edpl"){editPl=plans.find(x=>x.id==id);render()}
     else if(a=="cancelpl"){editPl=null;render()}
     else if(a=="togpl"){await updateDoc(doc(db,"plans",id),{active:plans.find(x=>x.id==id).active===false});await loadPublic();render()}
     else if(a=="delpl"){if(!confirm("حذف الباقة؟"))return;await deleteDoc(doc(db,"plans",id));await loadPublic();render()}
-    else if(a=="savest"){if(!val("#t-n"))return toast("اكتب اسم المتجر");const m=val("#t-m");if(m&&!/^https?:\/\//.test(m))return toast("رابط الخريطة يجب أن يبدأ بـ https://");const o={name:val("#t-n"),desc:val("#t-d"),phone:val("#t-p").replace(/\D/g,""),area:val("#t-a"),map:m};
+    else if(a=="savest"){await pickReady;if(val("#t-n").length<2||val("#t-n").length>120)return toast("اسم المتجر يجب أن يكون بين 2 و120 حرفاً");const m=val("#t-m");if(m&&!/^https:\/\//.test(m))return toast("رابط الخريطة يجب أن يبدأ بـ https://");const o={name:val("#t-n"),desc:val("#t-d"),phone:val("#t-p").replace(/\D/g,""),area:val("#t-a"),map:m};
       if(editSt){if(tmp.stlogo)o.logo=tmp.stlogo;if(tmp.stcover)o.cover=tmp.stcover;await updateDoc(doc(db,"stores",editSt.id),o);editSt=null}
-      else{const lim=site.maxStores??3;if(myStores.length>=lim)return toast("وصلت للحد الأقصى من المتاجر ("+lim+")");await addDoc(collection(db,"stores"),{...o,logo:tmp.stlogo||"",cover:tmp.stcover||"",ownerId:me.uid,ownerName:me.name,status:"pending",createdAt:Date.now()})}
+      else{const lim=site.maxStores??3;if(myStores.length>=lim)return toast("وصلت للحد الأقصى من المتاجر ("+lim+")");await marketplace("createStore","stores",{...o,logo:tmp.stlogo||"",cover:tmp.stcover||""})}
       tmp.stlogo=tmp.stcover="";toast("تم الحفظ");await loadMine();render()}
     else if(a=="edst"){editSt=myStores.find(x=>x.id==id);render();scrollTo(0,99999)}
     else if(a=="cancelst"){editSt=null;render()}
     else if(a=="delst"){if(!confirm("حذف المتجر؟"))return;await deleteDoc(doc(db,"stores",id));await loadPublic();await loadMine();render()}
     else if(a=="stok"||a=="stno"){await updateDoc(doc(db,"stores",id),{status:a=="stok"?"approved":"rejected"});{const x=pendStores.find(y=>y.id==id);if(x)await notify(x.ownerId,(a=="stok"?"تمت الموافقة على متجرك: ":"تم رفض متجرك: ")+x.name)}await loadPublic();await loadMine();render()}
-    else if(a=="savesite"){await setDoc(doc(db,"settings","site"),{ticker:val("#s-tk"),tickerOn:$("#s-tkon").checked,weatherOn:$("#s-wxon").checked,adClient:val("#s-adc"),adSlot:val("#s-ads"),maxStores:+val("#s-mx")||3,logo:tmp.logo||site.logo||"",banner:tmp.banner||site.banner||""},{merge:true});tmp.logo=tmp.banner="";await loadPublic();toast("تم الحفظ");render()}
+    else if(a=="savesite"){await pickReady;await setDoc(doc(db,"settings","site"),{ticker:val("#s-tk"),tickerOn:$("#s-tkon").checked,tickerSecondary:val("#s-tk2"),tickerSecondaryOn:$("#s-tk2on").checked,weatherOn:$("#s-wxon").checked,adClient:val("#s-adc"),adSlot:val("#s-ads"),maxStores:+val("#s-mx")||3,logo:tmp.logo||site.logo||"",banner:tmp.banner||site.banner||""},{merge:true});tmp.logo=tmp.banner="";await loadPublic();toast("تم الحفظ");render()}
     else if(a=="clrimg"){await setDoc(doc(db,"settings","site"),{logo:"",banner:""},{merge:true});await loadPublic();render()}
-    else if(a=="addsp"){const d=+val("#p-days");if(!val("#p-co")||!(d>0))return toast("اكتب اسم الشركة والمدة");await addDoc(collection(db,"sponsors"),{company:val("#p-co"),title:val("#p-ti"),desc:val("#p-de"),phone:val("#p-ph").replace(/\D/g,""),img:tmp.sp||"",from:Date.now(),to:Date.now()+d*864e5,active:true});tmp.sp="";await loadPublic();render()}
+    else if(a=="addsp"){await pickReady;const d=+val("#p-days");if(!val("#p-co")||!(d>0))return toast("اكتب اسم الشركة والمدة");await addDoc(collection(db,"sponsors"),{company:val("#p-co"),title:val("#p-ti"),desc:val("#p-de"),phone:val("#p-ph").replace(/\D/g,""),img:tmp.sp||"",from:Date.now(),to:Date.now()+d*864e5,active:true});tmp.sp="";await loadPublic();render()}
     else if(a=="togsp"){await updateDoc(doc(db,"sponsors",id),{active:!sp.find(x=>x.id==id).active});await loadPublic();render()}
     else if(a=="delsp"){await deleteDoc(doc(db,"sponsors",id));await loadPublic();render()}
     else if(a=="adddir"){if(!val("#d-n"))return toast("اكتب الاسم");await addDoc(collection(db,"directory"),{type:$("#d-t").value,name:val("#d-n"),spec:val("#d-s"),area:val("#d-a"),phone:val("#d-p").replace(/[^\d+]/g,""),stars:+$("#d-st").value,onDuty:false,active:true,createdAt:Date.now()});await loadPublic();render()}
     else if(a=="duty"){await updateDoc(doc(db,"directory",id),{onDuty:!dr.find(x=>x.id==id).onDuty});await loadPublic();render()}
     else if(a=="deldir"){await deleteDoc(doc(db,"directory",id));await loadPublic();render()}
-    else if(a=="ordok"){const o=orders.find(x=>x.id==id);await updateDoc(doc(db,"users",o.userId),{stars:increment(o.stars)});await ledger(o.userId,"credit",o.stars,"شحن نجوم");await notify(o.userId,"أُضيف "+o.stars+" نجمة إلى رصيدك");await updateDoc(doc(db,"starOrders",id),{status:"done"});toast("أُضيفت النجوم");await loadMine();render()}
-    else if(a=="ordno"){await updateDoc(doc(db,"starOrders",id),{status:"rejected"});await loadMine();render()}
-    else if(a=="prok"){const p=promos.find(x=>x.id==id),u=await getDoc(doc(db,"users",p.userId));
-      if((u.data().stars||0)<p.stars)return toast("رصيد المستخدم لا يكفي");
-      const ad=await getDoc(doc(db,"ads",p.adId)),base=Math.max(Date.now(),ad.data().featuredUntil||0);
-      await updateDoc(doc(db,"users",p.userId),{stars:increment(-p.stars)});await ledger(p.userId,"debit",-p.stars,"تمييز إعلان: "+p.adTitle);await notify(p.userId,"تم تمييز إعلانك: "+p.adTitle);
-      await updateDoc(doc(db,"ads",p.adId),{featuredUntil:base+p.days*864e5});
-      await updateDoc(doc(db,"promos",id),{status:"done"});await loadPublic();await loadMine();toast("فُعّل التمييز");render()}
-    else if(a=="prno"){await updateDoc(doc(db,"promos",id),{status:"rejected"});await loadMine();render()}
-  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?"بيانات الدخول غير صحيحة":"تعذر تنفيذ العملية")}
+    else if(a=="ordok"){
+       startPaymentReview("approveTopup",id);
+     }
+    else if(a=="ordno"){await finance("rejectTopup",id);await loadMine();render()}
+    else if(a=="prok"){
+       if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
+       const p=promos.find(x=>x.id===id);if(!p)return toast("الطلب غير موجود");
+       if(!confirm("تفعيل تمييز الإعلان وخصم النجوم من رصيد العميل؟"))return;
+       await finance("approvePromotion",id);
+       await loadPublic();await loadMine();toast("تم تمييز الإعلان");render();
+     }
+    else if(a=="prno"){await finance("rejectPromotion",id);await loadMine();render()}
+  }catch(err){console.error(err);toast(err.code=="auth/email-already-in-use"?"البريد مستخدم من قبل":err.code=="auth/weak-password"?"كلمة المرور ضعيفة":err.code?.startsWith("auth/")?authErrorText(err):err.code==="souqna/submission-uncertain"?err.message:["functions/failed-precondition","functions/invalid-argument","functions/permission-denied","functions/resource-exhausted","functions/already-exists"].includes(err.code)&&typeof err.message==="string"?err.message.slice(0,180):"تعذر تنفيذ العملية")}
 });
-document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900}[f.dataset.img])});
+document.addEventListener("change",e=>{const f=e.target.closest("[data-img]");if(f)pickReady=pick(f.files[0],f.dataset.img,{logo:420,banner:900,sp:800,stlogo:300,stcover:900,sb:900}[f.dataset.img])});
+let featuredDisplaySnapshot="";
+function syncFeaturedExpiry(){
+  const snapshot=ads.filter(isF).map(a=>a.id).sort().join("|");
+  if(snapshot===featuredDisplaySnapshot)return;
+  featuredDisplaySnapshot=snapshot;
+  if(view==="home"||view==="ads"){
+    drawList();
+    if(view==="home")$("#newsHost").innerHTML=tkHtml();
+  }else if(view==="mine"){
+    render();
+  }
+}
+setInterval(syncFeaturedExpiry,15000);
 setInterval(()=>{spi++;const e=$("#spw");if(e)e.innerHTML=spHtml()},6000);loadWx();
 onAuthStateChanged(auth,async u=>{
   me=null;
-  if(u){const s=await getDoc(doc(db,"users",u.uid));me=s.exists()?{uid:u.uid,...s.data()}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0};await loadMine()}
-  else{mine=[];pend=[];orders=[];promos=[]}
-  if(view=="admin"&&!isStaff())view="home";
+  try{
+    if(u){
+      const s=await getDoc(doc(db,"users",u.uid));
+      me=s.exists()?{uid:u.uid,...s.data()}:{uid:u.uid,name:u.email,email:u.email,role:"user",stars:0};
+      await loadMine();
+    }else{
+      adminLoadWarnings=[];
+      mine=[];favorites=[];pend=[];orders=[];promos=[];
+    }
+  }catch(error){
+    console.error("SOUQNA session load failed:",error);
+    adminLoadWarnings=["تعذر قراءة بيانات الحساب ("+(error?.code||"unknown")+")"];
+    if(!me&&u)me={uid:u.uid,name:u.email||"مستخدم",email:u.email,role:"user",stars:0};
+    toast("خطأ في قراءة صلاحية الحساب: "+(error?.code||"unknown"));
+  }
+  if(view=="admin"&&!isStaff())view="acc";
   render();
+},error=>{
+  console.error("SOUQNA Firebase Auth session error:",error);
+  toast("تعذر تسجيل الدخول: "+(error?.code||"unknown"));
 });
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 loadPublic().then(render).catch(e=>{console.error(e);$("#app").innerHTML='<p class="mut">تعذر تحميل البيانات.</p>'});
