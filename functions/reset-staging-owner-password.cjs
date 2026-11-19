@@ -37,7 +37,7 @@ if(!execute){
 }
 
 (async()=>{
-  assert.equal(process.stdin.isTTY,false,
+  assert.ok(!process.stdin.isTTY,
     "Pipe your new password through standard input; never put a password in the command line.");
   const chunks=[];
   let total=0;
