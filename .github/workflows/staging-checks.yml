@@ -38,6 +38,8 @@ jobs:
         run: npm run test:rules
       - name: Verify staging-only trusted ad deletion rules
         run: npm run test:staging-rules
+      - name: Validate local rate publishing and moderator security in staging emulators
+        run: npm run test:market-prices
       - name: Verify full staging gallery lifecycle in local emulators
         run: npm run test:gallery-e2e
       - name: Print emulator diagnostics on failure
