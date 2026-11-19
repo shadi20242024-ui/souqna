@@ -42,8 +42,9 @@ test("legal content explains limits and distinguishes pending integrations",()=>
   assert.match(privacy,/طلبات الوصول والتصحيح والحذف/);
   for(const page of [terms,privacy]){
     assert.match(page,/شادي \(Shadi\)/);
-    assert.match(page,/الاسم التعريفي لا يثبت تسجيل شركة/);
-    assert.match(page,/بيانات الهوية القانونية قيد الاستكمال/);
+    assert.match(page,/بصفته الشخصية وباسمه الخاص/);
+    assert.match(page,/ليس باسم شركة مسجلة/);
+    assert.match(page,/استكمال الاسم القانوني الكامل وبلد الاختصاص وعنوان المراسلة/);
   }
 });
 test("account registration requires affirmative agreement and records version",()=>{
