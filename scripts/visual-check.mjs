@@ -216,7 +216,7 @@ try {
     await page.locator("#l-pass").fill("SouqnaTest2026!");
     await page.locator('#app [data-a="guide-open"][data-id="terms"]').click();
     await page.locator('#guideDialog[open] .guide-policy').waitFor({timeout:5000});
-    assert.ok((await page.locator("#guideDialog").innerText()).includes("شروط استخدام سوقنا"));
+    assert.ok((await page.locator("#guideDialog").innerText()).includes("طبيعة المنصة"));
     await page.locator('#guideDialog [data-a="guide-tab"][data-id="privacy"]').click();
     assert.ok((await page.locator("#guideDialog").innerText()).includes("سياسة الخصوصية"));
     await page.screenshot({path:screenshotName("terms-and-privacy.png"),fullPage:false,animations:"disabled"});
