@@ -33,6 +33,10 @@ test("legal content explains limits and distinguishes pending integrations",()=>
   assert.match(how,/قيد التجهيز/);
   assert.match(privacy,/Firebase/);
   assert.match(terms,new RegExp(GUIDE_VERSION));
+  for(const page of [terms,privacy]){
+    assert.match(page,/شادي \(Shadi\)/);
+    assert.match(page,/الاسم التعريفي قيد استكمال بيانات الهوية القانونية/);
+  }
 });
 test("account registration requires affirmative agreement and records version",()=>{
   assert.match(html,/id="l-accept"/);
