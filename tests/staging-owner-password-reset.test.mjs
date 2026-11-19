@@ -22,6 +22,11 @@ test("staging owner password reset is safe by default and never uses production"
   assert.match(source,/getVerifiedOwner\(getAuth\(app\)\)/);
   assert.match(source,/inspectSingleStagingAccount\(getAuth\(app\)\)/);
   assert.match(source,/auth\.updateUser\(user.uid,\{password\}\)/);
+  assert.match(source,/KNOWN_TYPO="shadi20242024@gmail.om"/);
+  assert.match(source,/SOUQNA_STAGING_REPAIR_EMAIL/);
+  assert.match(source,/auth\.updateUser\(user.uid,\{email:repairEmail,emailVerified:false,password\}\)/);
+  assert.match(source,/auth\.getUserByEmail\(repairEmail\)/);
+  assert.match(source,/auth\/email-already-exists/);
   assert.doesNotMatch(source,/deleteUser\(|createUser\(|setCustomUserClaims\(/);
   assert.ok(source.includes("process.stdin"));
   assert.ok(!source.includes("souqna-sweida.firebaseapp.com"));
@@ -38,4 +43,12 @@ test("staging owner reset refuses missing approval, emulator and weak secrets",(
   const bad=run(["--execute","--confirm","RESET-OWNER-PASSWORD:souqna-staging"],"weak\n");
   assert.notEqual(bad.status,0);
   assert.doesNotMatch(bad.stderr,/weak/);
+  const noOwner=run([],undefined,{SOUQNA_STAGING_REPAIR_EMAIL:"shadi20242024@gmail.com"});
+  assert.notEqual(noOwner.status,0);
+  const wrongRepair=run([],undefined,{
+    SOUQNA_STAGING_CONFIRMED_OWNER_EMAIL:"other@gmail.om",
+    SOUQNA_STAGING_CONFIRMED_OWNER_UID:"uniqueUID123",
+    SOUQNA_STAGING_REPAIR_EMAIL:"shadi20242024@gmail.com"
+  });
+  assert.notEqual(wrongRepair.status,0);
 });
