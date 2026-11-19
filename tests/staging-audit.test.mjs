@@ -42,7 +42,8 @@ test("read-only audit reports ready with matching service metadata and deployed 
     if(url===endpoints.firestore)return{name:"projects/souqna-staging/databases/(default)",state:"READY"};
     if(url===endpoints.storage)return{name:web.storageBucket,location:"US"};
     if(url===endpoints.functions)return{functions:[
-      "souqnaMarketplace","souqnaDeleteAd","souqnaRetryAdCleanup","souqnaListAdCleanup"
+      "souqnaFinance","souqnaMarketplace","souqnaDeleteAd",
+      "souqnaRetryAdCleanup","souqnaListAdCleanup","souqnaSocialQueueStatus"
     ].map(name=>({name:"projects/souqna-staging/locations/us-central1/functions/"+name,state:"ACTIVE"}))};
     throw new Error("Unexpected staging audit URL");
   });
@@ -61,7 +62,7 @@ test("missing callables, disabled email sign-in and incorrect Storage do not pas
   assert.equal(classifyStagingService("storage",{name:"souqna-sweida.firebasestorage.app"},web).status,"not-ready");
   const functions=classifyStagingService("functions",{functions:[]},web);
   assert.equal(functions.status,"not-ready");
-  assert.equal(functions.missing.length,4);
+  assert.equal(functions.missing.length,6);
 });
 
 test("permission errors are disclosed as unverified rather than falsely reporting a missing resource",async()=>{
