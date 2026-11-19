@@ -13,7 +13,8 @@ export const FIREBASE_FIELDS = Object.freeze([
   "apiKey","authDomain","projectId","storageBucket","messagingSenderId","appId"
 ]);
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const localConfig = join(root,"firebase.staging.json");
+export const STAGING_WEB_CONFIG_FILE = "firebase.staging.web.local.json";
+const localConfig = join(root,STAGING_WEB_CONFIG_FILE);
 
 export function chooseStagingWebApp(apps) {
   assert.ok(Array.isArray(apps),"Firebase Management API did not return a Web App list.");
@@ -111,6 +112,7 @@ async function main(){
   try{config=await fetchStagingWebConfig(request);}
   finally{accessToken=undefined;}
   // The invalid/empty local JSON remains untouched until validated remote data exists.
+  assert.notEqual(localConfig,join(root,"firebase.staging.json"),"Never replace Firebase CLI deployment rules.");
   writeFileSync(localConfig,JSON.stringify(config,null,2)+"\n",{encoding:"utf8",mode:0o600});
   assert.deepEqual(JSON.parse(readFileSync(localConfig,"utf8")),config);
   console.log("Saved verified Firebase Web App config for: "+config.projectId);
