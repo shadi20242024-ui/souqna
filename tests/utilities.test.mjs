@@ -116,3 +116,20 @@ test("homepage, desktop menu, Hosting bundle and PWA include the new tools",()=>
   assert.match(ui,/لا يمثل سعر الصاغة/);
   assert.doesNotMatch(ui,/eval\(/);
 });
+
+test("existing services tile routes visitors to real source details, not placeholder prices",()=>{
+  const widgets=readFileSync(new URL("../assets/souqna-services-ui.mjs",import.meta.url),"utf8");
+  assert.match(widgets,/data-v="utilities"/);
+  assert.match(widgets,/المؤشرات العالمية|مؤشرات عالمية/);
+  assert.match(widgets,/سعر سوق السويداء المحلي/);
+});
+
+test("premium listing status updates after expiry without requiring browser reload",()=>{
+  const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+  assert.match(html,/function syncFeaturedExpiry\(\)/);
+  assert.match(html,/ads\.filter\(isF\)/);
+  assert.match(html,/setInterval\(syncFeaturedExpiry,15000\)/);
+  assert.match(html,/featuredDate/);
+  assert.match(html,/انتهى التمييز بتاريخ/);
+  assert.match(html,/النشر التلقائي على فيسبوك وإنستغرام غير متاح حتى ربط صفحات سوقنا الرسمية/);
+});
