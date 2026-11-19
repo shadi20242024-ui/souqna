@@ -23,4 +23,5 @@ test("publishing command cannot target production or deploy functions",()=>{
   const publish=script.indexOf('"firebase","deploy"');
   assert.ok(serviceCheck>=0&&adminCheck>serviceCheck&&legalCheck>adminCheck&&publish>legalCheck);
   assert.ok(script.includes('"check:staging:hosting"'));
+  assert.ok(script.includes('"check:staging:guide-assets"'));
 });
