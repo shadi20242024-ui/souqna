@@ -372,6 +372,7 @@ function drawNav(){
     ["stores","🏬","المتاجر","desktop-only"],
     ["favorites","♥","المفضلة","desktop-only"],
     ["orders","🧾","طلبات الخدمات","desktop-only"],
+    ["utilities","🧮","الحاسبة والأسعار","desktop-only"],
     ...(isStaff()?[["admin","⚙️","لوحة الإدارة","desktop-only"]]:[])
   ];
   $("#nav").innerHTML=b.map(x=>`<button data-v="${x[0]}" class="${x[3]||""} ${view==x[0]?"on":""}" aria-label="${x[2]}">${x[1]}<br>${x[2]}</button>`).join("");
@@ -494,11 +495,21 @@ function render(){
     <div class="sec"><b>الأقسام</b><a data-a="more">${more?"أقل":"المزيد"} ‹</a></div>
     <div class="cg">${(more?cats:cats.slice(0,8)).map(c=>`<button class="cc ${cur==c.id?"on":""}" data-c="${c.id}">${CI[c.id]?`<div class="sp ci ${CI[c.id]}"></div>`:`<i>${IC[c.id]||"📦"}</i>`}${esc(c.name_ar)}</button>`).join("")}</div>${adHtml()}
     <div class="sec"><b>الدليل المميز</b></div><div class="chips">${[["pharmacy","صيدليات مناوبة"],["doctor","أطباء"],["lawyer","محامون"],["engineer","مهندسون"],["fuel","محطات الوقود"]].map(([k,n])=>`<button data-dt="${k}" class="${dtype==k?"on":""}">${n}</button>`).join("")}</div><div id="dir">${dirHtml()}</div>
-    <div class="qt"><button data-a="feat"><i>📢</i>إعلانات مميزة</button><button data-c="services"><i>📍</i>دليل الخدمات</button><button data-v="add"><i>⭐</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}><i>🎧</i>دعم فني</a></div>
+    <div class="qt"><button data-a="feat"><i>📢</i>إعلانات مميزة</button><button data-v="utilities"><i>🧮</i>الحاسبة والأسعار</button><button data-c="services"><i>📍</i>دليل الخدمات</button><button data-v="add"><i>⭐</i>أضف إعلانك</button><a ${wa?`href="${waLink()}" target="_blank"`:""}><i>🎧</i>دعم فني</a></div>
     <div class="cm"><b>معاً .. نبني مجتمعاً أفضل في السويداء 👥</b><button class="gold" data-c="community">انضم إلينا</button></div>
     <button class="cm" style="width:100%;border:0;font:inherit;cursor:pointer;text-align:right" data-v="services"><b>🎨 خدمات التصميم والفيديو والحملات التسويقية</b><span class="gold">اطلب الآن</span></button>
     <div class="sec"><b>${feat?"الإعلانات المميزة":"أحدث الإعلانات"}</b></div><div class="grid" id="list"></div>${adHtml()}`;pushAds();
     drawList();
+  }else if(view=="utilities"){
+    A.innerHTML='<button class="btn l" data-v="home">‹ الرئيسية</button><div id="sq-utilities-root" role="region" aria-label="أدوات سوقنا"><div class="box">جارٍ تحميل أدوات سوقنا...</div></div>';
+    import("./assets/souqna-utilities-ui.mjs").then(({mountSouqnaUtilities})=>{
+      const root=document.querySelector("#sq-utilities-root");
+      if(root&&view==="utilities")mountSouqnaUtilities(root);
+    }).catch(error=>{
+      console.error("SOUQNA visitor tools loading failed:",error);
+      const root=document.querySelector("#sq-utilities-root");
+      if(root)root.textContent="تعذّر تحميل الأدوات. يُرجى إعادة فتح الصفحة.";
+    });
   }else if(view=="ads"){
     A.innerHTML=`<div class="desktop-page-title"><h2>🚘 سوق الإعلانات</h2><p>اكتشف العروض الجديدة في السويداء ومناطقها</p></div>
       <div class="filter-chips"><button class="${cur==="all"?"on":""}" data-c="all">جميع الأقسام</button>${cats.map(c=>`<button class="${cur===c.id?"on":""}" data-c="${esc(c.id)}">${esc(c.name_ar)}</button>`).join("")}</div>
