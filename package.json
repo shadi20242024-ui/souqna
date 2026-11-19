@@ -23,6 +23,7 @@
     "check:staging:legal": "node scripts/check-staging-legal.mjs",
     "start:staging:windows": "powershell.exe -NoProfile -File scripts/start-staging.ps1",
     "check:staging:hosting": "node scripts/check-staging-hosting.mjs",
+    "check:staging:guide-assets": "node scripts/check-staging-guide-assets.mjs",
     "check:staging:readiness": "node scripts/staging-readiness.mjs",
     "upgrade:staging:categories": "node scripts/upgrade-staging-categories.mjs --project souqna-staging",
     "check:staging:categories": "node scripts/check-staging-categories.mjs"
