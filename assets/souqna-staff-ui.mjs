@@ -4,7 +4,7 @@ import {getFirestore,doc,getDoc,setDoc,addDoc,serverTimestamp,collection,getDocs
 
 let SECTION_OPTIONS=[
  ["jobs","الوظائف"],["on_call_clinics","العيادات المناوبة"],
- ["fuel_stations","محطات الوقود"]
+ ["fuel_stations","محطات الوقود"],["market_prices","أسعار الدولار والذهب والفضة"]
 ];
 const css=document.createElement("style");
 css.textContent=`
@@ -32,7 +32,7 @@ async function refreshOptions(){
   const custom=docs.docs.map(d=>({id:d.id,...d.data()}))
     .filter(d=>d.active!==false&&d.contentType==="localPosts"&&/^[a-z][a-z0-9_-]{2,39}$/.test(d.id)&&typeof d.name_ar==="string")
     .map(d=>[d.id,d.name_ar]);
-  SECTION_OPTIONS=[["jobs","الوظائف"],["on_call_clinics","العيادات المناوبة"],["fuel_stations","محطات الوقود"],...custom];
+  SECTION_OPTIONS=[["jobs","الوظائف"],["on_call_clinics","العيادات المناوبة"],["fuel_stations","محطات الوقود"],["market_prices","أسعار الدولار والذهب والفضة"],...custom];
 }
 
 async function resolveRole(user){
@@ -90,12 +90,14 @@ function draw(){
       finally{button.disabled=false;}
     });
   }else{
+    const serviceAssigned=assigned.filter(id=>id!=="market_prices");
     wrap.innerHTML=`
       <h2>📝 إدارة خدمات السويداء</h2>
       <p>الاختصاصات المتاحة: ${assigned.map(titleFor).map(escapeText).join("، ")||"لا توجد أقسام مفعلة"}</p>
+      ${assigned.includes("market_prices")?'<p>💰 يمكنك تحديث الأسعار عبر قسم «أسعار السويداء» الظاهر للزوار.</p>':""}
       <form id="sq-post-form">
         <label for="sq-post-section">القسم</label><select id="sq-post-section" name="sectionId" required>
-          ${assigned.map(id=>`<option value="${id}">${escapeText(titleFor(id))}</option>`).join("")}
+          ${serviceAssigned.map(id=>`<option value="${id}">${escapeText(titleFor(id))}</option>`).join("")}
         </select>
         <label for="sq-post-title">العنوان</label><input id="sq-post-title" name="title" minlength="3" maxlength="140" required>
         <label for="sq-post-desc">التفاصيل</label><textarea id="sq-post-desc" name="description" rows="4" maxlength="5000" required></textarea>
@@ -103,7 +105,7 @@ function draw(){
         <label for="sq-post-contact">معلومات التواصل</label><input id="sq-post-contact" name="contact" maxlength="120">
         <label for="sq-post-status">حالة النشر</label>
         <select id="sq-post-status" name="status"><option value="draft">مسودة</option><option value="approved">نشر الآن</option></select>
-        <button type="submit" ${assigned.length?"":"disabled"}>حفظ المنشور</button>
+        <button type="submit" ${serviceAssigned.length?"":"disabled"}>حفظ المنشور</button>
       </form>
       <p role="status" id="sq-post-status-message"></p>`;
     wrap.querySelector("form").addEventListener("submit",async event=>{
@@ -112,7 +114,7 @@ function draw(){
       const button=form.querySelector("button");button.disabled=true;status.textContent="جارٍ الحفظ…";
       try{
         const sectionId=form.elements.sectionId.value;
-        if(!assigned.includes(sectionId))throw new Error("القسم غير مصرح به");
+        if(!serviceAssigned.includes(sectionId))throw new Error("القسم غير مصرح به");
         await addDoc(collection(db,"localPosts"),{
           sectionId,title:form.elements.title.value.trim(),
           description:form.elements.description.value.trim(),area:form.elements.area.value.trim(),
@@ -121,7 +123,7 @@ function draw(){
         });
         status.textContent="تم حفظ المنشور بنجاح";form.reset();
       }catch(error){status.textContent="تعذر الحفظ: "+error.message;}
-      finally{button.disabled=assigned.length===0;}
+      finally{button.disabled=serviceAssigned.length===0;}
     });
   }
   root.append(wrap);
