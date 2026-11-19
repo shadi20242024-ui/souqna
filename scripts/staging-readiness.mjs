@@ -9,7 +9,8 @@ export const CHECKS = Object.freeze([
   { key:"functions", label:"Cloud Functions", command:"check-staging-services.mjs" },
   { key:"legal", label:"Published Firestore legal consent rules", command:"check-staging-legal.mjs" },
   { key:"admin", label:"Administrator profile", command:"diagnose-staging-admin.mjs", optionalEnv:"SOUQNA_ADMIN_EMAIL" },
-  { key:"categories", label:"Ten approved marketplace categories", command:"check-staging-categories.mjs" }
+  { key:"categories", label:"Ten approved marketplace categories", command:"check-staging-categories.mjs" },
+  { key:"guide", label:"Published legal guide JS/CSS assets", command:"check-staging-guide-assets.mjs" }
 ]);
 
 export function formatStatus(check, code) {
