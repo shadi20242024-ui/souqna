@@ -15,12 +15,13 @@ export const OWNER_GATES=Object.freeze([
   {key:"release",env:"SOUQNA_SIGNOFF_PRODUCTION",expected:"souqna-sweida",description:"Owner approved EXACT production project"}
 ]);
 
-export function evaluateLaunch({branch,clean,build,staging,signoffs}){
+export function evaluateLaunch({branch,clean,build,staging,uat,signoffs}){
   const checks=[
     {key:"branch",status:branch==="main"?"PASS":"BLOCKED"},
     {key:"clean",status:clean?"PASS":"BLOCKED"},
     {key:"production-build",status:build?"PASS":"BLOCKED"},
     {key:"live-staging",status:staging?"PASS":"BLOCKED"},
+    {key:"operator-staging-uat",status:uat?"OWNER_ATTESTED":"NOT_ATTESTED"},
     ...OWNER_GATES.map(gate=>({
       key:"signoff-"+gate.key,
       status:signoffs?.[gate.env]===gate.expected?"OWNER_ATTESTED":"NOT_ATTESTED"
@@ -53,7 +54,8 @@ function main(){
   const build=run(process.execPath,[join(root,"scripts","preflight-production.mjs")],30000);
   const staging=branchName==="main"&&cleanliness&&build.ok?
     run(process.execPath,[join(root,"scripts","staging-readiness.mjs")],180000):{ok:false,detail:"NOT_ATTEMPTED"};
-  const report=evaluateLaunch({branch:branchName,clean:cleanliness,build:build.ok,staging:staging.ok,signoffs:process.env});
+  const uat=staging.ok?run(process.execPath,[join(root,"scripts","staging-uat.mjs"),"--check"],30000):{ok:false,detail:"NOT_ATTEMPTED"};
+  const report=evaluateLaunch({branch:branchName,clean:cleanliness,build:build.ok,staging:staging.ok,uat:uat.ok,signoffs:process.env});
   const artifacts=join(root,"artifacts");
   mkdirSync(artifacts,{recursive:true});
   const outfile=join(artifacts,"production-launch-readiness.json");
