@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { GUIDE_VERSION } from "../assets/souqna-guide.js";
+import { GUIDE_VERSION, GUIDE_SUPPORT_EMAIL } from "../assets/souqna-guide.js";
 
 export const STAGING_DOMAINS=Object.freeze([
   "https://souqna-staging.web.app",
@@ -20,6 +20,7 @@ export function inspectGuideAsset(body,kind,version=GUIDE_VERSION){
     if(!body.includes('GUIDE_VERSION="'+version+'"') &&
        !body.includes('GUIDE_VERSION = "'+version+'"'))return "GUIDE_VERSION_MISMATCH";
     if(!body.includes("renderGuide") || !body.includes("سياسة الخصوصية"))return "GUIDE_CONTENT_MISSING";
+    if(!body.includes('GUIDE_SUPPORT_EMAIL="'+GUIDE_SUPPORT_EMAIL+'"'))return "SUPPORT_CONTACT_MISMATCH";
     return "READY";
   }
   if(kind==="css"){
