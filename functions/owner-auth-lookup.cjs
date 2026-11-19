@@ -61,4 +61,37 @@ async function resolveStagingOwner(auth, expectedEmail){
     "Firebase Auth Admin sees "+scanned+" staging account(s), but none has the exact owner email. Verify the full untruncated email in Firebase Console > souqna-staging > Authentication > Users. No password was changed.");
 }
 
-module.exports={resolveStagingOwner,normalizeEmail};
+// Inventory is limited to two entries: enough to prove whether the project has
+// exactly one account without exposing a full user directory in the console.
+async function inspectSingleStagingAccount(auth){
+  assert.ok(auth && typeof auth.listUsers==="function","Firebase Auth Admin user list is required.");
+  const page=await auth.listUsers(2);
+  assert.ok(page && Array.isArray(page.users),"Invalid Firebase Auth user listing.");
+  if(page.pageToken || page.users.length!==1){
+    return {user_count:page.pageToken?">=2":page.users.length,account:null};
+  }
+  const user=page.users[0];
+  assert.ok(typeof user.uid==="string" && typeof user.email==="string");
+  return {user_count:1,account:{
+    email:user.email,
+    uid:user.uid,
+    disabled:!!user.disabled
+  }};
+}
+
+async function resolveConfirmedSingleStagingAccount(auth,email,uid){
+  assert.match(email,/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+  assert.match(uid,/^[A-Za-z0-9_-]{8,128}$/);
+  const scan=await inspectSingleStagingAccount(auth);
+  if(scan.user_count!==1 || !scan.account){
+    throw diagnosticError("auth/verified-single-account-required",
+      "The staging project no longer has exactly one user. No password was changed.");
+  }
+  if(scan.account.uid!==uid || normalizeEmail(scan.account.email)!==normalizeEmail(email)){
+    throw diagnosticError("auth/verified-account-changed",
+      "Confirmed owner UID/email does not match Firebase Auth. No password was changed.");
+  }
+  return verifiedOwner(scan.account,email);
+}
+
+module.exports={resolveStagingOwner,normalizeEmail,inspectSingleStagingAccount,resolveConfirmedSingleStagingAccount};
