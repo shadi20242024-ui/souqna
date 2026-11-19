@@ -32,7 +32,7 @@ function assertIsolatedEmulators(){
   }
 }
 
-function callable(path){
+function callable(path,storageProvider=()=>getStorage(adminApp)){
   const source=readFileSync(new URL("../functions/"+path,import.meta.url),"utf8");
   const mod=new Module("/virtual/"+path);
   mod.filename="/virtual/"+path;
@@ -43,7 +43,7 @@ function callable(path){
   mod.require=id=>{
     if(id==="firebase-functions/v2/https")return{onCall:(_options,handler)=>handler,HttpsError};
     if(id==="firebase-admin/firestore")return{FieldValue};
-    if(id==="firebase-admin/storage")return{getStorage:()=>getStorage(adminApp)};
+    if(id==="firebase-admin/storage")return{getStorage:storageProvider};
     if(id==="./ad-media")return media;
     throw new Error("Unexpected function dependency: "+id);
   };
@@ -178,4 +178,57 @@ test("listing owner can delete another newly created ad with one uploaded image"
   assert.equal(deleted.failedImages,0);
   assert.equal((await db.collection("ads").doc("gallery_flow_owner_2").get()).exists,false);
   assert.equal(await existsInStorage("gallery_owner",path),false);
+});
+
+test("interrupted cleanup persists only failed image, then repeated delete safely completes",async()=>{
+  const stalledPath="ads/gallery_owner/retry_failed_image_01.jpg";
+  const completedPath="ads/gallery_owner/retry_finished_image_02.jpg";
+  const unrelatedPath="ads/gallery_owner/keep_after_retry_03.jpg";
+  await Promise.all([
+    upload("gallery_owner",stalledPath),
+    upload("gallery_owner",completedPath),
+    upload("gallery_owner",unrelatedPath)
+  ]);
+  const created=await submit("gallery_owner","gallery_flow_retry_3",[stalledPath,completedPath]);
+  assert.equal(created.ok,true);
+  const realStorage=getStorage(adminApp);
+  const partiallyFailingStorage={
+    bucket(name){
+      const target=realStorage.bucket(name);
+      return{
+        file(path){
+          const object=target.file(path);
+          return{
+            async delete(options){
+              if(path===stalledPath)
+                throw Object.assign(new Error("Simulated Storage permission outage"),{code:403});
+              return object.delete(options);
+            }
+          };
+        }
+      };
+    }
+  };
+  const deleteWithFailure=callable("delete-ad.js",()=>partiallyFailingStorage);
+  const first=await deleteWithFailure({auth:{uid:"gallery_owner"},data:{id:"gallery_flow_retry_3"}});
+  assert.equal(first.ok,true);
+  assert.equal(first.deletedImages,1);
+  assert.equal(first.failedImages,1);
+  assert.equal(first.recoveryPending,true);
+  assert.equal((await db.collection("ads").doc("gallery_flow_retry_3").get()).exists,false);
+  const jobRef=db.collection("mediaCleanupJobs").doc("gallery_flow_retry_3");
+  const job=await jobRef.get();
+  assert.equal(job.exists,true);
+  assert.deepEqual(job.data().objects,[{bucket,path:stalledPath}]);
+  assert.equal(await existsInStorage("gallery_owner",stalledPath),true);
+  assert.equal(await existsInStorage("gallery_owner",completedPath),false);
+
+  const recovered=await deleteAd({auth:{uid:"gallery_owner"},data:{id:"gallery_flow_retry_3"}});
+  assert.equal(recovered.ok,true);
+  assert.equal(recovered.deletedImages,1);
+  assert.equal(recovered.failedImages,0);
+  assert.equal(recovered.recoveryPending,false);
+  assert.equal((await jobRef.get()).exists,false);
+  assert.equal(await existsInStorage("gallery_owner",stalledPath),false);
+  assert.equal(await existsInStorage("gallery_owner",unrelatedPath),true);
 });
