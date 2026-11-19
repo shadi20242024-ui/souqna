@@ -5,7 +5,7 @@ import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, connectAuthEmulator, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import {
   getFirestore, connectFirestoreEmulator, collection, addDoc, doc, getDoc, getDocs,
-  setDoc, updateDoc, query, where, runTransaction, increment
+  setDoc, updateDoc, query, where, runTransaction, increment, serverTimestamp
 } from "firebase/firestore";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import { getFunctions, connectFunctionsEmulator, httpsCallable } from "firebase/functions";
@@ -76,7 +76,8 @@ test("SOUQNA customer lifecycle against Auth + Firestore emulators", async t => 
     assert.ok(uid && uid.length > 5);
     await credential.user.getIdToken();
     await assertSucceeds(setDoc(doc(db, "users", uid), {
-      name: "زبون تجريبي", email, role: "user", stars: 0
+      name: "زبون تجريبي", email, role: "user", stars: 0,
+       acceptedTermsVersion:"2026-11-19",acceptedPrivacyVersion:"2026-11-19",acceptedAt:serverTimestamp()
     }));
     const profile = await getDoc(doc(db, "users", uid));
     assert.equal(profile.data().role, "user");
