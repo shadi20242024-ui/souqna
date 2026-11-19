@@ -39,7 +39,8 @@
 
 - `npm run check:staging:legal` يقرأ إصدار القواعد *المنشور بالفعل* من Firebase Rules API لمشروع `souqna-staging`، ثم يفحص اشتراط الموافقة على الإصدار الحالي وتاريخ الخادم. يتوقف عند عدم وجود صلاحيات Google Application Default Credentials أو اختلاف الإصدار؛ لا يحاول تعديل القواعد.
 - `npm run check:staging:hosting` يتحقق من صفحتَي الاستضافة الافتراضيتين وهوية مشروع Staging ووجود مركز المساعدة وحقول الموافقة في HTML المنشور.
-- `npm run check:staging:readiness` يفحص الاستضافة والدوال والنسخة القانونية وصلاحية المدير والأقسام. غياب أي شرط يعني **NOT VERIFIED**، وليس جاهزية للإطلاق.
+- `npm run check:staging:guide-assets` يفحص ملفات `souqna-guide.js` و`souqna-guide.css` الفعلية على كلا نطاقَي استضافة Staging، ويتوقف إذا كانت مفقودة أو معروضة كصفحة HTML بديلة أو تحمل إصدار شروط أقدم.
+- `npm run check:staging:readiness` يفحص الاستضافة والدوال والنسخة القانونية وصلاحية المدير والأقسام وملفات دليل الاستخدام المنشورة. غياب أي شرط يعني **NOT VERIFIED**، وليس جاهزية للإطلاق.
 - `scripts/preflight-staging.mjs` يتحقق من حزمة بناء Staging محلياً ومن تطابق إصدار وثائق التطبيق مع قواعد Firestore الموجودة في المستودع؛ هذا ليس إثباتًا لما نُشر في السحابة.
 - `scripts/publish-staging-hosting.ps1` أصبح يمنع نشر Hosting فقط إذا لم تكن قواعد الموافقة المطبقة على Staging متوافقة مسبقاً؛ لا يرفع قواعد أو دوال تلقائياً.
 
