@@ -214,7 +214,7 @@ try {
     await page.locator("#l-name").fill("مستخدم فحص سوقنا");
     await page.locator("#l-mail").fill(email);
     await page.locator("#l-pass").fill("SouqnaTest2026!");
-    await page.locator('#app [data-a="guide-open"][data-id="terms"]').click();
+    await page.locator('#app .guide-consent [data-a="guide-open"][data-id="terms"]').click();
     await page.locator('#guideDialog[open] .guide-policy').waitFor({timeout:5000});
     assert.ok((await page.locator("#guideDialog").innerText()).includes("طبيعة المنصة"));
     await page.locator('#guideDialog [data-a="guide-tab"][data-id="privacy"]').click();
