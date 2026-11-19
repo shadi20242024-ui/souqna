@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import {
-  collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, deleteDoc, runTransaction, increment
+  collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, deleteDoc, runTransaction, increment, serverTimestamp
 } from "firebase/firestore";
 
 test("SOUQNA Firestore authorization matrix", async (t) => {
@@ -162,6 +162,24 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
     await assertFails(updateDoc(doc(admin,"sponsorRequests","pending"),{status:"approved"}));
     await assertFails(setDoc(doc(admin,"sponsors","forged-paid"),{title:"مدفوع",active:true,requestId:"pending"}));
   });
+  await t.test("New accounts must record current consent version with a server timestamp", async () => {
+    const charlie=env.authenticatedContext("charlie").firestore();
+    const ref=doc(charlie,"users","charlie");
+    const base={name:"مستخدم جديد",email:"charlie@example.test",role:"user",stars:0};
+    const valid={...base,acceptedTermsVersion:"2026-11-19",acceptedPrivacyVersion:"2026-11-19",acceptedAt:serverTimestamp()};
+    await assertFails(setDoc(ref,base));
+    await assertFails(setDoc(ref,{...valid,acceptedTermsVersion:"2026-01-01"}));
+    await assertFails(setDoc(ref,{...valid,acceptedAt:Date.now()}));
+    await assertFails(setDoc(ref,{...valid,stars:999}));
+    await assertFails(setDoc(doc(bob,"users","charlie"),valid));
+    await assertSucceeds(setDoc(ref,valid));
+    const user=await getDoc(ref);
+    assert.equal(user.data().acceptedTermsVersion,"2026-11-19");
+    assert.equal(user.data().acceptedPrivacyVersion,"2026-11-19");
+    assert.ok(user.data().acceptedAt?.toDate() instanceof Date);
+    await assertFails(updateDoc(ref,{acceptedTermsVersion:"2099-01-01"}));
+  });
+
   await t.test("New account may have only default customer role and zero stars", async () => {
     await assertSucceeds(setDoc(doc(bob,"users","bob"),{name:"تغيير الاسم",email:"bob@example.test",role:"user",stars:0}));
     await assertFails(setDoc(doc(bob,"users","bob"),{role:"admin",stars:500},{merge:true}));
