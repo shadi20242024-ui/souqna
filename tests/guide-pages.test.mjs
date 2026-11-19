@@ -7,6 +7,7 @@ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const css=readFileSync(new URL("../assets/souqna-guide.css",import.meta.url),"utf8");
 const build=readFileSync(new URL("../scripts/build-hosting.mjs",import.meta.url),"utf8");
 const sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
+const rules=readFileSync(new URL("../firestore.rules",import.meta.url),"utf8");
 
 test("in-app help contains four distinct public information sections",()=>{
   assert.deepEqual(GUIDE_TABS.map(t=>t.id),["how","features","terms","privacy"]);
@@ -39,6 +40,10 @@ test("account registration requires affirmative agreement and records version",(
   assert.match(html,/if\(!\$\("#l-accept"\)\?\.checked\)/);
   assert.match(html,/acceptedTermsVersion:GUIDE_VERSION/);
   assert.match(html,/acceptedPrivacyVersion:GUIDE_VERSION/);
+  assert.ok(rules.includes('acceptedTermsVersion == "'+GUIDE_VERSION+'"'));
+  assert.ok(rules.includes('acceptedPrivacyVersion == "'+GUIDE_VERSION+'"'));
+  assert.ok(rules.includes("acceptedAt == request.time"));
+  assert.ok(html.includes("acceptedAt:serverTimestamp()"));
   assert.match(html,/data-a="guide-open" data-id="terms"/);
   assert.match(html,/data-a="guide-open" data-id="privacy"/);
   assert.match(html,/if\(view==="guide"\)/);
