@@ -26,6 +26,23 @@ if (-not $Apply) {
     exit $LASTEXITCODE
 }
 
+# The stock gcloud OAuth desktop client cannot authenticate Firebase Auth Admin requests.
+# Check only the public client identifier, never print tokens or credential contents.
+if (-not $env:GOOGLE_APPLICATION_CREDENTIALS) {
+    $adcPath = Join-Path $env:APPDATA "gcloud\application_default_credentials.json"
+    if (Test-Path -LiteralPath $adcPath) {
+        $adc = Get-Content -Raw -LiteralPath $adcPath | ConvertFrom-Json
+        if ($adc.type -eq "authorized_user" -and [string]$adc.client_id -match '^764086051850-') {
+            Write-Host "BLOCKED: default gcloud OAuth client is not supported by Firebase Auth Admin." -ForegroundColor Yellow
+            Write-Host "In Google Cloud > Google Auth Platform > Clients, create a Desktop OAuth client for souqna-staging."
+            Write-Host 'Then run: gcloud.cmd auth application-default login --client-id-file="C:\full\path\to\desktop-oauth-client.json"'
+            Write-Host "Then run: gcloud.cmd auth application-default set-quota-project souqna-staging"
+            Write-Host "No password prompt was opened and no account was changed."
+            exit 3
+        }
+    }
+}
+
 Write-Host "Enter a NEW password of at least 12 characters. Input will be hidden."
 $secret = Read-Host "New password" -AsSecureString
 $confirmation = Read-Host "Confirm new password" -AsSecureString
