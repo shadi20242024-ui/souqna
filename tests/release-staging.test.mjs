@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from "node:fs";
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {
@@ -87,7 +87,7 @@ test("release files must pin Web, Firestore and Hosting to staging and scoped ma
 });
 
 test("release script contains no fallback to production or unattended deployment",()=>{
-  const script=require("node:fs").readFileSync(new URL("../scripts/release-staging.mjs",import.meta.url),"utf8");
+  const script=readFileSync(new URL("../scripts/release-staging.mjs",import.meta.url),"utf8");
   assert.match(script,/node\("scripts\/audit-staging-readonly\.mjs"\)/);
   assert.match(script,/node\("scripts\/preflight-staging\.mjs",PROJECT\)/);
   assert.match(script,/releaseArguments\(false\)/);
