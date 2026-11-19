@@ -6,9 +6,14 @@ import {fileURLToPath} from "node:url";
 
 const path=new URL("../functions/reset-staging-owner-password.cjs",import.meta.url);
 const source=readFileSync(path,"utf8");
-const run=(args=[],input="",extra={})=>spawnSync(process.execPath,[fileURLToPath(path),...args],{
-  encoding:"utf8",input,timeout:12000,env:{...process.env,...extra}
-});
+const run=(args=[],input="",extra={})=>{
+  const env={...process.env};
+  for(const key of ["FIRESTORE_EMULATOR_HOST","FIREBASE_AUTH_EMULATOR_HOST","FIREBASE_EMULATOR_HUB","GOOGLE_CLOUD_PROJECT","GCLOUD_PROJECT","GCP_PROJECT","FIREBASE_CONFIG"])delete env[key];
+  Object.assign(env,extra);
+  return spawnSync(process.execPath,[fileURLToPath(path),...args],{
+    encoding:"utf8",input,timeout:12000,env
+  });
+};
 test("staging owner password reset is safe by default and never uses production",()=>{
   assert.match(source,/const PROJECT="souqna-staging"/);
   assert.match(source,/const ACCOUNT_EMAIL="shadi20242024@gmail.com"/);
