@@ -77,6 +77,7 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 
 </style>
 <link rel="stylesheet" href="assets/responsive.css">
+<link rel="stylesheet" href="assets/souqna-guide.css">
 </head>
 <body>
 <div id="desktopBar" class="desktop-bar" aria-label="شريط البحث والتنقل"></div>
@@ -86,12 +87,14 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 <nav id="nav"></nav>
 <dialog id="paymentDialog" class="payment-dialog" aria-labelledby="paymentDialogTitle"></dialog>
 <dialog id="adMediaDialog" class="ad-media-dialog" aria-label="معرض صور الإعلان"></dialog>
+<dialog id="guideDialog" class="guide-dialog" aria-label="معلومات سوقنا"></dialog>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,increment,runTransaction}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import{getFunctions,httpsCallable,connectFunctionsEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 import{summarizeAdmin}from"./assets/admin-metrics.js";
+import{renderGuide,GUIDE_VERSION,GUIDE_TABS}from"./assets/souqna-guide.js";
 import{isSafeVideoUrl,validGallery,MAX_AD_PHOTOS,calculateExpression,jobFreshCount,validRatePayload,validGoldPayload,isFresh,SPECIALTIES}from"./assets/souqna-extras.js";
 import{compressAdPhotos}from"./assets/souqna-media.js";
 import{fetchSyrianMarketRates,SYRIAN_MARKET_SOURCE}from"./assets/syrian-market.js";
@@ -184,6 +187,7 @@ const ensureSession=(version,uid)=>{if(version!==sessionVersion||!me||me.uid!==u
 let adminReviewQuery="";
 let adminReviewType="all";
 let adminLoadWarnings=[],adminUpdatedAt=0,txs=[],notifs=[],stx={f:[],r:[]},services=[],partners=[],sorders=[],mySorders=[],allUsers=[],allTx=[],mySponsorRequests=[],pendingSponsorRequests=[],pickReady=Promise.resolve(),sq="",plans=[],subs=[],editPl=null,stores=[],myStores=[],pendStores=[],curStore=null,editSt=null,site={},sp=[],dr=[],wx=null,spi=0,dtype="pharmacy",tmp={},me=null,cats=[],allCategoryRecords=[],ads=[],mine=[],favorites=[],pend=[],pk=[],orders=[],promos=[],wa="",view="home",cur="all",q="",photo="",mode="login",more=false,feat=false,photoReady=Promise.resolve(),photoHash="",photoError="",photoSeq=0;
+let guideTab="how";
 const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),2600)};
 const catName=k=>(cats.find(c=>c.id==k)||{}).name_ar||k;
 const isStaff=()=>me&&STAFF.includes(me.role),isAdm=()=>me&&me.role=="admin";
@@ -595,6 +599,7 @@ function drawNav(){
     ["favorites","المفضلة","desktop-only"],
     ["orders","طلبات الخدمات","desktop-only"],
     ["calculator","حاسبة","desktop-only"],["markets","العملات والذهب","desktop-only"],
+    ["guide","المساعدة والشروط","desktop-only"],
     ...(isStaff()?[["admin","لوحة الإدارة","desktop-only"]]:[])
   ];
   $("#nav").innerHTML=b.map(x=>{
@@ -626,8 +631,9 @@ function loginBox(){
   const r=mode=="reg";
   return `<div class="box"><h3>${r?"إنشاء حساب":"تسجيل الدخول"}</h3>${r?'<input id="l-name" placeholder="الاسم">':""}
   <input id="l-mail" type="email" dir="ltr" placeholder="البريد الإلكتروني"><input id="l-pass" type="password" dir="ltr" placeholder="كلمة المرور (6 أحرف على الأقل)">
+  ${r?`<div class="guide-consent"><input type="checkbox" id="l-accept" aria-label="أوافق على شروط الاستخدام وسياسة الخصوصية"><div class="guide-consent-text"><label for="l-accept">أوافق على شروط استخدام سوقنا وسياسة الخصوصية.</label><div><button type="button" data-a="guide-open" data-id="terms">قراءة الشروط</button> · <button type="button" data-a="guide-open" data-id="privacy">الخصوصية</button></div></div></div>`:""}
   <button class="btn" style="width:100%" data-a="auth">${r?"إنشاء الحساب":"دخول"}</button>
-  <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div></div>`}
+  <div class="acts"><button class="btn l" data-a="swap">${r?"لدي حساب":"حساب جديد"}</button>${r?"":'<button class="btn l" data-a="reset">نسيت كلمة المرور</button>'}</div><div class="guide-account-link"><button class="btn l" data-v="guide">📖 المساعدة</button><button class="btn l" data-a="guide-open" data-id="terms">شروط الاستخدام</button><button class="btn l" data-a="guide-open" data-id="privacy">سياسة الخصوصية</button></div></div>`}
 
 function adminReportRows(){
   const summary=summarizeAdmin({
@@ -714,7 +720,9 @@ function adminDashboardHtml(){
 
 function render(){
   drawHd();drawNav();drawDesktopBar();$("#newsHost").innerHTML=tkHtml();const A=$("#app");
-  if(view=="home"){
+  if(view==="guide"){
+    A.innerHTML=renderGuide(guideTab);
+  }else if(view=="home"){
     A.innerHTML=`<div class="sr2"><button class="sc add" data-v="add">+<br>إعلان</button>${ads.filter(a=>safeImage(a.img)).slice(0,8).map(a=>`<button class="sc" data-c="${esc(a.cat)}" aria-label="${esc(a.title)}" style="${bgImage(a.img)}"></button>`).join("")}</div>
     ${safeImage(site.banner)?`<img class="bnr" src="${esc(safeImage(site.banner))}" alt="">`:`<div class="bn"><div class="hero-copy" style="flex:1"><span class="hero-eyebrow">سوق السويداء • من أهل البلد ولأهلها</span><b>كل ما تحتاجه .. في مكان واحد</b><p class="hero-subtitle">اكتشف السيارات والعقارات والمتاجر والخدمات في مكان يجمع أهل السويداء.</p><button class="gold" data-c="all">استكشف الإعلانات ‹</button></div><img class="hero-brand-logo" src="assets/souqna-approved-logo.jpg" alt="شعار سوقنا ثلاثي الأبعاد" loading="lazy"><em>📍 السويداء</em></div>`}
     ${wxHtml()}${jobNewsBanner()}<div class="homepage-service-tools"><button type="button" class="service-tool" data-v="calculator">🧮 حاسبة الزبائن</button><button type="button" class="service-tool" data-v="markets">💱 العملات والذهب</button></div><div id="spw">${spHtml()}</div>${tkHtml(true)}${storesHtml()}
@@ -814,7 +822,7 @@ function render(){
     `<h3>طلبات الخدمات (${sorders.filter(x=>x.status=="new"||x.status=="progress").length})</h3>${sorders.filter(x=>x.status=="new"||x.status=="progress").map(x=>`<div class="box"><b>${esc(x.userName)}</b> · ${esc(x.serviceName)}${x.partnerName?" · "+esc(x.partnerName):""} <span class="tag g">${SL[x.status]}</span><div class="mut">${esc(x.details)}</div><div class="acts"><button class="btn" data-a="sost" data-s="progress" data-id="${x.id}">قيد التنفيذ</button><button class="btn g" data-a="sost" data-s="done" data-id="${x.id}">مكتمل</button><button class="btn l" data-a="sost" data-s="rejected" data-id="${x.id}">رفض</button></div></div>`).join("")}
     ${canModerate()?`<div class="box"><h3>🛡️ مراجعة المتاجر والإعلانات</h3><label for="admin-review-search" class="mut">البحث في الطلبات المعلقة</label><input id="admin-review-search" type="search" autocomplete="off" value="${esc(adminReviewQuery)}" placeholder="اسم المتجر أو الإعلان أو المنطقة"><label for="admin-review-type" class="mut">نوع الطلب</label><select id="admin-review-type"><option value="all" ${adminReviewType==="all"?"selected":""}>الكل</option><option value="stores" ${adminReviewType==="stores"?"selected":""}>المتاجر</option><option value="ads" ${adminReviewType==="ads"?"selected":""}>الإعلانات</option></select><div id="admin-review-results">${adminReviewQueue()}</div></div>`:""} `;
   }else{
-    A.innerHTML=!me?loginBox():`${accountProfileReadError?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تعذر التحقق من صلاحيات حسابك.</b><p>فشلت قراءة ملف المستخدم من Firestore. لا يمكن السماح بإدارة الموقع قبل نجاح التحقق. راجع إعدادات الاتصال وقواعد Firestore لمشروع الاختبار.</p></div>':""}${!accountProfileMissing&&!accountProfileReadError&&!isStaff()?'<div class="box" role="status" style="border:1px solid #c58e2f"><b>حسابك مسجّل، لكن صلاحية المدير غير مفعّلة.</b><p>الاسم وكلمة المرور لا يحددان صلاحيات المدير. يتطلب الوصول إلى لوحة الإدارة وجود ملف مستخدم مرتبط بحسابك وrole يساوي admin في Firestore؛ لا يمكن منح هذا الدور من داخل المتصفح.</p></div>':""}${accountProfileMissing?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تم تسجيل الدخول لكن ملف المستخدم غير موجود في Firestore.</b><p>لا يمكن تفعيل صلاحيات المدير من المتصفح. يجب مراجعة مسار users/UID وقيمة role بواسطة مالك Firebase المخوّل. لا تشارك كلمة المرور ولا تنشئ مديراً من المتصفح.</p></div>':""}<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="favorites">♥ المفضلة (${favorites.length})</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="sponsor">📢 حجوزات البنر</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
+    A.innerHTML=!me?loginBox():`${accountProfileReadError?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تعذر التحقق من صلاحيات حسابك.</b><p>فشلت قراءة ملف المستخدم من Firestore. لا يمكن السماح بإدارة الموقع قبل نجاح التحقق. راجع إعدادات الاتصال وقواعد Firestore لمشروع الاختبار.</p></div>':""}${!accountProfileMissing&&!accountProfileReadError&&!isStaff()?'<div class="box" role="status" style="border:1px solid #c58e2f"><b>حسابك مسجّل، لكن صلاحية المدير غير مفعّلة.</b><p>الاسم وكلمة المرور لا يحددان صلاحيات المدير. يتطلب الوصول إلى لوحة الإدارة وجود ملف مستخدم مرتبط بحسابك وrole يساوي admin في Firestore؛ لا يمكن منح هذا الدور من داخل المتصفح.</p></div>':""}${accountProfileMissing?'<div class="box" role="alert" style="border:2px solid #c58e2f"><b>⚠️ تم تسجيل الدخول لكن ملف المستخدم غير موجود في Firestore.</b><p>لا يمكن تفعيل صلاحيات المدير من المتصفح. يجب مراجعة مسار users/UID وقيمة role بواسطة مالك Firebase المخوّل. لا تشارك كلمة المرور ولا تنشئ مديراً من المتصفح.</p></div>':""}<div class="box"><h3>👤 ${esc(me.name)}</h3><p class="mut">${esc(me.email)}<br>⭐ النجوم: ${me.stars||0}</p><div class="acts"><button class="btn" data-v="mystores">🏪 متاجري</button><button class="btn" data-v="favorites">♥ المفضلة (${favorites.length})</button><button class="btn" data-v="wallet">💰 محفظتي</button><button class="btn" data-v="notifs">🔔 الإشعارات${notifs.filter(n=>!n.read).length?" ("+notifs.filter(n=>!n.read).length+")":""}</button><button class="btn" data-v="orders">📦 طلباتي</button><button class="btn" data-v="sponsor">📢 حجوزات البنر</button><button class="btn" data-v="services">🎨 الخدمات</button>${isStaff()?'<button class="btn g" data-v="admin">🛠️ لوحة الإدارة</button>':""}<button class="btn l" data-v="guide">📖 المساعدة</button><button class="btn l" data-a="guide-open" data-id="terms">📜 الشروط</button><button class="btn l" data-a="guide-open" data-id="privacy">🔒 الخصوصية</button><button class="btn l" data-a="out">تسجيل الخروج</button></div></div>`;
   }
 }
 
@@ -913,7 +921,7 @@ async function shrink(file){
 const need=()=>{if(!me){toast("سجّل الدخول أولًا");view="acc";render();return false}return true};
 
 document.addEventListener("click",async e=>{
-  const v=e.target.closest("[data-v]");if(v){view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc","favorites"].includes(view)){
+  const v=e.target.closest("[data-v]");if(v){if($("#guideDialog")?.open)$("#guideDialog").close();view=v.dataset.v;if(["admin","mine","stars","mystores","wallet","notifs","orders","acc","favorites"].includes(view)){
     try{await loadMine()}catch(error){
       console.error("SOUQNA account load failed:",error);
       adminLoadWarnings=["قراءة ملف الحساب ("+(error?.code||"unknown")+")"];
@@ -924,6 +932,20 @@ document.addEventListener("click",async e=>{
   const d=e.target.closest("[data-dt]");if(d){dtype=d.dataset.dt;$("#dir").innerHTML=dirHtml();document.querySelectorAll("[data-dt]").forEach(x=>x.classList.toggle("on",x.dataset.dt==dtype));return}
   const c=e.target.closest("[data-c]");if(c){cur=c.dataset.c;view=view==="ads"?"ads":"home";feat=false;render();return scrollTo(0,0)}
   const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a,id=b.dataset.id;
+  if(a==="guide-open"){
+    guideTab=GUIDE_TABS.some(t=>t.id===id)?id:"how";
+    const dlg=$("#guideDialog");
+    dlg.innerHTML='<button type="button" class="guide-dialog-close" data-a="guide-close" aria-label="إغلاق">✕</button><div class="guide-dialog-content">'+renderGuide(guideTab)+"</div>";
+    dlg.showModal();return;
+  }
+  if(a==="guide-close"){$("#guideDialog")?.close();return;}
+  if(a==="guide-tab"){
+    guideTab=GUIDE_TABS.some(t=>t.id===id)?id:"how";
+    const dlg=$("#guideDialog");
+    if(dlg?.open){const body=dlg.querySelector(".guide-dialog-content");if(body)body.innerHTML=renderGuide(guideTab);}
+    else render();
+    return;
+  }
   if(a==="calc-key"){const input=$("#calc-expression"),out=$("#calc-result");if(!input||!out)return;const key=b.dataset.key;if(key==="C"){input.value="";out.textContent="النتيجة تظهر هنا";return;}if(key==="="){try{out.textContent=fmtNumber(calculateExpression(input.value));}catch(error){out.textContent=error.message;}return;}input.value+=key;input.focus();return;}
   if(a==="markets-refresh"){lastMarketPoll=0;lastSyrianPoll=0;loadMarketData(true);loadSyrianRates(true);return;}
   try{
@@ -981,8 +1003,9 @@ document.addEventListener("click",async e=>{
     else if(a=="swap"){mode=mode=="reg"?"login":"reg";render()}
     else if(a=="auth"){
       if(mode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");
+        if(!$("#l-accept")?.checked)return toast("يرجى قراءة شروط الاستخدام وسياسة الخصوصية والموافقة عليهما أولاً");
         const u=await createUserWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
-        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0});
+        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0,acceptedTermsVersion:GUIDE_VERSION,acceptedPrivacyVersion:GUIDE_VERSION,acceptedAt:Date.now()});
         accountProfileMissing=false;
         me={uid:u.user.uid,name:n,email:u.user.email,role:"user",stars:0};
         await loadMine();render()}
