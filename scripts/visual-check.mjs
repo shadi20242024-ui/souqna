@@ -32,6 +32,21 @@ const stubWeather=context=>context.route("https://api.open-meteo.com/**",route=>
 );
 
 
+const stubVisitorQuotes=async context=>{
+  const now=Date.now();
+  await context.route("https://open.er-api.com/v6/latest/USD",route=>
+    route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({
+      result:"success",base_code:"USD",time_last_update_unix:Math.floor(now/1000),
+      rates:{USD:1,SYP:13000,AED:3.67,EUR:0.9,IQD:1320}
+    })})
+  );
+  await context.route("https://api.gold-api.com/price/XAU",route=>
+    route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({
+      symbol:"XAU",currency:"USD",price:3110.34768,updatedAt:new Date(now).toISOString()
+    })})
+  );
+};
+
 async function startServer() {
   const server=createServer(async (req,res)=>{
     try {
@@ -121,6 +136,7 @@ try {
     const context=await browser.newContext({viewport:item.viewport,deviceScaleFactor:1,locale:"ar",reducedMotion:"reduce"});
     try {
       await stubWeather(context);
+      await stubVisitorQuotes(context);
       const page=await context.newPage();
       const errors=[];
       page.on("pageerror",err=>errors.push("PAGE: "+err.message));
@@ -155,6 +171,21 @@ try {
       assert.notEqual(await sponsorTitle.innerText(),beforeSponsor,"Next sponsored banner must change the slide");
       assert.ok(!(await page.locator("#spw").innerText()).includes("البنر المنتهي"),"Expired sponsored banner must be hidden");
       console.log("SPONSOR CAROUSEL OK",item.name);
+
+      await page.locator('#app .qt [data-v="utilities"]').click();
+      await page.locator("#sq-math").waitFor({timeout:10000});
+      await page.locator("#sq-math").fill("(120+80)×1.5");
+      await page.locator('#sq-keys [data-key="="]').click();
+      assert.match(await page.locator("#sq-math-result").innerText(),/300|٣٠٠/);
+      await page.locator("#sq-fx-result").filter({hasText:"SYP"}).waitFor({timeout:10000});
+      await page.locator("#sq-oz").filter({hasText:"USD"}).waitFor({timeout:10000});
+      assert.ok((await page.locator("#app").innerText()).includes("لا يمثل سعر الصاغة"));
+      await page.screenshot({
+        path:screenshotName(item.name+"-utilities.png"),fullPage:true,animations:"disabled"
+      });
+      await page.locator('#nav [data-v="home"]').click();
+      await page.locator("#list .item").first().waitFor({timeout:8000});
+      console.log("VISITOR TOOLS OK",item.name,"calculator, reference FX and gold");
 
       if(item.mobile){
         assert.equal(await page.locator("#desktopBar").isVisible(),false);
