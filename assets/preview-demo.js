@@ -21,12 +21,24 @@ const initial=[
   {id:"example-job",cat:"jobs",title:"إعلان وظيفة تجريبي – غير حقيقي",area:"السويداء",price:"تفاصيل تجريبية",featured:false},
   {id:"example-service",cat:"services",title:"خدمة صيانة – نموذج توضيحي",area:"القريا",price:"حسب الطلب",featured:false}
 ];
-const state={page:"home",cat:"all",search:"",detail:null,guide:"how",favorites:new Set(),ads:initial.slice(),message:""};
+const state={page:"home",cat:"all",search:"",detail:null,guide:"how",favorites:new Set(),ads:initial.slice(),message:"",adminSection:"dashboard"};
+const demoReviews=[
+  {id:"review-car",kind:"إعلان",title:"سيارة للبيع – طلب تجريبي",applicant:"مستخدم تجريبي 01",status:"pending"},
+  {id:"review-store",kind:"متجر",title:"معرض سيارات – طلب تجريبي",applicant:"مستخدم تجريبي 02",status:"pending"},
+  {id:"review-job",kind:"وظيفة",title:"مطلوب موظف – طلب تجريبي",applicant:"مستخدم تجريبي 03",status:"pending"},
+  {id:"review-banner",kind:"بنر",title:"بنر إعلاني – طلب تجريبي",applicant:"مستخدم تجريبي 04",status:"pending"}
+];
+const adminModules=[
+  ["dashboard","نظرة عامة","📊"],["reviews","المراجعات","🛡️"],["stores","المتاجر","🏪"],
+  ["payments","النجوم والدفعات","⭐"],["users","المستخدمون","👥"],
+  ["categories","الأقسام","🗂️"],["settings","الإعدادات","⚙️"]
+];
+const reviewStatus=s=>s==="approved"?"مقبول (تجريبي)":s==="rejected"?"مرفوض (تجريبي)":"قيد المراجعة";
 const $=selector=>document.querySelector(selector);
 const esc=value=>String(value==null?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 const cat=id=>categories.find(c=>c.id===id)||categories[categories.length-1];
 const picture=(id,scene=true)=>"assets/category-photos/"+(cat(id).image||"misc")+(scene?"-scene":"")+".webp";
-const tabs=[["home","الرئيسية","⌂"],["ads","الإعلانات","▦"],["add","أضف إعلان","＋"],["stores","المتاجر","▣"],["guide","المساعدة","?"]];
+const tabs=[["home","الرئيسية","⌂"],["ads","الإعلانات","▦"],["add","أضف إعلان","＋"],["stores","المتاجر","▣"],["guide","المساعدة","?"],["admin","المدير","⚙"]];
 const sampleStores=[
   {name:"معرض سيارات – مثال",cat:"cars",description:"هذه بطاقة متجر تجريبية لعرض شكل المتاجر داخل سوقنا."},
   {name:"عقارات السويداء – مثال",cat:"real_estate",description:"متجر توضيحي، لا يمثل جهة تجارية حقيقية."},
@@ -59,7 +71,7 @@ function categoriesHtml(){
 function home(){
   return '<section class="demo-hero"><div><span class="demo-eyebrow">SOUQNA · السويداء</span>'+
     '<h1>كل ما تحتاجه في السويداء، بمكان واحد</h1><p>استعرض تجربة التصميم والأقسام والإعلانات والمتاجر. جميع المحتويات المعروضة هنا أمثلة توضيحية وليست إعلانات حقيقية.</p>'+
-    '<button class="demo-btn demo-gold" data-demo="page" data-id="ads">استكشف الإعلانات</button></div>'+
+    '<button class="demo-btn demo-gold" data-demo="page" data-id="ads">استكشف الإعلانات</button> <button class="demo-btn demo-subtle" data-demo="page" data-id="admin">شاهد لوحة المدير</button></div>'+
     '<img src="assets/souqna-3d-mark.webp" alt="شعار سوقنا" width="156" height="156"></section>'+
     '<section class="demo-section"><div class="demo-section-head"><h2>أقسام سوقنا</h2><span>١٠ أقسام تجريبية</span></div>'+categoriesHtml()+'</section>'+
     '<section class="demo-section"><div class="demo-section-head"><h2>نماذج الإعلانات</h2><button data-demo="page" data-id="ads">عرض الكل</button></div>'+cards(filtered().slice(0,6))+'</section>'+
@@ -111,9 +123,58 @@ function calculator(){
     '<input id="demoCalc" placeholder="مثلاً 125 + 25" required autocomplete="off">'+
     '<button type="submit" class="demo-btn demo-primary">احسب</button><output id="calcResult" class="demo-output" aria-live="polite"></output></form>';
 }
+
+function admin(){
+  const pending=demoReviews.filter(x=>x.status==="pending").length;
+  const reviewRows=()=>'<div class="demo-admin-list">'+demoReviews.map(r=>
+    '<div class="demo-admin-row"><div><small>'+esc(r.kind)+' · '+esc(r.applicant)+'</small><strong>'+esc(r.title)+'</strong>'+
+    '<span class="demo-review-state '+r.status+'">'+reviewStatus(r.status)+'</span></div><div class="demo-admin-actions">'+
+    (r.status==="pending"?
+      '<button class="demo-btn demo-primary" data-demo="admin-decision" data-id="'+r.id+'" data-value="approved">قبول</button>'+
+      '<button class="demo-btn demo-subtle" data-demo="admin-decision" data-id="'+r.id+'" data-value="rejected">رفض</button>':
+      '<button class="demo-btn demo-subtle" data-demo="admin-decision" data-id="'+r.id+'" data-value="pending">إعادة للمراجعة</button>')+
+    '</div></div>').join("")+'</div>';
+  const dashboard='<div class="demo-admin-kpis">'+[
+    ["الإعلانات التجريبية",state.ads.length,"📢"],["طلبات تنتظر المراجعة",pending,"🛡️"],
+    ["متاجر أمثلة",sampleStores.length,"🏪"],["دفعات حقيقية",0,"🔒"]
+  ].map(([name,value,icon])=>'<div class="demo-admin-kpi"><span>'+icon+'</span><strong>'+value+'</strong><small>'+name+'</small></div>').join("")+'</div>'+
+    '<div class="demo-admin-panel"><h2>أحدث طلبات المراجعة</h2>'+reviewRows()+'</div>';
+  const titles={
+    reviews:"مراجعة الإعلانات والمتاجر",stores:"المتاجر والاشتراكات التجريبية",
+    payments:"النجوم وطلبات الشحن",users:"المستخدمون والصلاحيات",
+    categories:"إدارة الأقسام",settings:"إعدادات سوقنا"
+  };
+  let moduleHtml="";
+  if(state.adminSection==="reviews")moduleHtml=reviewRows();
+  if(state.adminSection==="stores")moduleHtml='<div class="demo-admin-list">'+sampleStores.map((store,i)=>
+    '<div class="demo-admin-row"><div><small>متجر مثال '+(i+1)+'</small><strong>'+esc(store.name)+'</strong>'+
+    '<span>باقة مستقلة لكل متجر • غير حقيقي</span></div><span class="demo-review-state approved">تجريبي</span></div>').join("")+'</div>';
+  if(state.adminSection==="payments")moduleHtml='<div class="demo-admin-list"><div class="demo-admin-row"><div><small>الطلب #DEMO-001</small>'+
+    '<strong>طلب شحن نجوم – مثال فقط</strong><span>لا توجد وسيلة دفع ولا تحويلات مالية في المعاينة</span></div>'+
+    '<span class="demo-review-state pending">غير مدفوع</span></div></div>';
+  if(state.adminSection==="users")moduleHtml='<div class="demo-admin-list"><div class="demo-admin-row"><div><small>حساب وهمي</small><strong>شادي – اسم العرض فقط</strong>'+
+    '<span>مدير العرض • لا توجد صلاحيات أو حساب Firebase حقيقي</span></div><span class="demo-review-state approved">عرض فقط</span></div>'+
+    '<div class="demo-admin-row"><div><small>حساب وهمي</small><strong>مشرف الوظائف</strong><span>صلاحية قسم الوظائف في العرض فقط</span></div></div></div>';
+  if(state.adminSection==="categories")moduleHtml=categoriesHtml()+
+    '<p class="demo-muted">يمكن للمدير الحقيقي تنظيم الأقسام بعد تسجيل الدخول المصرح له. التغييرات في العرض لا تحفظ.</p>';
+  if(state.adminSection==="settings")moduleHtml='<div class="demo-admin-list"><div class="demo-admin-row"><div><small>الهوية</small><strong>سوقنا – SOUQNA</strong>'+
+    '<span>الاسم المعروض للمشغّل: شادي فقط</span></div></div><div class="demo-admin-row"><div><small>خدمة العملاء</small>'+
+    '<strong>shadi20242024@gmail.com</strong><span>هذا عنوان للتواصل، وليس حساب دخول في هذه المعاينة</span></div></div>'+
+    '<div class="demo-admin-row"><div><small>الحالة</small><strong>معاينة غير متصلة بالخادم</strong>'+
+    '<span>Cloud Functions / Firebase Auth / Firestore معطلة هنا</span></div></div></div>';
+  return '<div class="demo-section-head"><div><h1>لوحة تحكم سوقنا – نسخة عرض</h1>'+
+    '<p class="demo-muted">جميع الإحصائيات والمستخدمين والمراجعات والقرارات وهمية، ولا تؤثر في أي إعلان أو حساب حقيقي.</p></div></div>'+
+    '<div class="demo-admin-layout"><aside class="demo-admin-sidebar">'+adminModules.map(([id,label,icon])=>
+    '<button data-demo="admin-section" data-id="'+id+'" class="'+(state.adminSection===id?"active":"")+'"><span>'+icon+'</span>'+label+'</button>').join("")+
+    '</aside><div class="demo-admin-main">'+(state.adminSection==="dashboard"?dashboard:
+      '<div class="demo-admin-panel"><h2>'+esc(titles[state.adminSection]||"لوحة المدير")+'</h2>'+moduleHtml+'</div>')+
+    '<p class="demo-admin-disclaimer">تنبيه: هذه واجهة محاكاة للمدير. لا تنشئ حسابات ولا توافق على إعلانات حقيقية ولا تخصم رصيداً.</p>'+
+    '</div></div>';
+}
+
 function render(){
   const title=state.page==="detail"?"تفاصيل الإعلان":state.page==="guide"?"المساعدة":state.page==="account"?"حسابي":
-    state.page==="add"?"إضافة إعلان":state.page==="stores"?"المتاجر":state.page==="calculator"?"الحاسبة":"سوقنا";
+    state.page==="add"?"إضافة إعلان":state.page==="stores"?"المتاجر":state.page==="calculator"?"الحاسبة":state.page==="admin"?"لوحة المدير":"سوقنا";
   document.title=title+" | سوقنا – معاينة";
   $("#desktopBar").innerHTML='<div class="demo-desktop-head"><img src="assets/souqna-3d-mark.webp" alt="" width="48" height="48">'+
     '<strong>سوقنا <small>SOUQNA</small></strong><div class="demo-desktop-links">'+
@@ -123,7 +184,7 @@ function render(){
     '<strong>سوقنا</strong><span>معاينة تجريبية</span></div>';
   const content=state.page==="home"?home():state.page==="ads"?ads():state.page==="detail"?detail():
     state.page==="stores"?stores():state.page==="add"?add():state.page==="guide"?renderGuide(state.guide):
-    state.page==="calculator"?calculator():account();
+    state.page==="calculator"?calculator():state.page==="admin"?admin():account();
   $("#app").innerHTML='<div class="demo-app"><div class="demo-page-note" role="status">نسخة عرض تجريبي: كل البيانات وهمية. لا تسجيل أو شراء أو نشر فعلي.</div>'+content+
     '<footer class="demo-footer">© سوقنا – نسخة معاينة · <a href="mailto:shadi20242024@gmail.com">shadi20242024@gmail.com</a></footer></div>';
   $("#nav").innerHTML=tabs.map(t=>'<button data-demo="page" data-id="'+t[0]+'" class="'+(state.page===t[0]?"on":"")+'"><i>'+t[2]+'</i>'+t[1]+'</button>').join("");
@@ -140,6 +201,14 @@ document.addEventListener("click",e=>{
   else if(action==="favorite"){
     if(state.favorites.has(id))state.favorites.delete(id);else state.favorites.add(id);
     state.message="تم تحديث المفضلة مؤقتاً في هذه المعاينة";
+  }
+  else if(action==="admin-section"){if(adminModules.some(x=>x[0]===id)){state.adminSection=id;state.page="admin";}}
+  else if(action==="admin-decision"){
+    const item=demoReviews.find(x=>x.id===id),value=target.dataset.value;
+    if(item&&["approved","rejected","pending"].includes(value)){
+      item.status=value;
+      state.message="تم تحديث الطلب الوهمي داخل هذه الجلسة فقط";
+    }
   }
   else if(action==="guide-tab"||action==="guide-open"){state.guide=id;state.page="guide";}
   else if(action==="home"||action==="stores"||action==="add"){state.page=action;}
