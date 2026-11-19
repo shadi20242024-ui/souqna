@@ -16,6 +16,13 @@ test("isolated preview demo source parses and is disconnected from real Firebase
   assert.ok(script.includes("previewForm"));
   assert.ok(script.includes("calcForm"));
   assert.ok(script.includes("state.favorites"));
+  assert.ok(script.includes('data-demo="admin-section"'));
+  assert.ok(script.includes('data-demo="admin-decision"'));
+  assert.ok(script.includes("جميع الإحصائيات والمستخدمين والمراجعات والقرارات وهمية"));
+  assert.ok(script.includes("state.adminSection"));
+  assert.ok(script.includes('["admin","المدير","⚙"]'));
+  assert.ok(css.includes(".demo-admin-layout"));
+  assert.ok(css.includes(".demo-admin-sidebar"));
   assert.ok(script.includes("المثال"));
   assert.ok(css.includes("@media(max-width:680px)"));
   for(const unsafe of ["initializeApp(","getFirestore(","getAuth(","httpsCallable(","firebase deploy","localStorage.","fetch("])
