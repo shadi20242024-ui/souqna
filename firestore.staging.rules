@@ -267,7 +267,25 @@ service cloud.firestore {
         && data.sourceName is string
         && data.sourceName.size() >= 3 && data.sourceName.size() <= 120
         && data.sourceUrl is string && data.sourceUrl.size() <= 400
-        && (data.sourceUrl == "" || data.sourceUrl.matches('^https://[^ ]+
+        && (data.sourceUrl == "" || data.sourceUrl.matches('^https://[^ ]+$'))
+        && (id != "usd_official" || data.sourceUrl != "")
+        && data.method == "manual"
+        && data.currencyEra == "SYP_NEW"
+        && data.observedAt is timestamp
+        && data.observedAt <= request.time
+        && data.observedAt >= request.time - duration.value(7, 'd')
+        && data.updatedAt == request.time
+        && data.updatedBy == request.auth.uid;
+    }
+
+    match /localMarketRates/{id} {
+      allow get, list: if true;
+      allow create, update: if mayManageMarketRates()
+        && validLocalMarketRate(id, request.resource.data);
+      allow delete: if false;
+    }
+
+    match /directory/{id} {
       allow read: if true;
       allow write: if isAdmin();
     }
