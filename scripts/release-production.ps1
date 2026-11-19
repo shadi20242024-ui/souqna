@@ -44,8 +44,8 @@ if($LASTEXITCODE -ne 0 -or $branch -cne "main" -or $sha -cne $ApprovedCommit -or
 Write-Host "SOUQNA release review: project $project, commit $sha, publish requested: $Publish"
 Write-Host "No cloud writes will run until ALL checks and explicit approval have passed."
 
-Invoke-Checked npm.cmd @("install","--ignore-scripts","--no-audit","--no-fund")
-Invoke-Checked npm.cmd @("install","--prefix","functions","--ignore-scripts","--no-audit","--no-fund")
+Invoke-Checked npm.cmd @("install","--package-lock=false","--ignore-scripts","--no-audit","--no-fund")
+Invoke-Checked npm.cmd @("install","--prefix","functions","--package-lock=false","--ignore-scripts","--no-audit","--no-fund")
 Invoke-Checked npm.cmd @("test")
 $env:SOUQNA_PRODUCTION_BUILD_APPROVED = "souqna-sweida:2026-11-19"
 Invoke-Checked npm.cmd @("run","build:production")
@@ -58,7 +58,7 @@ Invoke-Checked npm.cmd @("run","backup:production:rules")
 if(-not $Publish){
   Write-Host "SOUQNA PRODUCTION PREFLIGHT COMPLETE. No cloud writes performed."
   Write-Host "To publish later, owner must approve a specific commit and explicitly use -Publish."
-  exit 0
+  return
 }
 if($env:SOUQNA_APPROVE_LIVE_WRITE -cne ($project+":"+$sha)){
   throw "Explicit per-commit live approval absent or mismatched."
