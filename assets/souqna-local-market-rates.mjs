@@ -21,7 +21,8 @@ export function validateLocalPriceInput(input,{now=Date.now()}={}){
   const buy=Number(input.buy),sell=Number(input.sell);
   if(input.buy===""||input.sell===""||!Number.isFinite(buy)||!Number.isFinite(sell)||
      buy<=0||sell<=0||buy>1e9||sell>1e9||buy>sell||
-     Math.round(buy*100)!==buy*100||Math.round(sell*100)!==sell*100)
+     Math.abs(Math.round(buy*100)-buy*100)>1e-7||
+     Math.abs(Math.round(sell*100)-sell*100)>1e-7)
     throw new Error("أدخل سعري شراء ومبيع صالحين بالليرة الجديدة، على ألا يزيد الشراء عن المبيع");
   const sourceName=String(input.sourceName||"").trim();
   const sourceUrl=String(input.sourceUrl||"").trim();
@@ -48,7 +49,8 @@ export function readLocalPrice(id,document,{now=Date.now()}={}){
      observedAt>now+60000||updatedAt>now+60000)return null;
   const sourceName=String(document.sourceName||"").slice(0,120);
   const sourceUrl=String(document.sourceUrl||"").slice(0,400);
-  if(sourceName.length<3||sourceUrl&&!SAFE_HTTPS.test(sourceUrl))return null;
+  if(sourceName.length<3||sourceUrl&&!SAFE_HTTPS.test(sourceUrl)||
+     id==="usd_official"&&!sourceUrl)return null;
   const stale=now-observedAt>definition.maxAgeHours*3600000;
   return{
     ...definition,buy,sell,observedAt,updatedAt,stale,
