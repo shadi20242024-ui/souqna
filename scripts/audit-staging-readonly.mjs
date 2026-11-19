@@ -10,7 +10,8 @@ import {
 
 const ROOT=resolve(fileURLToPath(new URL("..",import.meta.url)));
 const REQUIRED_FUNCTIONS=Object.freeze([
-  "souqnaMarketplace","souqnaDeleteAd","souqnaRetryAdCleanup","souqnaListAdCleanup"
+  "souqnaFinance","souqnaMarketplace","souqnaDeleteAd",
+  "souqnaRetryAdCleanup","souqnaListAdCleanup","souqnaSocialQueueStatus"
 ]);
 const ALLOWED_ORIGINS=new Set([
   "https://firebase.googleapis.com",
