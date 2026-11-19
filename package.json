@@ -15,6 +15,7 @@
     "build:production": "node scripts/build-hosting.mjs production",
     "preflight:production": "node scripts/preflight-production.mjs",
     "preflight:launch": "node scripts/production-launch-gate.mjs",
+    "check:production:hosting": "node scripts/check-production-hosting.mjs",
     "preflight:staging": "node scripts/preflight-staging.mjs",
     "seed:staging": "node scripts/seed-staging.mjs",
     "setup:staging:auto": "node scripts/auto-staging-setup.mjs",
