@@ -148,7 +148,8 @@ async function approvePromotion(tx, id, actor, now) {
   const userRef = reference("users", promo.userId);
   const adRef = reference("ads", promo.adId);
   const packRef = reference("packages", promo.pkgId);
-  const [userSnap, adSnap, packSnap] = await getAll(tx, userRef, adRef, packRef);
+  const socialRef = reference("socialPromotionJobs", promo.adId);
+  const [userSnap, adSnap, packSnap, socialSnap] = await getAll(tx, userRef, adRef, packRef, socialRef);
   if (!userSnap.exists || !adSnap.exists || !packSnap.exists) deny("بيانات التمييز غير مكتملة");
   const ad = adSnap.data(), pack = packSnap.data();
   if (ad.ownerId !== promo.userId || ad.status !== "approved") deny("الإعلان غير منشور أو لا يتبع للمستخدم");
