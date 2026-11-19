@@ -241,6 +241,187 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    function mayManageMarketRates() {
+      return isAdmin() || assignedTo("market_prices");
+    }
+
+    function validLocalMarketRate(id, data) {
+      return id in [
+          "usd_official", "usd_parallel", "gold_24",
+          "gold_21", "gold_18", "silver_999"
+        ]
+        && data.keys().hasOnly([
+          "buy", "sell", "sourceName", "sourceUrl",
+          "observedAt", "updatedAt", "updatedBy",
+          "method", "currencyEra"
+        ])
+        && data.keys().hasAll([
+          "buy", "sell", "sourceName", "sourceUrl",
+          "observedAt", "updatedAt", "updatedBy",
+          "method", "currencyEra"
+        ])
+        && data.buy is number && data.sell is number
+        && data.buy > 0 && data.sell > 0
+        && data.buy <= data.sell
+        && data.buy <= 1000000000 && data.sell <= 1000000000
+        && data.sourceName is string
+        && data.sourceName.size() >= 3 && data.sourceName.size() <= 120
+        && data.sourceUrl is string && data.sourceUrl.size() <= 400
+        && (data.sourceUrl == "" || data.sourceUrl.matches('^https://[^ ]+
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /services/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /partners/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /starOrders/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.stars is int
+        && request.resource.data.stars > 0
+        && request.resource.data.stars <= 100000
+        && safeText(request.resource.data.userName, 1, 100)
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0
+        && request.resource.data.keys().hasOnly([
+          "userId", "userName", "stars", "status", "createdAt"
+        ]);
+      allow update, delete: if false;
+    }
+
+    match /promos/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && ownsApprovedAd(request.resource.data.adId);
+      allow update, delete: if false;
+    }
+
+    match /subs/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending"
+        && ownsApprovedStore(request.resource.data.storeId)
+        && request.resource.data.planId is string
+        && exists(/databases/$(database)/documents/plans/$(request.resource.data.planId));
+      allow update, delete: if false;
+    }
+
+    match /sorders/{id} {
+      allow read: if isStaff()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if safeDocumentId(id) && signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "new";
+      allow update: if isStaff();
+      allow delete: if isAdmin();
+    }
+
+    match /paymentReceipts/{id} {
+      // Manual payment proofs are finance-only: clients must never forge or edit them.
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /transactions/{id} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      // Financial ledger is write-once from trusted server credentials.
+      allow create, update, delete: if false;
+    }
+
+    // Scoped moderation. Assignment records are written by the main administrator only.
+    match /staffAssignments/{uid} {
+      allow get: if isAdmin() || isSelf(uid);
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == "moderator"
+        && request.resource.data.keys().hasOnly(["active", "sectionIds", "displayName"])
+        && request.resource.data.keys().hasAll(["active", "sectionIds", "displayName"])
+        && request.resource.data.active is bool
+        && request.resource.data.sectionIds is list
+        && request.resource.data.sectionIds.size() <= 30
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100;
+      allow delete: if isAdmin();
+    }
+
+    // Public service updates: jobs, on-call clinics, fuel stations and dynamic sections.
+    match /localPosts/{id} {
+      allow get, list: if resource.data.status == "approved"
+        || isAdmin()
+        || assignedTo(resource.data.sectionId);
+      allow create: if signedIn()
+        && safeDocumentId(id)
+        && validLocalPost(request.resource.data)
+        && mayEditLocalSection(request.resource.data.sectionId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if signedIn()
+        && validLocalPost(request.resource.data)
+        && mayEditLocalSection(resource.data.sectionId)
+        && request.resource.data.sectionId == resource.data.sectionId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    match /socialPromotionJobs/{id} {
+      allow read, write: if false;
+    }
+
+    match /mediaCleanupJobs/{id} {
+      allow read, write: if false;
+    }
+
+    match /notifs/{id} {
+      // Financial and personal notifications remain private to owner and administrator.
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isStaff();
+      allow update: if isStaff()
+        || (signedIn() && resource.data.userId == request.auth.uid
+          && changedOnly(["read"]) && request.resource.data.read == true);
+      allow delete: if isAdmin();
+    }
+  }
+}
+))
+        && (id != "usd_official" || data.sourceUrl != "")
+        && data.method == "manual"
+        && data.currencyEra == "SYP_NEW"
+        && data.observedAt is timestamp
+        && data.observedAt <= request.time
+        && data.observedAt >= request.time - duration.value(7, 'd')
+        && data.updatedAt == request.time
+        && data.updatedBy == request.auth.uid;
+    }
+
+    match /localMarketRates/{id} {
+      allow get, list: if true;
+      allow create, update: if mayManageMarketRates()
+        && validLocalMarketRate(id, request.resource.data);
+      allow delete: if false;
+    }
+
     match /directory/{id} {
       allow read: if true;
       allow write: if isAdmin();
