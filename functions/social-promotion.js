@@ -20,8 +20,15 @@ function imageFromListing(ad){
     if(typeof raw!=="string"||raw.length>2048)continue;
     try{
       const url=new URL(raw);
+      const match=url.pathname.match(/^\/v0\/b\/([^/]+)\/o\/([^/]+)$/);
+      if(!match||!ad?.ownerId)continue;
+      const bucket=decodeURIComponent(match[1]);
+      const filename=decodeURIComponent(match[2]);
+      const owned=filename.startsWith("ads/"+ad.ownerId+"/")&&
+        /^[A-Za-z0-9_-]{8,100}\.(jpg|jpeg)$/i.test(filename.slice(("ads/"+ad.ownerId+"/").length));
       if(url.protocol==="https:"&&url.hostname===IMAGE_HOST&&
-         url.searchParams.get("alt")==="media"&&!url.username&&!url.password)
+         ["souqna-staging.firebasestorage.app","souqna-staging.appspot.com"].includes(bucket)&&
+         url.searchParams.get("alt")==="media"&&!url.username&&!url.password&&owned)
         return url.href;
     }catch{}
   }
@@ -64,6 +71,7 @@ function createSocialPromotionJob({ad,adId,userId,promoId,expiresAt,now}){
     startedAt:now,
     expiresAt,
     updatedAt:now,
+    nextActionAt:now,
     status:"awaiting_connection",
     channels
   };
@@ -87,7 +95,8 @@ function extendSocialPromotionJob(existing,{ad,promoId,expiresAt,now}){
     imageUrl:imageFromListing(ad)||String(existing.imageUrl||""),
     price:typeof ad.price==="number"&&Number.isFinite(ad.price)?ad.price:0,
     currency:String(ad.cur||"").slice(0,10),
-    expiresAt,updatedAt:now
+    expiresAt,updatedAt:now,nextActionAt:now,
+    status:existing.status==="removal_requested"?"active":existing.status
   };
 }
 
@@ -97,7 +106,10 @@ function actionsForSocialPromotion(job,now,{facebook=false,instagram=false}={}){
   const expired=now>=job.expiresAt||job.status==="removal_requested";
   return PLATFORMS.map(platform=>{
     const state=job.channels?.[platform]||{};
-    const hasPost=typeof state.postId==="string"&&state.postId.length>0;
+    const hasPost=typeof state.postId==="string"&&state.postId.length>0&&state.status!=="removed";
+    if(["publishing","removing","review_required"].includes(state.status))return {
+      platform,action:"none",reason:"awaiting_manual_review"
+    };
     if(expired)return {
       platform,
       action:hasPost&&state.status!=="removed"?"remove":"none",
