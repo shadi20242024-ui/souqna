@@ -214,6 +214,17 @@ try {
     await page.locator("#l-name").fill("مستخدم فحص سوقنا");
     await page.locator("#l-mail").fill(email);
     await page.locator("#l-pass").fill("SouqnaTest2026!");
+    await page.locator('#app [data-a="guide-open"][data-id="terms"]').click();
+    await page.locator('#guideDialog[open] .guide-policy').waitFor({timeout:5000});
+    assert.ok((await page.locator("#guideDialog").innerText()).includes("شروط استخدام سوقنا"));
+    await page.locator('#guideDialog [data-a="guide-tab"][data-id="privacy"]').click();
+    assert.ok((await page.locator("#guideDialog").innerText()).includes("سياسة الخصوصية"));
+    await page.screenshot({path:screenshotName("terms-and-privacy.png"),fullPage:false,animations:"disabled"});
+    await page.locator('#guideDialog [data-a="guide-close"]').click();
+    assert.equal(await page.locator("#l-mail").inputValue(),email,"Reading terms must preserve registration fields");
+    await page.locator('#app [data-a="auth"]').click();
+    await page.locator(".toast").filter({hasText:"يرجى قراءة شروط الاستخدام"}).waitFor({timeout:5000});
+    await page.locator("#l-accept").check();
     await page.locator('#app [data-a="auth"]').click();
     await page.locator('#app [data-v="mystores"]').waitFor({timeout:20000});
     assert.equal(await page.locator('#nav [data-v="admin"]').count(),0,
