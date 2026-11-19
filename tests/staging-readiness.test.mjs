@@ -23,7 +23,7 @@ test("failed cloud check blocks ready status without attempting writes",()=>{
 test("all preceding checks can pass while missing categories still blocks launch",()=>{
   const statuses=CHECKS.map((c,i)=>formatStatus(c,i===4?1:0));
   assert.equal(buildReadiness(statuses).ready,false);
-  assert.equal(statuses[3].status,"BLOCKED");
+  assert.equal(statuses[4].status,"BLOCKED");
 });
 
 test("missing live legal rules blocks staging publication readiness",()=>{
