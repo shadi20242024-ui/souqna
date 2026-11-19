@@ -103,7 +103,7 @@ let output=mode==="production"?html:
 if(mode==="preview"){
   // The isolated preview is an interactive mock-data demo. It does not run the
   // real Firebase application or ask visitors for accounts or payment details.
-  const moduleScript=/<script type="module">[\\s\\S]*?<\\/script>/;
+  const moduleScript=/<script type="module">[\s\S]*?<\/script>/;
   assert.ok(moduleScript.test(output),"Expected a single main Firebase module for preview replacement.");
   output=output.replace(moduleScript,
     '<script id="souqna-preview-config" type="application/json">{"projectId":"souqna-preview-disabled","mockData":true}</script>\n'+
