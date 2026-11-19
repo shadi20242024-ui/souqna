@@ -110,9 +110,47 @@ if (-not (Test-Path -LiteralPath (Join-Path $root "functions\node_modules\fireba
 }
 
 Write-Host "Checking the existing owner account (READ ONLY)..." -ForegroundColor Cyan
+$env:SOUQNA_STAGING_CONFIRMED_OWNER_EMAIL = $null
+$env:SOUQNA_STAGING_CONFIRMED_OWNER_UID = $null
 & node.exe $target --check-auth
-Assert-ExitCode "Staging owner Firebase Auth check"
-
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "The configured owner email was not found. Inspecting the staging user inventory (READ ONLY)..." -ForegroundColor Yellow
+    $inventoryText = & node.exe $target --inspect-auth-users
+    Assert-ExitCode "Read-only staging user inventory"
+    $inventory = ($inventoryText -join "`n") | ConvertFrom-Json
+    if ([string]$inventory.project -cne $project) {
+        throw "Firebase inventory project mismatch. No password was changed."
+    }
+    if ($inventory.user_count -ne 1 -or $null -eq $inventory.account) {
+        throw "No unique staging account was found. No password was changed. Inspect Firebase Authentication manually."
+    }
+    if ($inventory.account.disabled) {
+        throw "The existing staging account is disabled. No password was changed."
+    }
+    $candidate = [string]$inventory.account.email
+    $candidateUid = [string]$inventory.account.uid
+    if ([string]::IsNullOrWhiteSpace($candidate) -or $candidateUid.Length -lt 8) {
+        throw "Firebase returned an invalid staging account. No password was changed."
+    }
+    Write-Host "The single account in souqna-staging is:" -ForegroundColor Yellow
+    Write-Host ("Email: " + $candidate)
+    Write-Host ("UID suffix: " + $candidateUid.Substring($candidateUid.Length - 6))
+    Write-Host "Verify this is YOUR account in Firebase Console > Authentication > Users." -ForegroundColor Yellow
+    $enteredEmail = (Read-Host "Confirm account: type the full email displayed above").Trim()
+    if ($enteredEmail -cne $candidate) {
+        throw "Owner did not confirm the exact account email. No password was changed."
+    }
+    $enteredUidSuffix = (Read-Host "Confirm account: type the six-character UID suffix displayed above").Trim()
+    if ($enteredUidSuffix -cne $candidateUid.Substring($candidateUid.Length - 6)) {
+        throw "Owner did not confirm the UID. No password was changed."
+    }
+    $env:SOUQNA_STAGING_CONFIRMED_OWNER_EMAIL = $candidate
+    $env:SOUQNA_STAGING_CONFIRMED_OWNER_UID = $candidateUid
+    Write-Host "Verifying the explicitly confirmed unique staging account..." -ForegroundColor Cyan
+    & node.exe $target --check-auth
+    Assert-ExitCode "Confirmed owner Firebase Auth check"
+}
 Write-Host ""
 Write-Host "Account check passed. Choose a NEW password of at least 12 characters." -ForegroundColor Green
 Write-Host "You will type the password only on this computer; it will not display on screen."
@@ -146,4 +184,6 @@ try {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($secondPtr)
     }
     Remove-Variable first,second,secret,confirmation,firstPtr,secondPtr -ErrorAction SilentlyContinue
+    $env:SOUQNA_STAGING_CONFIRMED_OWNER_EMAIL = $null
+    $env:SOUQNA_STAGING_CONFIRMED_OWNER_UID = $null
 }
