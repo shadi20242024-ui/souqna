@@ -38,7 +38,7 @@ test("legal content explains limits and distinguishes pending integrations",()=>
     assert.ok(page.includes('href="mailto:'+GUIDE_SUPPORT_EMAIL+'"'),"Missing support contact in "+page.slice(0,25));
     assert.ok(page.includes(GUIDE_SUPPORT_EMAIL));
   }
-  assert.match(terms,/للبلاغات/);
+  assert.match(terms,/والبلاغات/);
   assert.match(privacy,/طلبات الوصول والتصحيح والحذف/);
   for(const page of [terms,privacy]){
     assert.match(page,/شادي \(Shadi\)/);
