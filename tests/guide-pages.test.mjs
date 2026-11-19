@@ -44,7 +44,7 @@ test("legal content explains limits and distinguishes pending integrations",()=>
     assert.match(page,/شادي \(Shadi\)/);
     assert.match(page,/تعمل المنصة باسمه الشخصي/);
     assert.match(page,/بلد الاختصاص وعنوان المراسلة ومتطلبات التسجيل أو الترخيص/);
-    assert.doesNotMatch(page,/شادي فاضل بحصاص|Shadi Fadel Bahsas/);
+    assert.match(page,/المشغّل المعلن:<\/b> شادي \(Shadi\)/);
 
   }
 });
