@@ -51,3 +51,6 @@
 .guide-dialog::backdrop{background:#071c50af}
 .guide-dialog-close{position:sticky;top:0;right:0;z-index:5;display:block;margin:0 0 12px auto;background:#0a2a72;color:#fff;border:0;border-radius:12px;padding:9px 15px;font-size:18px}
 @media(max-width:650px){.guide-dialog{padding:14px 10px}.guide-dialog-close{padding:7px 13px}}
+
+.guide-policy .guide-operator{padding:13px 15px;margin-top:12px;border:1px solid #d6e2f8;border-radius:11px;background:#f4f7fe;color:#183b77;font-size:13px;line-height:1.9}
+.guide-policy .guide-operator b{color:#082b73}
