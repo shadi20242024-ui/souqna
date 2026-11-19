@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
+import {readFileSync} from "node:fs";
 import {
-  STAGING_PROJECT, chooseStagingWebApp, fetchStagingWebConfig, validateStagingWebConfig
+  STAGING_PROJECT, STAGING_WEB_CONFIG_FILE, chooseStagingWebApp, fetchStagingWebConfig, validateStagingWebConfig
 } from "../scripts/auto-staging-setup.mjs";
 
 const appId="1:850633392158:web:c966b5d11e72a6b56d6e0f";
@@ -69,4 +70,21 @@ test("Firebase Management app list handles pagination and refuses a malformed re
   assert.equal((await fetchStagingWebConfig(request)).projectId,STAGING_PROJECT);
   assert.equal(urls.length,3);
   await assert.rejects(fetchStagingWebConfig(async()=>({wrong:"shape"})),/no Web App list/);
+});
+
+test("automatic staging setup never replaces the tracked Firebase CLI rules configuration",()=>{
+  assert.equal(STAGING_WEB_CONFIG_FILE,"firebase.staging.web.local.json");
+  assert.notEqual(STAGING_WEB_CONFIG_FILE,"firebase.staging.json");
+  const cli=JSON.parse(readFileSync(new URL("../firebase.staging.json",import.meta.url),"utf8"));
+  assert.equal(cli.firestore.rules,"firestore.staging.rules");
+  assert.equal(cli.storage.rules,"storage.rules");
+  assert.equal(cli.hosting.public,"dist");
+  assert.equal(Object.hasOwn(cli,"apiKey"),false);
+  const ignored=readFileSync(new URL("../.gitignore",import.meta.url),"utf8");
+  assert.match(ignored,/^firebase\.staging\.web\.local\.json$/m);
+  assert.doesNotMatch(ignored,/^firebase\.staging\.json$/m);
+  const setup=readFileSync(new URL("../scripts/auto-staging-setup.mjs",import.meta.url),"utf8");
+  assert.match(setup,/const localConfig = join\(root,STAGING_WEB_CONFIG_FILE\)/);
+  assert.match(setup,/runLocal\("scripts\/build-hosting\.mjs","staging",localConfig\)/);
+  assert.match(setup,/runLocal\("scripts\/preflight-staging\.mjs",STAGING_PROJECT\)/);
 });
