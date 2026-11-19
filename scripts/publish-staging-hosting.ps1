@@ -50,4 +50,6 @@ Write-Host "SOUQNA: publishing Hosting ONLY to the isolated test project..."
 Invoke-Verified npx.cmd @("firebase","deploy","--only","hosting","--project",$project,"--config","firebase.staging.config.json","--non-interactive")
 Write-Host "SOUQNA: checking actual public staging website..."
 Invoke-Verified npm.cmd @("run","check:staging:hosting")
+Write-Host "SOUQNA: checking live guide and privacy files at both staging domains..."
+Invoke-Verified npm.cmd @("run","check:staging:guide-assets")
 Write-Host "SOUQNA STAGING HOSTING PUBLISHED AND VERIFIED. Production souqna-sweida was not targeted."
