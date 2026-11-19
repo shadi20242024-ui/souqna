@@ -3,6 +3,7 @@ const assert=require("node:assert/strict");
 
 const PROJECT="souqna-staging";
 const ACCOUNT_EMAIL="shadi20242024@gmail.com";
+const {resolveStagingOwner}=require("./owner-auth-lookup.cjs");
 const CONFIRMATION="RESET-OWNER-PASSWORD:souqna-staging";
 const args=process.argv.slice(2);
 const execute=args.includes("--execute");
@@ -43,7 +44,7 @@ if(!execute && !checkOnly){
     const {getAuth}=require("firebase-admin/auth");
     const app=initializeApp({credential:applicationDefault(),projectId:PROJECT},"souqna-owner-password-preflight");
     try{
-      const user=await getAuth(app).getUserByEmail(ACCOUNT_EMAIL);
+      const user=await resolveStagingOwner(getAuth(app),ACCOUNT_EMAIL);
       assert.equal(user.email?.toLowerCase(),ACCOUNT_EMAIL);
       assert.ok(user.uid && !user.disabled,"Staging owner account is missing or disabled.");
       console.log("SOUQNA STAGING OWNER AUTH READ CHECK: PASS");
@@ -68,7 +69,7 @@ if(!execute && !checkOnly){
   const app=initializeApp({credential:applicationDefault(),projectId:PROJECT},"souqna-owner-password-reset");
   try{
     const auth=getAuth(app);
-    const user=await auth.getUserByEmail(ACCOUNT_EMAIL);
+    const user=await resolveStagingOwner(auth,ACCOUNT_EMAIL);
     assert.equal(user.email?.toLowerCase(),ACCOUNT_EMAIL);
     assert.ok(user.uid && !user.disabled,"Owner account is missing or disabled; no changes made.");
     await auth.updateUser(user.uid,{password});
@@ -84,9 +85,11 @@ if(!execute && !checkOnly){
   console.error("SOUQNA STAGING RESET FAILED: "+code);
   if(code==="auth/internal-error"){
     console.error("Authentication API rejected the local credentials or reported an internal error.");
-    console.error("Default gcloud end-user OAuth client credentials are not supported for Firebase Auth Admin API.");
-    console.error("Use gcloud auth application-default login --client-id-file=YOUR_DESKTOP_OAUTH_CLIENT_JSON");
-    console.error("Then set the ADC quota project to souqna-staging and retry. Never upload that OAuth file.");
+    console.error("Check that ADC uses the project Desktop OAuth client and that you have permission to manage staging Auth.");
+  }else if(["auth/owner-email-mismatch","auth/staging-user-inventory-empty","auth/ambiguous-owner","auth/owner-scan-limit"].includes(code)){
+    console.error("STAGING AUTH DIAGNOSTIC: "+String(error.message||"Account mismatch").slice(0,460));
+    console.error("Firebase Authentication Console: https://console.firebase.google.com/project/souqna-staging/authentication/users");
+    console.error("Do not create or delete users to bypass this check.");
   }else{
     console.error("Check Google Cloud authentication/permissions for souqna-staging.");
   }
