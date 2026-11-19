@@ -96,10 +96,20 @@ const environmentText=mode==="preview"
   ?"⚠️ نسخة معاينة معزولة — لا تتصل بقاعدة البيانات ولا تعمل كنسخة منشورة"
   :"🧪 بيئة اختبار سوقنا — بيانات تجريبية فقط — "+config.projectId;
 const environmentBanner='<div id="souqna-environment-banner" role="status" style="position:relative;z-index:110;padding:9px 14px;text-align:center;background:#fdf0c4;color:#1f2d48;border-bottom:2px solid #d89e25;font:700 14px system-ui,sans-serif" dir="rtl">'+environmentText+'</div>';
-const output=mode==="production"?html:
+let output=mode==="production"?html:
   html.replace(original[0],()=>replacement)
     .replace("</head>",'<meta name="robots" content="noindex,nofollow,noarchive">\n</head>')
     .replace("<body>","<body>\n"+environmentBanner);
+if(mode==="preview"){
+  // The isolated preview is an interactive mock-data demo. It does not run the
+  // real Firebase application or ask visitors for accounts or payment details.
+  const moduleScript=/<script type="module">[\\s\\S]*?<\\/script>/;
+  assert.ok(moduleScript.test(output),"Expected a single main Firebase module for preview replacement.");
+  output=output.replace(moduleScript,
+    '<script id="souqna-preview-config" type="application/json">{"projectId":"souqna-preview-disabled","mockData":true}</script>\n'+
+    '<script type="module" src="./assets/preview-demo.js"></script>')
+    .replace("</head>",'<link rel="stylesheet" href="assets/preview-demo.css">\n</head>');
+}
 if(mode!=="production"){
   assert.ok(!output.includes(production.apiKey),"Production Firebase key leaked into staging/preview.");
   assert.ok(!output.includes('projectId:"souqna-sweida"'),"HTML still points to production.");
@@ -111,8 +121,11 @@ if(mode!=="production"){
     "Production must not display a staging warning.");
 }
 
+const bundleFiles=mode==="preview"
+  ?[...publicFiles,"assets/preview-demo.js","assets/preview-demo.css"]
+  :publicFiles;
 rmSync(target,{recursive:true,force:true});
-for(const filename of publicFiles){
+for(const filename of bundleFiles){
   const src=join(root,filename),dest=join(target,filename);
   assert.ok(existsSync(src),"Public asset missing: "+filename);
   mkdirSync(dirname(dest),{recursive:true});
