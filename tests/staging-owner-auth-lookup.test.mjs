@@ -3,7 +3,7 @@ import {test} from "node:test";
 import {createRequire} from "node:module";
 
 const require=createRequire(import.meta.url);
-const {resolveStagingOwner,normalizeEmail}=require("../functions/owner-auth-lookup.cjs");
+const {resolveStagingOwner,normalizeEmail,inspectSingleStagingAccount,resolveConfirmedSingleStagingAccount}=require("../functions/owner-auth-lookup.cjs");
 const email="shadi20242024@gmail.com";
 const missing=()=>Object.assign(new Error("not found"),{code:"auth/user-not-found"});
 const user=(uid,name=email)=>({uid,email:name,disabled:false});
@@ -46,4 +46,33 @@ test("disabled user, mismatched direct user and backend errors reject before mut
   await assert.rejects(resolveStagingOwner(fakeAuth([],user("wrong","other@example.com")),email));
   const a={getUserByEmail:async()=>{throw Object.assign(new Error("Forbidden"),{code:"auth/insufficient-permission"})},listUsers:async()=>{throw Error("must not run")}};
   await assert.rejects(resolveStagingOwner(a,email),{code:"auth/insufficient-permission"});
+});
+
+test("read-only inventory presents a single existing staging user, without changing any account",async()=>{
+  let calls=0;
+  const auth={async listUsers(limit){
+    calls++;assert.equal(limit,2);
+    return {users:[user("uniqueUID123","account.typo@gmail.com")]};
+  }};
+  const result=await inspectSingleStagingAccount(auth);
+  assert.deepEqual(result,{user_count:1,account:{email:"account.typo@gmail.com",uid:"uniqueUID123",disabled:false}});
+  assert.equal(calls,1);
+  const confirmed=await resolveConfirmedSingleStagingAccount(auth,"account.typo@gmail.com","uniqueUID123");
+  assert.equal(confirmed.uid,"uniqueUID123");
+});
+test("single-account confirmation rejects wrong UID, wrong email and disabled user",async()=>{
+  const single={listUsers:async()=>({users:[user("uniqueUID123","account.typo@gmail.com")]})};
+  await assert.rejects(resolveConfirmedSingleStagingAccount(single,"account.typo@gmail.com","wrongUID99"),{code:"auth/verified-account-changed"});
+  await assert.rejects(resolveConfirmedSingleStagingAccount(single,"other@example.com","uniqueUID123"),{code:"auth/verified-account-changed"});
+  const disabled={listUsers:async()=>({users:[{...user("uniqueUID123","account.typo@gmail.com"),disabled:true}]})};
+  await assert.rejects(resolveConfirmedSingleStagingAccount(disabled,"account.typo@gmail.com","uniqueUID123"));
+});
+test("confirmation refuses multiple users or pagination after inspection",async()=>{
+  const multiple={listUsers:async()=>({users:[user("UIDone123"),user("UIDtwo123")]})};
+  await assert.rejects(resolveConfirmedSingleStagingAccount(multiple,email,"UIDone123"),{code:"auth/verified-single-account-required"});
+  const paging={listUsers:async()=>({users:[user("UIDone123")],pageToken:"next"})};
+  await assert.rejects(resolveConfirmedSingleStagingAccount(paging,email,"UIDone123"),{code:"auth/verified-single-account-required"});
+  const inv=await inspectSingleStagingAccount(paging);
+  assert.equal(inv.account,null);
+  assert.equal(inv.user_count,">=2");
 });
