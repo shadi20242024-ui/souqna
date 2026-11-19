@@ -51,6 +51,32 @@ function callable(path,storageProvider=()=>getStorage(adminApp)){
   return mod.exports(db,{});
 }
 
+function financeCallable(){
+  const source=readFileSync(new URL("../functions/index.js",import.meta.url),"utf8");
+  const mod=new Module("/virtual/finance-index.js");
+  mod.filename="/virtual/finance-index.js";
+  mod.paths=[];
+  class HttpsError extends Error{
+    constructor(code,message){super(message);this.code=code;}
+  }
+  const stubbedDelete=()=>async()=>({ok:true});
+  stubbedDelete.makeRetryCleanup=()=>async()=>({ok:true});
+  stubbedDelete.makeListCleanupJobs=()=>async()=>({ok:true});
+  mod.require=id=>{
+    if(id==="firebase-functions/v2/https")return{onCall:(_options,handler)=>handler,HttpsError};
+    if(id==="firebase-admin/app")return{initializeApp:()=>adminApp};
+    if(id==="firebase-admin/firestore")return{getFirestore:()=>db,FieldValue};
+    if(id==="firebase-functions")return{logger:{info:()=>{},warn:()=>{}}};
+    if(id==="node:crypto")return requireFunctions("node:crypto");
+    if(id==="./social-promotion")return requireFunctions("./social-promotion.js");
+    if(id==="./marketplace")return()=>async()=>({ok:true});
+    if(id==="./delete-ad")return stubbedDelete;
+    throw new Error("Unexpected dependency in finance integration: "+id);
+  };
+  mod._compile(source,mod.filename);
+  return mod.exports.souqnaFinance;
+}
+
 async function upload(uid,path){
   const storage=rulesEnvironment.authenticatedContext(uid).storage("gs://"+bucket);
   const object=ref(storage,path);
@@ -231,4 +257,64 @@ test("interrupted cleanup persists only failed image, then repeated delete safel
   assert.equal((await jobRef.get()).exists,false);
   assert.equal(await existsInStorage("gallery_owner",stalledPath),false);
   assert.equal(await existsInStorage("gallery_owner",unrelatedPath),true);
+});
+
+test("paid featured approval queues social pages, extends without duplicates and flags removal on delete",async()=>{
+  const adId="gallery_flow_social_4";
+  const path="ads/gallery_owner/featured_social_01.jpg";
+  await upload("gallery_owner",path);
+  await submit("gallery_owner",adId,[path]);
+  const adRef=db.collection("ads").doc(adId);
+  const socialRef=db.collection("socialPromotionJobs").doc(adId);
+  await Promise.all([
+    adRef.update({status:"approved"}),
+    db.collection("users").doc("gallery_owner").update({stars:50}),
+    db.collection("packages").doc("social_pack_15").set({stars:5,days:15,active:true}),
+    db.collection("promos").doc("social_promo_1").set({
+      userId:"gallery_owner",adId,pkgId:"social_pack_15",status:"pending"
+    })
+  ]);
+  assert.equal((await socialRef.get()).exists,false);
+  const finance=financeCallable();
+  await assert.rejects(finance({auth:{uid:"gallery_other"},data:{action:"approvePromotion",id:"social_promo_1"}}),
+    error=>error.code==="permission-denied");
+  assert.equal((await socialRef.get()).exists,false);
+  const accepted=await finance({auth:{uid:"gallery_admin"},data:{action:"approvePromotion",id:"social_promo_1"}});
+  assert.equal(accepted.ok,true);
+  const first=(await socialRef.get()).data();
+  assert.equal(first.adId,adId);
+  assert.equal(first.userId,"gallery_owner");
+  assert.equal(first.latestPromotionId,"social_promo_1");
+  assert.equal(first.status,"awaiting_connection");
+  assert.equal(first.channels.facebook.postId,"");
+  assert.equal(first.channels.instagram.postId,"");
+  assert.equal(first.imageUrl,urlFor(path));
+  assert.equal((await adRef.get()).data().featuredUntil,first.expiresAt);
+  assert.equal((await db.collection("users").doc("gallery_owner").get()).data().stars,45);
+  const p1=(await db.collection("promos").doc("social_promo_1").get()).data();
+  assert.equal(p1.status,"done");
+  await assert.rejects(finance({auth:{uid:"gallery_admin"},data:{action:"approvePromotion",id:"social_promo_1"}}),
+    error=>error.code==="failed-precondition");
+
+  await socialRef.update({"channels.facebook":{
+    status:"published",postId:"page_12345_67890",publishedAt:Date.now(),removedAt:0
+  }});
+  await db.collection("promos").doc("social_promo_2").set({
+    userId:"gallery_owner",adId,pkgId:"social_pack_15",status:"pending"
+  });
+  const extended=await finance({auth:{uid:"gallery_admin"},data:{action:"approvePromotion",id:"social_promo_2"}});
+  assert.equal(extended.ok,true);
+  const second=(await socialRef.get()).data();
+  assert.equal(second.expiresAt,first.expiresAt+15*86400000);
+  assert.equal(second.channels.facebook.postId,"page_12345_67890");
+  assert.equal(second.latestPromotionId,"social_promo_2");
+  assert.equal((await db.collection("users").doc("gallery_owner").get()).data().stars,40);
+
+  const deletion=await deleteAd({auth:{uid:"gallery_owner"},data:{id:adId}});
+  assert.equal(deletion.ok,true);
+  const removal=(await socialRef.get()).data();
+  assert.equal(removal.status,"removal_requested");
+  assert.ok(removal.expiresAt<=Date.now());
+  assert.equal(removal.channels.facebook.postId,"page_12345_67890");
+  assert.equal((await adRef.get()).exists,false);
 });
