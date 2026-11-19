@@ -6,9 +6,9 @@ firebase-debug.log
 firebase-debug.*.log
 ui-debug.log
 
-# Never commit real staging configuration or local credentials
-firebase.staging.json
-firebase.staging.*.json
+# Firebase CLI staging rules config is tracked; local Web SDK settings and credentials are not
+firebase.staging.web.local.json
+firebase.staging.*.local.json
 *.private.json
 *.secret.json
 .env
