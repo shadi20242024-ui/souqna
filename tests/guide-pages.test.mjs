@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
 import {readFileSync} from "node:fs";
-import {renderGuide,GUIDE_TABS,GUIDE_VERSION} from "../assets/souqna-guide.js";
+import {renderGuide,GUIDE_TABS,GUIDE_VERSION,GUIDE_SUPPORT_EMAIL} from "../assets/souqna-guide.js";
 
 const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const css=readFileSync(new URL("../assets/souqna-guide.css",import.meta.url),"utf8");
@@ -33,6 +33,13 @@ test("legal content explains limits and distinguishes pending integrations",()=>
   assert.match(how,/قيد التجهيز/);
   assert.match(privacy,/Firebase/);
   assert.match(terms,new RegExp(GUIDE_VERSION));
+  assert.equal(GUIDE_SUPPORT_EMAIL,"shadi20242024@gmail.com");
+  for(const page of [how,features,terms,privacy]){
+    assert.ok(page.includes('href="mailto:'+GUIDE_SUPPORT_EMAIL+'"'),"Missing support contact in "+page.slice(0,25));
+    assert.ok(page.includes(GUIDE_SUPPORT_EMAIL));
+  }
+  assert.match(terms,/للبلاغات/);
+  assert.match(privacy,/طلبات الوصول والتصحيح والحذف/);
   for(const page of [terms,privacy]){
     assert.match(page,/شادي \(Shadi\)/);
     assert.match(page,/الاسم التعريفي قيد استكمال بيانات الهوية القانونية/);
