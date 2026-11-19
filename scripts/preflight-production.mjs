@@ -53,6 +53,11 @@ export function inspectProductionBundle(folder=dist){
   if(!guide.includes('GUIDE_VERSION="'+GUIDE_VERSION+'"'))return "HELP_VERSION_MISMATCH";
   const firebase=JSON.parse(readFileSync(join(root,"firebase.json"),"utf8"));
   if(firebase.hosting?.public!=="dist")return "WRONG_HOSTING_ROOT";
+  const globalHeaders=firebase.hosting.headers?.find(x=>x.source==="/**")?.headers||[];
+  const headerMap=Object.fromEntries(globalHeaders.map(x=>[x.key,x.value]));
+  if(headerMap["X-Content-Type-Options"]!=="nosniff"||
+     headerMap["Referrer-Policy"]!=="strict-origin-when-cross-origin"||
+     headerMap["X-Frame-Options"]!=="DENY")return "HOSTING_SECURITY_HEADERS_MISSING";
   return inspectProductionRelease(html,source,rules,manifest,worker);
 }
 
