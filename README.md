@@ -48,7 +48,7 @@ npm run preflight:production
 npm run preflight:launch
 ~~~
 
-`build:production` يبني حزمة محلية فقط، و`preflight:production` يفحص الملفات. `preflight:launch` يرفض الترخيص إذا لم يتحقق من الفرع `main` وبناء الإنتاج ونجاح فحوص Staging الحية وموافقات المالك. لا ينشر أي أمر منها الموقع أو يفعّل الفوترة أو Cloud Functions.
+`build:production` يبني حزمة محلية فقط، و`preflight:production` يفحص الملفات. بعد أي نشر معتمد منفصل يمكن تشغيل `npm run check:production:hosting` للتحقق من ملفات الويب المنشورة على النطاقين الافتراضيين دون تعديل السحابة. `preflight:launch` يرفض الترخيص إذا لم يتحقق من الفرع `main` وبناء الإنتاج ونجاح فحوص Staging الحية وموافقات المالك. لا ينشر أي أمر منها الموقع أو يفعّل الفوترة أو Cloud Functions.
 
 **لا تشغّل `firebase deploy` على `souqna-sweida` بناءً على نجاح المحاكيات وحده.** يلزم نسخ احتياطي واستعادة مختبرة، اعتماد القواعد والدوال والواجهة معاً، وتأكيد اسم الجهة القانونية وطرق الدعم وسياسة الاسترداد.
 
