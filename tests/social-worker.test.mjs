@@ -7,6 +7,7 @@ const {createSocialPromotionJob,extendSocialPromotionJob}=require("../functions/
 const {processSocialPromotionJob,processDueSocialPromotions,LEASE_MS}=
   require("../functions/social-queue-worker.js");
 const {createMetaSocialClient,socialCaption}=require("../functions/meta-social-client.js");
+const {makeSocialAutomationTriggers}=require("../functions/social-triggers.js");
 
 const NOW=1795000000000;
 const originalProject=process.env.GCLOUD_PROJECT;
@@ -264,4 +265,33 @@ test("Meta rejects publishing without a confirmed ID and does not report failed 
   });
   await assert.rejects(client.publish("facebook",job()),/denied/);
   await assert.rejects(client.remove("facebook","123456_789012"),/denied/);
+});
+
+test("social triggers remain unregistered until the owner explicitly enables the integration",()=>{
+  assert.deepEqual(makeSocialAutomationTriggers(),{});
+  assert.deepEqual(makeSocialAutomationTriggers({enabled:false}),{});
+  const fs=require("node:fs");
+  const entry=fs.readFileSync(new URL("../functions/index.js",import.meta.url),"utf8");
+  assert.doesNotMatch(entry,/makeSocialAutomationTriggers|souqnaSocialOnPromotion|souqnaSocialExpiryReconciler/);
+});
+
+test("prepared triggers define immediate publishing and five-minute expiry reconciler",()=>{
+  const calls=[];
+  const h=harness(),meta=mockMeta({facebook:false,instagram:false});
+  const handlers=makeSocialAutomationTriggers({
+    enabled:true,db:h.db,metaClientFactory:()=>meta,
+    onDocumentWritten(options,handler){
+      calls.push({type:"document",options});
+      return handler;
+    },
+    onSchedule(options,handler){
+      calls.push({type:"schedule",options});
+      return handler;
+    }
+  });
+  assert.equal(typeof handlers.souqnaSocialOnPromotion,"function");
+  assert.equal(typeof handlers.souqnaSocialExpiryReconciler,"function");
+  assert.equal(calls[0].options.document,"socialPromotionJobs/{adId}");
+  assert.equal(calls[1].options.schedule,"every 5 minutes");
+  assert.equal(calls[1].options.maxInstances,1);
 });
