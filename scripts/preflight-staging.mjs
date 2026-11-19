@@ -26,11 +26,20 @@ assert.ok(!html.includes("نسخة معاينة معزولة"),"Disconnected pre
 assert.ok(!html.includes('projectId:"souqna-sweida"'),"Production Firebase project still present.");
 const firebase=JSON.parse(readFileSync(join(root,"firebase.json"),"utf8"));
 assert.equal(firebase.hosting.public,"dist","Firebase Hosting must publish the audited dist folder.");
-for(const f of ["index.html","sw.js","assets/responsive.css","assets/admin-metrics.js"]){
+for(const f of ["index.html","sw.js","assets/responsive.css","assets/souqna-guide.js","assets/souqna-guide.css","assets/admin-metrics.js"]){
   assert.ok(existsSync(join(folder,f)),"Missing Hosting output: "+f);
 }
 for(const f of ["functions","firestore.rules","tests"]){
   assert.ok(!existsSync(join(folder,f)),"Private source leaked into staging Hosting: "+f);
 }
+const source=readFileSync(join(root,"assets","souqna-guide.js"),"utf8");
+const rules=readFileSync(join(root,"firestore.rules"),"utf8");
+const version=source.match(/export const GUIDE_VERSION\s*=\s*"([^"]+)"/)?.[1];
+assert.ok(version && /^20\d\d-\d\d-\d\d$/.test(version),"Legal guide version missing.");
+assert.ok(html.includes('assets/souqna-guide.js') && html.includes('assets/souqna-guide.css'),"Guide not linked in staging HTML.");
+assert.ok(html.includes('acceptedAt:serverTimestamp()'),"Registration must record server-time consent.");
+assert.ok(rules.includes('request.resource.data.acceptedTermsVersion == "'+version+'"'),"Deployed rules source and guide terms version differ.");
+assert.ok(rules.includes('request.resource.data.acceptedPrivacyVersion == "'+version+'"'),"Deployed rules source and guide privacy version differ.");
+assert.ok(rules.includes('acceptedAt == request.time'),"Server-time consent rule missing.");
 console.log("SOUQNA staging preflight passed for project: "+target);
 console.log("This is read-only validation. Nothing has been deployed.");
