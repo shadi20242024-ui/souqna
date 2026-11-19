@@ -292,3 +292,4 @@ exports.souqnaMarketplace=require("./marketplace")(db,OPTIONS);
 exports.souqnaDeleteAd=require("./delete-ad")(db,OPTIONS);
 exports.souqnaRetryAdCleanup=require("./delete-ad").makeRetryCleanup(db,OPTIONS);
 exports.souqnaListAdCleanup=require("./delete-ad").makeListCleanupJobs(db,OPTIONS);
+exports.souqnaSocialQueueStatus=require("./social-status").makeSocialQueueStatus(db,OPTIONS);
