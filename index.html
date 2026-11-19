@@ -1002,7 +1002,7 @@ document.addEventListener("click",async e=>{
     else if(a=="feat"){feat=!feat;cur="all";render()}
     else if(a=="swap"){mode=mode=="reg"?"login":"reg";render()}
     else if(a=="auth"){
-      if(mode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");
+      if(mode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");if(n.length>100)return toast("اسم الحساب يجب ألا يزيد على 100 حرف");
         if(!$("#l-accept")?.checked)return toast("يرجى قراءة شروط الاستخدام وسياسة الخصوصية والموافقة عليهما أولاً");
         const u=await createUserWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
         await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0,acceptedTermsVersion:GUIDE_VERSION,acceptedPrivacyVersion:GUIDE_VERSION,acceptedAt:serverTimestamp()});
@@ -1107,8 +1107,8 @@ else if(a==="market-save"){
     else if(a=="addpk"){const s=+val("#k-s"),d=+val("#k-d");if(!(s>0&&d>0))return toast("أدخل النجوم والأيام");await addDoc(collection(db,"packages"),{stars:s,days:d,active:true});await loadPublic();render()}
     else if(a=="delpk"){await deleteDoc(doc(db,"packages",id));await loadPublic();render()}
     else if(a=="follow"){if(!need())return;const k=id+"_"+me.uid;if(stx.f.some(x=>x.userId==me.uid))await deleteDoc(doc(db,"follows",k));else await setDoc(doc(db,"follows",k),{storeId:id,userId:me.uid});await loadStoreX(id);render()}
-    else if(a=="rate"){if(!need())return;await setDoc(doc(db,"reviews",id+"_"+me.uid),{storeId:id,userId:me.uid,userName:me.name,stars:+$("#rv-s").value,text:val("#rv-t"),createdAt:Date.now()});await loadStoreX(id);toast("شكرًا لتقييمك");render()}
-    else if(a=="sorder"){if(!need())return;const sv=services.find(x=>x.id==$("#o-s").value);if(!sv||!val("#o-d"))return toast("اختر الخدمة واكتب التفاصيل");const pt=partners.find(x=>x.id==$("#o-p").value);await addDoc(collection(db,"sorders"),{userId:me.uid,userName:me.name,serviceId:sv.id,serviceName:sv.name,partnerName:pt?pt.name:"",details:val("#o-d"),status:"new",createdAt:Date.now()});toast("أُرسل طلبك، ستتواصل معك الإدارة");if(wa)open(waLink("طلب خدمة: "+sv.name+(pt?" · شريك: "+pt.name:"")+"\n"+val("#o-d")+"\nالاسم: "+me.name),"_blank");await loadMine();view="orders";render()}
+    else if(a=="rate"){if(!need())return;const reviewText=val("#rv-t");if(reviewText.length>1500)return toast("التقييم طويل جداً (1500 حرف كحد أقصى)");const existingReview=stx.r.find(x=>x.userId===me.uid);await setDoc(doc(db,"reviews",id+"_"+me.uid),{storeId:id,userId:me.uid,userName:me.name,stars:+$("#rv-s").value,text:reviewText,createdAt:existingReview?existingReview.createdAt:Date.now()});await loadStoreX(id);toast("شكرًا لتقييمك");render()}
+    else if(a=="sorder"){if(!need())return;const sv=services.find(x=>x.id==$("#o-s").value);if(!sv||val("#o-d").length<2||val("#o-d").length>3000)return toast("اختر الخدمة وأدخل تفاصيل من 2 إلى 3000 حرف");const pt=partners.find(x=>x.id==$("#o-p").value);await addDoc(collection(db,"sorders"),{userId:me.uid,userName:me.name,serviceId:sv.id,serviceName:sv.name,partnerName:pt?pt.name:"",details:val("#o-d"),status:"new",createdAt:Date.now()});toast("أُرسل طلبك، ستتواصل معك الإدارة");if(wa)open(waLink("طلب خدمة: "+sv.name+(pt?" · شريك: "+pt.name:"")+"\n"+val("#o-d")+"\nالاسم: "+me.name),"_blank");await loadMine();view="orders";render()}
     else if(a=="sost"){const o=sorders.find(x=>x.id==id),st=b.dataset.s;await updateDoc(doc(db,"sorders",id),{status:st,note:st=="rejected"?(prompt("سبب الرفض:")||""):""});await notify(o.userId,"طلبك ("+o.serviceName+"): "+SL[st]);await loadMine();render()}
     else if(a=="ustars"){
        if(!isAdm())return toast("هذا الإجراء متاح للمدير فقط");
