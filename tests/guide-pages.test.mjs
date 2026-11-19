@@ -41,10 +41,10 @@ test("legal content explains limits and distinguishes pending integrations",()=>
   assert.match(terms,/والبلاغات/);
   assert.match(privacy,/طلبات الوصول والتصحيح والحذف/);
   for(const page of [terms,privacy]){
+    assert.match(page,/شادي فاضل بحصاص/);
     assert.match(page,/شادي \(Shadi\)/);
-    assert.match(page,/بصفته الشخصية وباسمه الخاص/);
-    assert.match(page,/ليس باسم شركة مسجلة/);
-    assert.match(page,/استكمال الاسم القانوني الكامل وبلد الاختصاص وعنوان المراسلة/);
+    assert.match(page,/باسمه الشخصي لا باسم شركة مسجلة/);
+    assert.match(page,/بلد الاختصاص وعنوان المراسلة ومتطلبات التسجيل أو الترخيص/);
   }
 });
 test("account registration requires affirmative agreement and records version",()=>{
