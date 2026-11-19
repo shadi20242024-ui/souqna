@@ -16,8 +16,15 @@ export function inspectProductionHtml(html){
      html.includes("souqna-preview-disabled"))return "TEST_BUILD_ON_PRODUCTION";
   const match=html.match(/const app=initializeApp\((\{[^\n;]*\})\);/);
   if(!match)return "FIREBASE_CONFIG_MISSING";
-  let config;
-  try{config=JSON.parse(match[1]);}catch{return "FIREBASE_CONFIG_INVALID";}
+  // Production index.html deliberately uses a static JavaScript object literal
+  // with unquoted property names; staging bundles use JSON.stringify instead.
+  // Parse only the six expected string fields without executing page code.
+  const pairs=[...match[1].matchAll(/(?:"([a-zA-Z]\\w*)"|([a-zA-Z]\\w*))\\s*:\\s*"([^"\\\\]*)"/g)]
+    .map(m=>[m[1]||m[2],m[3]]);
+  const config=Object.fromEntries(pairs);
+  if(pairs.length!==6 || Object.keys(config).length!==6 ||
+      !["apiKey","authDomain","projectId","storageBucket","messagingSenderId","appId"].every(key=>typeof config[key]==="string"))
+    return "FIREBASE_CONFIG_INVALID";
   if(config.projectId!=="souqna-sweida" ||
      config.authDomain!=="souqna-sweida.firebaseapp.com" ||
      !config.apiKey || !config.appId)return "WRONG_PRODUCTION_PROJECT";
