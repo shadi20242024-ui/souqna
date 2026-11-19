@@ -101,13 +101,15 @@ function makeDeleteAd(db,options){
     const id=requestedId(request);
     const ref=db.collection("ads").doc(id);
     const cleanupRef=db.collection("mediaCleanupJobs").doc(id);
+    const socialRef=db.collection("socialPromotionJobs").doc(id);
     let ownerId="";
     let imageObjects=[];
     await db.runTransaction(async tx=>{
-      const [userSnap,adSnap,cleanupSnap]=await Promise.all([
+      const [userSnap,adSnap,cleanupSnap,socialSnap]=await Promise.all([
         tx.get(db.collection("users").doc(uid)),
         tx.get(ref),
-        tx.get(cleanupRef)
+        tx.get(cleanupRef),
+        tx.get(socialRef)
       ]);
       if(!userSnap.exists)throw new HttpsError("permission-denied","الحساب غير موجود");
       const isAdmin=userSnap.data().role==="admin";
@@ -136,6 +138,9 @@ function makeDeleteAd(db,options){
           ownerId,objects:imageObjects,status:"pending",createdAt:Date.now(),
           failedImages:0
         });
+      }
+      if(socialSnap.exists){
+        tx.update(socialRef,{status:"removal_requested",expiresAt:Date.now(),updatedAt:Date.now()});
       }
       tx.delete(ref);
     });
