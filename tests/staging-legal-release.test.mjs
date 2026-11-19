@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readFileSync, existsSync } from "node:fs";
-import { basename } from "node:path";
+import { readFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { basename, join } from "node:path";
+import { tmpdir } from "node:os";
 import { backupStagingRules } from "../scripts/backup-staging-rules.mjs";
 
 const pipeline=readFileSync(new URL("../scripts/publish-staging-legal-and-hosting.ps1",import.meta.url),"utf8");
@@ -38,10 +39,13 @@ test("backup is local, immutable, specific to staging, and rejects incomplete ru
   const source=readFileSync(new URL("../firestore.rules",import.meta.url),"utf8");
   assert.throws(()=>backupStagingRules("allow read, write: if true",new Date("2026-11-19T09:00:00Z")),/rules_version/);
   assert.throws(()=>backupStagingRules("rules_version = '2';",new Date("2026-11-19T09:00:00Z")),/not Firestore rules/);
-  const now=new Date("2026-11-19T09:00:00.000Z");
-  const p=backupStagingRules(source,now);
-  assert.ok(existsSync(p));
-  assert.ok(basename(p).startsWith("souqna-staging-2026-11-19T09-00-00-000Z"));
-  assert.equal(readFileSync(p,"utf8"),source);
-  assert.throws(()=>backupStagingRules(source,now),/EEXIST/);
+  const dir=mkdtempSync(join(tmpdir(),"souqna-staging-rules-test-"));
+  try{
+    const now=new Date("2026-11-19T09:00:00.000Z");
+    const p=backupStagingRules(source,now,dir);
+    assert.ok(existsSync(p));
+    assert.ok(basename(p).startsWith("souqna-staging-2026-11-19T09-00-00-000Z"));
+    assert.equal(readFileSync(p,"utf8"),source);
+    assert.throws(()=>backupStagingRules(source,now,dir),/EEXIST/);
+  }finally{rmSync(dir,{recursive:true,force:true});}
 });
