@@ -36,13 +36,15 @@ root.innerHTML=`
  </article>
  <article class="sq-tile">
   <b>💱 العملات والذهب</b>
-  <div class="sq-value" id="sq-quote-value">لا توجد أسعار موثقة</div>
-  <div class="sq-muted" id="sq-quote-detail">سيظهر السعر عند ربط مصدر موثوق وتاريخ آخر تحديث</div>
+  <div class="sq-value" id="sq-quote-value">مؤشرات عالمية مرجعية</div>
+  <div class="sq-muted" id="sq-quote-detail">سعر الصرف الدولي والذهب العالمي، وليس سعر سوق السويداء المحلي</div>
+  <button class="sq-btn" type="button" data-v="utilities">عرض الأسعار مع وقت التحديث</button>
  </article>
  <article class="sq-tile">
   <b>🧮 الآلة الحاسبة</b>
   <div class="sq-muted">عمليات حسابية فورية ونسب مئوية</div>
   <button class="sq-btn" id="sq-calc-toggle" type="button" aria-expanded="false" aria-controls="sq-calculator">فتح الحاسبة</button>
+  <button class="sq-btn" type="button" data-v="utilities">الحاسبة المتقدمة</button>
  </article>
 </div>
 <div class="sq-calc" id="sq-calculator" data-open="false">
