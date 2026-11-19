@@ -91,7 +91,7 @@ nav .pl{flex:0 0 66px;margin-top:-30px}nav .pl i{display:flex;width:60px;height:
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,increment,runTransaction}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import{getFirestore,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,increment,runTransaction,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import{getFunctions,httpsCallable,connectFunctionsEmulator}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 import{summarizeAdmin}from"./assets/admin-metrics.js";
 import{renderGuide,GUIDE_VERSION,GUIDE_TABS}from"./assets/souqna-guide.js";
@@ -1005,7 +1005,7 @@ document.addEventListener("click",async e=>{
       if(mode=="reg"){const n=val("#l-name");if(!n)return toast("اكتب اسمك");
         if(!$("#l-accept")?.checked)return toast("يرجى قراءة شروط الاستخدام وسياسة الخصوصية والموافقة عليهما أولاً");
         const u=await createUserWithEmailAndPassword(auth,val("#l-mail"),val("#l-pass"));
-        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0,acceptedTermsVersion:GUIDE_VERSION,acceptedPrivacyVersion:GUIDE_VERSION,acceptedAt:Date.now()});
+        await setDoc(doc(db,"users",u.user.uid),{name:n,email:u.user.email,role:"user",stars:0,acceptedTermsVersion:GUIDE_VERSION,acceptedPrivacyVersion:GUIDE_VERSION,acceptedAt:serverTimestamp()});
         accountProfileMissing=false;
         me={uid:u.user.uid,name:n,email:u.user.email,role:"user",stars:0};
         await loadMine();render()}
