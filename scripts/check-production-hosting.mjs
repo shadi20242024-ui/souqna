@@ -41,9 +41,9 @@ export async function inspectLiveProduction(fetcher=fetch){
         const body=await response.text();
         let status;
         if(path==="/")status=inspectProductionHtml(body);
-        else if(path.endsWith(".js"))status=inspectGuideAsset(body,"js",GUIDE_VERSION);
-        else if(path.endsWith(".css"))status=inspectGuideAsset(body,"css",GUIDE_VERSION);
         else if(path==="/sw.js")status=body.includes("assets/souqna-guide.js")&&body.includes("assets/souqna-guide.css")?"READY":"PWA_CACHE_MISSING";
+        else if(path.endsWith("/souqna-guide.js"))status=inspectGuideAsset(body,"js",GUIDE_VERSION);
+        else if(path.endsWith("/souqna-guide.css"))status=inspectGuideAsset(body,"css",GUIDE_VERSION);
         else {
           try{
             const m=JSON.parse(body);
