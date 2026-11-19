@@ -68,6 +68,14 @@ if(!execute){
   // Never print request payloads, access tokens, or password-bearing error objects.
   const code=String(error?.code||"AUTH_UPDATE_FAILED").replace(/[^a-z0-9/_-]/gi,"").slice(0,80);
   console.error("SOUQNA STAGING RESET FAILED: "+code);
-  console.error("Check Google Cloud authentication/permissions for souqna-staging. No account was deleted.");
+  if(code==="auth/internal-error"){
+    console.error("Authentication API rejected the local credentials or reported an internal error.");
+    console.error("Default gcloud end-user OAuth client credentials are not supported for Firebase Auth Admin API.");
+    console.error("Use gcloud auth application-default login --client-id-file=YOUR_DESKTOP_OAUTH_CLIENT_JSON");
+    console.error("Then set the ADC quota project to souqna-staging and retry. Never upload that OAuth file.");
+  }else{
+    console.error("Check Google Cloud authentication/permissions for souqna-staging.");
+  }
+  console.error("No account was deleted. Do not assume the password changed.");
   process.exitCode=1;
 });
