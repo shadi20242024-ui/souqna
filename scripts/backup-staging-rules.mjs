@@ -7,13 +7,12 @@ import { fetchStagingRules, STAGING_PROJECT } from "./check-staging-legal.mjs";
 
 const root=resolve(fileURLToPath(new URL("..",import.meta.url)));
 
-export function backupStagingRules(content, now=new Date()){
+export function backupStagingRules(content, now=new Date(), directory=join(root,"artifacts","staging-rules-backups")){
   assert.ok(typeof content==="string" && content.startsWith("rules_version"),
     "Remote Firestore rules must start with rules_version; refusing incomplete backup.");
   assert.ok(content.includes("service cloud.firestore"),"Remote file is not Firestore rules.");
   assert.ok(now instanceof Date && !Number.isNaN(now.getTime()),"Invalid backup date.");
   const stamp=now.toISOString().replace(/[:.]/g,"-");
-  const directory=join(root,"artifacts","staging-rules-backups");
   mkdirSync(directory,{recursive:true});
   const path=join(directory,STAGING_PROJECT+"-"+stamp+".rules");
   writeFileSync(path,content,{encoding:"utf8",flag:"wx",mode:0o600});
