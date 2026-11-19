@@ -51,7 +51,8 @@ test("invalid and dangerously old prices never pass input validation",()=>{
 test("visitor can identify stale and missing values without inventing rates",()=>{
   assert.equal(readLocalPrice("usd_parallel",stored,{now:NOW}).stale,false);
   assert.equal(readLocalPrice("usd_parallel",stored,{now:NOW+26*3600000}).stale,true);
-  assert.equal(readLocalPrice("usd_official",stored,{now:NOW}),null);
+  assert.equal(readLocalPrice("unknown",stored,{now:NOW}),null);
+  assert.equal(readLocalPrice("usd_official",{...stored,sourceUrl:""},{now:NOW}),null);
   assert.equal(readLocalPrice("usd_parallel",{...stored,currencyEra:"SYP_OLD"},{now:NOW}),null);
   const cells=summarizeMarketRecords([{id:"usd_parallel",...stored}],{now:NOW});
   assert.equal(cells.length,6);
