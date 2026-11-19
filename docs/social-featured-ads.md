@@ -12,13 +12,17 @@ This document distinguishes **organic posting to SOUQNA-owned profiles** from pa
 
 ## Current implementation
 
-- `functions/social-promotion.js`: validates promotional terms and plans actions for both networks.
-- `functions/index.js`: builds a private posting job only upon administrator approval of a verified featured listing purchase.
+- `functions/social-promotion.js`: validates promotional periods, selects verified JPEG photos, prevents duplicate posts on renewal and records `nextActionAt`.
+- `functions/index.js`: creates or extends the private posting job only after the financial administrator approves the paid promotion.
+- `functions/meta-social-client.js`: implements guarded Facebook photo/feed publishing, Instagram media-container publishing, and confirmed remote deletion through Graph API. The adapter defaults to **disabled**.
+- `functions/social-queue-worker.js`: implements staging-only due-job processing, per-platform claims, five-minute leases, expiry reconciliation and review-required status for ambiguous API results. It never blindly retries uncertain publishes.
+- `functions/social-triggers.js`: defines immediate document-change and five-minute scheduled triggers; these are **not registered** in `functions/index.js`, so no trigger is deployed.
+- `functions/social-status.js` and `index.html`: expose an administrator-only, read-only queue status listing without remote post IDs or credentials.
 - `functions/delete-ad.js`: flags associated published social content for removal when an ad is deleted.
-- `firestore.rules` and `firestore.staging.rules`: prohibit client-side reads and writes of private posting jobs.
-- Tests: `tests/social-promotion.test.mjs` and an emulator-backed payment/approval test in `tests/gallery-e2e.test.mjs`.
+- `firestore.rules` and `firestore.staging.rules`: prohibit direct client reads or writes of private posting jobs.
+- Tests: `tests/social-promotion.test.mjs`, `tests/social-worker.test.mjs`, `tests/social-status.test.mjs`, and the emulator payment/approval test in `tests/gallery-e2e.test.mjs`.
 
-**No Facebook or Instagram posting is operational yet.** No Meta API credentials, publishing jobs, schedules or live connections have been created. Jobs remain `awaiting_connection`.
+**No Facebook or Instagram posting is operational yet.** The pages and approved Meta integration are not connected. No credentials, scheduled functions or publishing triggers have been deployed. New jobs remain unprocessed until integration is explicitly authorized and activated.
 
 ## Work required before turning on automatic publishing
 
@@ -26,10 +30,11 @@ This document distinguishes **organic posting to SOUQNA-owned profiles** from pa
 2. Create or authorize a suitable Meta app using Facebook Login for Business; request and validate the required Page publishing and Instagram content permissions.
 3. Store credentials server-side using an approved secret-management facility. Never put Meta access tokens in web HTML or Firestore documents accessible by clients.
 4. Provide an image reachable by Meta. Gallery Storage download URLs may be suitable; a listing with only an embedded Base64 primary photo needs a separately hosted branded image for Instagram.
-5. Implement a server-side, idempotent posting worker using the Meta Graph API, with rate limiting, retries, response IDs and a durable per-platform status. Only post while `now < expiresAt`. Re-read the latest promotion state before each publishing action.
-6. Implement a scheduled expiry reconciler. Use `actionsForSocialPromotion(job, now, connections)` to decide when removal is due; preserve the exact remote post IDs and recheck the current expiration to respect renewals.
-7. Verify actual removal permissions. Meta's Facebook PagePost reference states that API deletion is restricted to select developers. Instagram media deletion is documented with Facebook Login and the `instagram_manage_contents` permission for supported non-ad content. If either API refuses removal, do **not** report success; keep the job open and alert administrators for manual removal.
-8. Add admin controls for connecting accounts, previewing posts, viewing publishing failures, manually retrying and deactivating social distribution.
+5. Configure and review server-side Meta Graph API credentials. Set the adapter's `enabled` flag only after real account IDs and permissions are verified, with rate limits and safe credential rotation.
+6. After explicit authorization, wire the factory from `functions/social-triggers.js` to staging Firebase exports and deploy the trigger(s). The code is prepared but deliberately not registered now; a scheduled trigger can require a paid Firebase plan.
+7. Verify actual removal permissions. Facebook PagePost deletion is supported via the Graph API but may be permission-restricted; Instagram content deletion requires suitable permissions including `instagram_manage_contents` for supported media and account types. If either API refuses removal, retain the task for manual action and do not report success.
+8. Extend admin controls for securely connecting accounts, previewing posts, resolving uncertain publishes, manually retrying confirmed failures and deactivating social distribution.
+9. Confirm that public JPEG images are accessible to Meta and exercise posting/removal using owned Meta test accounts before enabling customer-facing automatic posting.
 
 ## Publishing and expiration policy
 
