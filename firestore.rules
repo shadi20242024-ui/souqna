@@ -79,7 +79,11 @@ service cloud.firestore {
       allow create: if isSelf(uid)
         && request.resource.data.role == "user"
         && request.resource.data.stars == 0
-        && request.resource.data.keys().hasOnly(["name", "email", "role", "stars"]);
+        && request.resource.data.keys().hasOnly(["name", "email", "role", "stars", "acceptedTermsVersion", "acceptedPrivacyVersion", "acceptedAt"])
+        && request.resource.data.keys().hasAll(["acceptedTermsVersion", "acceptedPrivacyVersion", "acceptedAt"])
+        && request.resource.data.acceptedTermsVersion == "2026-11-19"
+        && request.resource.data.acceptedPrivacyVersion == "2026-11-19"
+        && request.resource.data.acceptedAt == request.time;
       allow update: if (isAdmin() && changedOnly(["name", "role", "specialties"])
           && request.resource.data.get("specialties", []) is list
           && request.resource.data.get("specialties", []).hasOnly(["jobs", "pharmacy", "doctor", "fuel"])
