@@ -6,9 +6,10 @@ const ACCOUNT_EMAIL="shadi20242024@gmail.com";
 const CONFIRMATION="RESET-OWNER-PASSWORD:souqna-staging";
 const args=process.argv.slice(2);
 const execute=args.includes("--execute");
+const checkOnly=args.length===1 && args[0]==="--check-auth";
 
 function requireSafeArgs(){
-  const valid=args.length===0 || (
+  const valid=args.length===0 || checkOnly || (
     args.length===3 &&
     args[0]==="--execute" &&
     args[1]==="--confirm" &&
@@ -29,7 +30,7 @@ function requireSafeArgs(){
 }
 requireSafeArgs();
 
-if(!execute){
+if(!execute && !checkOnly){
   console.log("SOUQNA OWNER PASSWORD RESET DRY RUN");
   console.log("Target: "+PROJECT+" / "+ACCOUNT_EMAIL);
   console.log("No connection to Firebase, no password read, no user changed.");
@@ -37,6 +38,19 @@ if(!execute){
 }
 
 (async()=>{
+  if(checkOnly){
+    const {initializeApp,applicationDefault,deleteApp}=require("firebase-admin/app");
+    const {getAuth}=require("firebase-admin/auth");
+    const app=initializeApp({credential:applicationDefault(),projectId:PROJECT},"souqna-owner-password-preflight");
+    try{
+      const user=await getAuth(app).getUserByEmail(ACCOUNT_EMAIL);
+      assert.equal(user.email?.toLowerCase(),ACCOUNT_EMAIL);
+      assert.ok(user.uid && !user.disabled,"Staging owner account is missing or disabled.");
+      console.log("SOUQNA STAGING OWNER AUTH READ CHECK: PASS");
+      console.log("Existing owner account is readable. No password or account information was changed.");
+    }finally{await deleteApp(app);}
+    return;
+  }
   assert.ok(!process.stdin.isTTY,
     "Pipe your new password through standard input; never put a password in the command line.");
   const chunks=[];
