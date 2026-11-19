@@ -23,6 +23,15 @@ test("release candidate and unsafe working trees are fail closed",()=>{
     assert.match(result.message,/BLOCKED/);
   }
 });
+test("owner must confirm customer support inbox before release eligibility",()=>{
+  const support=OWNER_GATES.find(gate=>gate.key==="support");
+  assert.ok(support);
+  assert.equal(support.env,"SOUQNA_SIGNOFF_SUPPORT");
+  assert.equal(support.expected,"verified");
+  const missing={...approved};
+  delete missing.SOUQNA_SIGNOFF_SUPPORT;
+  assert.equal(evaluateLaunch({...passed,signoffs:missing}).ready_for_manual_release,false);
+});
 test("every launch signoff is mandatory, and no signoff proves a deployment",()=>{
   for(const gate of OWNER_GATES){
     const altered={...approved,[gate.env]:""};
