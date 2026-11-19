@@ -11,7 +11,14 @@ const checkOnly=args.length===1 && args[0]==="--check-auth";
 const inspectOnly=args.length===1 && args[0]==="--inspect-auth-users";
 const confirmedEmail=process.env.SOUQNA_STAGING_CONFIRMED_OWNER_EMAIL||"";
 const confirmedUid=process.env.SOUQNA_STAGING_CONFIRMED_OWNER_UID||"";
+const repairEmail=process.env.SOUQNA_STAGING_REPAIR_EMAIL||"";
+const KNOWN_TYPO="shadi20242024@gmail.om";
 if(Boolean(confirmedEmail)!==Boolean(confirmedUid))throw new Error("Both verified owner email and UID are required.");
+if(repairEmail){
+  assert.equal(repairEmail,ACCOUNT_EMAIL,"Only the owner's known verified target address is accepted.");
+  assert.equal(confirmedEmail.toLowerCase(),KNOWN_TYPO,"The current staging account email must match the exact previously detected typo.");
+  assert.ok(confirmedUid,"Verified staging owner UID is required before correcting the email.");
+}
 async function getVerifiedOwner(auth){
   return confirmedEmail
     ?resolveConfirmedSingleStagingAccount(auth,confirmedEmail,confirmedUid)
@@ -91,8 +98,26 @@ if(!execute && !checkOnly && !inspectOnly){
     const user=await getVerifiedOwner(auth);
     assert.equal(user.email?.toLowerCase(),(confirmedEmail||ACCOUNT_EMAIL).toLowerCase());
     assert.ok(user.uid && !user.disabled,"Owner account is missing or disabled; no changes made.");
-    await auth.updateUser(user.uid,{password});
-    console.log("SUCCESS: staging owner password updated for existing Firebase Auth account.");
+    if(repairEmail){
+      // A single Firebase update preserves the UID and changes both credentials
+      // together. A conflicting corrected email aborts without changing password.
+      try {
+        await auth.getUserByEmail(repairEmail);
+        const duplicate=new Error("The intended Gmail address already exists in staging; stopping without changes.");
+        duplicate.code="auth/email-already-exists";
+        throw duplicate;
+      }catch(error){
+        if(error?.code!=="auth/user-not-found")throw error;
+      }
+      const updated=await auth.updateUser(user.uid,{email:repairEmail,emailVerified:false,password});
+      assert.equal(updated.uid,user.uid,"Unexpected owner UID after update.");
+      assert.equal(updated.email?.toLowerCase(),repairEmail,"Email update was not confirmed by Firebase.");
+      console.log("SUCCESS: staging owner email corrected and password updated for the same UID.");
+      console.log("Owner email is now: "+repairEmail+" (unverified until confirmed through the correct mailbox).");
+    }else{
+      await auth.updateUser(user.uid,{password});
+      console.log("SUCCESS: staging owner password updated for existing Firebase Auth account.");
+    }
     console.log("Account UID is unchanged. Firestore roles, documents and live production are untouched.");
   }finally{
     password="";
