@@ -17,7 +17,7 @@
     "setup:staging:auto": "node scripts/auto-staging-setup.mjs",
     "test:media": "node --test tests/ad-media.test.mjs",
     "test:storage": "firebase emulators:exec --project demo-souqna-storage --only storage \"node --test tests/storage-uploads.test.mjs\"",
-    "test:unit": "node --test tests/ad-media.test.mjs tests/local-services.test.mjs tests/staging-guards.test.mjs tests/inline-module-syntax.test.mjs tests/services-mount.test.mjs tests/gallery-paths.test.mjs tests/server-ad-deletion.test.mjs tests/delete-ad-behavior.test.mjs tests/auto-staging-setup.test.mjs tests/staging-audit.test.mjs tests/social-promotion.test.mjs tests/social-worker.test.mjs",
+    "test:unit": "node --test tests/ad-media.test.mjs tests/local-services.test.mjs tests/staging-guards.test.mjs tests/inline-module-syntax.test.mjs tests/services-mount.test.mjs tests/gallery-paths.test.mjs tests/server-ad-deletion.test.mjs tests/delete-ad-behavior.test.mjs tests/auto-staging-setup.test.mjs tests/staging-audit.test.mjs tests/social-promotion.test.mjs tests/social-worker.test.mjs tests/social-status.test.mjs",
     "test:staging-rules": "firebase emulators:exec --config firebase.staging.json --project demo-souqna-staging-rules --only auth,firestore \"node --test tests/staging-ads-delete.test.mjs\"",
     "test:gallery-e2e": "firebase emulators:exec --config firebase.staging.json --project demo-souqna-gallery-flow --only auth,firestore,storage \"node --test tests/gallery-e2e.test.mjs\"",
     "audit:staging:read-only": "node scripts/audit-staging-readonly.mjs"
