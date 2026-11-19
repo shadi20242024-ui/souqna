@@ -91,7 +91,7 @@ if (-not (Test-SelectedClient -AdcPath $adcPath -ExpectedClientId $client.client
 }
 
 $adc = Get-Content -Raw -LiteralPath $adcPath | ConvertFrom-Json
-if ([string]$adc.quota_project_id -cne $project) {
+if (($adc.PSObject.Properties.Name -notcontains "quota_project_id") -or ([string]$adc.quota_project_id -cne $project)) {
     Write-Host "Setting ADC quota project to $project (no billing activation)..."
     & gcloud.cmd auth application-default set-quota-project $project
     Assert-ExitCode "ADC quota project configuration"
@@ -130,7 +130,7 @@ try {
         throw "Choose 12 to 128 characters. No account was changed."
     }
     if ($first -match "[\r\n]") { throw "Newline characters are not allowed. No account was changed." }
-    $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
     $first | & node.exe $target --execute --confirm RESET-OWNER-PASSWORD:souqna-staging
     Assert-ExitCode "Firebase password update"
     Write-Host "Password update completed for the existing staging account." -ForegroundColor Green
