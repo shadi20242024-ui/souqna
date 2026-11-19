@@ -59,5 +59,13 @@ test("production rules are kept separate from staging-only delete restriction",(
   assert.match(staging,/match \/ads\/\{id\} \{[\s\S]*?allow delete: if false;/);
   const originalRule="      allow delete: if isMarketplaceEditor()\n        || (signedIn() && resource.data.ownerId == request.auth.uid);";
   assert.ok(regular.includes(originalRule));
-  assert.equal(staging,regular.replace(originalRule,"      allow delete: if false;"));
+  const extraStart=staging.indexOf("    function mayManageMarketRates()");
+  const extraEnd=staging.indexOf("    match /directory/{id}",extraStart);
+  assert.ok(extraStart>=0&&extraEnd>extraStart);
+  const marketBlock=staging.slice(extraStart,extraEnd);
+  assert.match(marketBlock,/match \/localMarketRates\/\{id\}/);
+  assert.match(marketBlock,/assignedTo\("market_prices"\)/);
+  assert.equal(regular.includes("match /localMarketRates/{id}"),false);
+  const withoutStagingMarketRules=staging.slice(0,extraStart)+staging.slice(extraEnd);
+  assert.equal(withoutStagingMarketRules,regular.replace(originalRule,"      allow delete: if false;"));
 });
