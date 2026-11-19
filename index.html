@@ -345,9 +345,12 @@ const adminErrorBanner=()=>adminLoadWarnings.length?
 const stTag=s=>s=="approved"?'<span class="tag">منشور</span>':s=="pending"?'<span class="tag g">قيد المراجعة</span>':'<span class="tag r">مرفوض</span>';
 function card(a,m){
   const msg="مرحبًا، بخصوص إعلانك في سوقنا: "+a.title;
+  const expires=Number(a.featuredUntil);
+  const featuredDate=Number.isSafeInteger(expires)&&expires>0&&expires<8640000000000000?new Date(expires).toLocaleString("ar-SY",{dateStyle:"medium",timeStyle:"short"}):"";
   return `<div class="item ${isF(a)?"f":""}"><div class="img" style="${bgImage(a.img)}">${safeImage(a.img)?"":IC[a.cat]||"🛍️"}</div><div class="bd">
   ${isF(a)?'<span class="tag g">⭐ مميز</span> ':""}<span class="tag">${esc(catName(a.cat))}</span> ${m?stTag(a.status):""}
   <div><b>${esc(a.title)}</b></div><div class="price">${esc(a.price)} ${esc(a.cur)}</div><div class="mut">📍 ${esc(a.area)}</div><div class="mut">${esc(a.desc)}</div>
+  ${m=="mine"&&featuredDate?`<div class="mut">${isF(a)?"⭐ التمييز ساري حتى: ":"انتهى التمييز بتاريخ: "}${esc(featuredDate)}</div>`:""}
   ${Array.isArray(a.images)&&a.images.length?`<details style="margin-top:8px"><summary style="cursor:pointer;color:#1747b8">📷 معرض الصور (${a.images.length})</summary><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${a.images.filter(u=>safeHttpUrl(u)).slice(0,12).map((u,i)=>`<a href="${esc(safeHttpUrl(u))}" target="_blank" rel="noopener noreferrer" aria-label="فتح صورة الإعلان ${i+1}"><img src="${esc(safeHttpUrl(u))}" loading="lazy" alt="صورة الإعلان ${i+1}" style="width:74px;height:74px;object-fit:cover;border-radius:9px"></a>`).join("")}</div></details>`:""}
   ${a.videoUrl&&safeHttpUrl(a.videoUrl)?`<div><a href="${esc(safeHttpUrl(a.videoUrl))}" target="_blank" rel="noopener noreferrer">▶ فيديو الإعلان</a></div>`:""}
   <div class="acts">${m=="pend"?`<button class="btn" data-a="ok" data-id="${a.id}">قبول</button><button class="btn l" data-a="no" data-id="${a.id}">رفض</button><button class="btn r" data-a="del" data-id="${a.id}">حذف</button>`
@@ -562,7 +565,7 @@ function render(){
     const ok=mine.filter(a=>a.status=="approved");
     A.innerHTML=`<div class="box"><h3>⭐ رصيدك: ${me?me.stars||0:"—"} نجمة</h3><p class="mut">النجمة الواحدة = 1 دولار. الدفع بتحويل محلي، وتؤكده الإدارة عبر واتساب ثم تُضاف النجوم لرصيدك.</p>
     <div class="row"><input id="n-st" type="number" min="1" placeholder="عدد النجوم"><button class="btn g" data-a="buy">اطلب شراء</button></div></div>
-    <h3>🚀 باقات تمييز الإعلان</h3>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
+    <h3>🚀 باقات تمييز الإعلان</h3><p class="mut">التمييز المدفوع يعمل داخل سوقنا. النشر التلقائي على فيسبوك وإنستغرام غير متاح حتى ربط صفحات سوقنا الرسمية وتفعيل صلاحيات Meta؛ سنعرض حالة النشر بوضوح بعد تفعيله.</p>${me?`<select id="p-ad">${ok.map(a=>`<option value="${a.id}">${esc(a.title)}</option>`).join("")||"<option value=''>لا توجد إعلانات منشورة</option>"}</select>`:"<p class='mut'>سجّل الدخول لاستخدام الباقات.</p>"}
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
     A.innerHTML=adminErrorBanner()+adminDashboardHtml()+(isAdm()?`<div class="box"><h3>🧹 متابعة تنظيف صور الإعلانات</h3><p class="mut">خاص ببيئة الاختبار. أدخل معرّف إعلان محذوف له صور قيد التنظيف.</p><div class="row"><input id="cleanup-ad-id" dir="ltr" maxlength="128" placeholder="معرّف الإعلان" value="${esc(pendingCleanupId)}"><button class="btn" data-a="retryCleanup">إعادة محاولة تنظيف الصور</button><button class="btn" data-a="loadCleanupJobs">تحديث المهام المعلّقة</button></div>${cleanupJobsHtml()}</div>
