@@ -64,7 +64,8 @@ Write-Host ""
 Write-Host "SOUQNA STAGING - ONE-STEP OWNER RECOVERY"
 Write-Host "Project: $project ONLY"
 Write-Host "Account: $account"
-Write-Host "No production change, service-account key, billing change, or email reset required."
+Write-Host "No production change, service-account key or billing change required."
+Write-Host "When the account has the known gmail.om typo, the tool can correct email and password together after your confirmation."
 Write-Host ""
 
 if (-not $Apply) {
@@ -112,6 +113,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $root "functions\node_modules\fireba
 Write-Host "Checking the existing owner account (READ ONLY)..." -ForegroundColor Cyan
 $env:SOUQNA_STAGING_CONFIRMED_OWNER_EMAIL = $null
 $env:SOUQNA_STAGING_CONFIRMED_OWNER_UID = $null
+$env:SOUQNA_STAGING_REPAIR_EMAIL = $null
 & node.exe $target --check-auth
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
@@ -137,16 +139,25 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host ("Email: " + $candidate)
     Write-Host ("UID suffix: " + $candidateUid.Substring($candidateUid.Length - 6))
     Write-Host "Verify this is YOUR account in Firebase Console > Authentication > Users." -ForegroundColor Yellow
-    $enteredEmail = (Read-Host "Confirm account: type the full email displayed above").Trim()
-    if ($enteredEmail -cne $candidate) {
-        throw "Owner did not confirm the exact account email. No password was changed."
+    # The owner-supplied Gmail address is correct; the sole staging account
+    # has the exact, previously observed missing-c domain typo.
+    if ($candidate -cne "shadi20242024@gmail.om") {
+        throw "Unknown staging email mismatch. No account was changed; verify ownership in Firebase Console first."
     }
-    $enteredUidSuffix = (Read-Host "Confirm account: type the six-character UID suffix displayed above").Trim()
+    Write-Host "Confirmed known typo: gmail.om instead of gmail.com." -ForegroundColor Yellow
+    Write-Host "Correct email to be set: $account" -ForegroundColor Green
+    Write-Host "The same operation will set this correct email (unverified) and a new password."
+    $enteredEmail = (Read-Host "Type the CORRECT Gmail address displayed above to approve the email correction").Trim()
+    if ($enteredEmail -cne $account) {
+        throw "Owner did not approve the exact corrected Gmail address. No account was changed."
+    }
+    $enteredUidSuffix = (Read-Host "Type the six-character UID suffix displayed above").Trim()
     if ($enteredUidSuffix -cne $candidateUid.Substring($candidateUid.Length - 6)) {
-        throw "Owner did not confirm the UID. No password was changed."
+        throw "Owner did not confirm the UID. No account was changed."
     }
     $env:SOUQNA_STAGING_CONFIRMED_OWNER_EMAIL = $candidate
     $env:SOUQNA_STAGING_CONFIRMED_OWNER_UID = $candidateUid
+    $env:SOUQNA_STAGING_REPAIR_EMAIL = $account
     Write-Host "Verifying the explicitly confirmed unique staging account..." -ForegroundColor Cyan
     & node.exe $target --check-auth
     Assert-ExitCode "Confirmed owner Firebase Auth check"
@@ -186,4 +197,5 @@ try {
     Remove-Variable first,second,secret,confirmation,firstPtr,secondPtr -ErrorAction SilentlyContinue
     $env:SOUQNA_STAGING_CONFIRMED_OWNER_EMAIL = $null
     $env:SOUQNA_STAGING_CONFIRMED_OWNER_UID = $null
+    $env:SOUQNA_STAGING_REPAIR_EMAIL = $null
 }
