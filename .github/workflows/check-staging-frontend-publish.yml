@@ -1,0 +1,34 @@
+name: Validate SOUQNA staging Hosting publisher on Windows
+
+on:
+  push:
+    branches:
+      - feature/legal-help-2026-11-19
+    paths:
+      - scripts/publish-staging-frontend-only.ps1
+      - .github/workflows/check-staging-frontend-publish.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  powershell-parser:
+    runs-on: windows-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate Hosting publisher syntax in Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $file = Join-Path $pwd 'scripts\publish-staging-frontend-only.ps1'
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($file,[ref]$tokens,[ref]$errors)
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'Staging Hosting script parsed successfully on Windows'
