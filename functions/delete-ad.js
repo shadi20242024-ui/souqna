@@ -104,17 +104,31 @@ function makeDeleteAd(db,options){
     let ownerId="";
     let imageObjects=[];
     await db.runTransaction(async tx=>{
-      const [userSnap,adSnap]=await Promise.all([
+      const [userSnap,adSnap,cleanupSnap]=await Promise.all([
         tx.get(db.collection("users").doc(uid)),
-        tx.get(ref)
+        tx.get(ref),
+        tx.get(cleanupRef)
       ]);
       if(!userSnap.exists)throw new HttpsError("permission-denied","الحساب غير موجود");
-      if(!adSnap.exists)throw new HttpsError("not-found","الإعلان غير موجود");
+      const isAdmin=userSnap.data().role==="admin";
+      if(!adSnap.exists){
+        if(!cleanupSnap.exists)throw new HttpsError("not-found","الإعلان غير موجود");
+        const existingJob=cleanupSnap.data();
+        if(typeof existingJob.ownerId!=="string"||!ID.test(existingJob.ownerId))
+          throw new HttpsError("failed-precondition","صاحب مهمة التنظيف غير صالح");
+        if(!isAdmin&&existingJob.ownerId!==uid)
+          throw new HttpsError("permission-denied","لا تملك صلاحية متابعة تنظيف الإعلان");
+        ownerId=existingJob.ownerId;
+        imageObjects=safeCleanupObjects(existingJob.objects,ownerId);
+        return;
+      }
       const ad=adSnap.data();
-      if(userSnap.data().role!=="admin"&&ad.ownerId!==uid)
+      if(!isAdmin&&ad.ownerId!==uid)
         throw new HttpsError("permission-denied","لا تملك صلاحية حذف الإعلان");
       if(typeof ad.ownerId!=="string"||!ID.test(ad.ownerId))
         throw new HttpsError("failed-precondition","معرّف صاحب الإعلان غير صحيح");
+      if(cleanupSnap.exists)
+        throw new HttpsError("failed-precondition","توجد مهمة تنظيف سابقة لهذا الإعلان");
       ownerId=ad.ownerId;
       imageObjects=extractOwnedImageObjects(ad.images,project,ownerId);
       if(imageObjects.length){
