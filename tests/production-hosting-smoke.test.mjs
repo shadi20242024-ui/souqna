@@ -3,6 +3,7 @@ import {test} from "node:test";
 import {readFileSync} from "node:fs";
 import {inspectProductionHtml,inspectLiveProduction,PRODUCTION_DOMAINS} from "../scripts/check-production-hosting.mjs";
 const guide=readFileSync(new URL("../assets/souqna-guide.js",import.meta.url),"utf8");
+const realSource=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const css=readFileSync(new URL("../assets/souqna-guide.css",import.meta.url),"utf8");
 const sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
 const manifest=readFileSync(new URL("../manifest.webmanifest",import.meta.url),"utf8");
@@ -15,6 +16,10 @@ test("production hosting rejects staging banners, preview settings, noindex, and
   assert.equal(inspectProductionHtml(html().replace("<head>","<head><meta name=\"robots\" content=\"noindex,nofollow,noarchive\">")),"TEST_BUILD_ON_PRODUCTION");
   assert.equal(inspectProductionHtml(html().replace("acceptedAt:serverTimestamp()","acceptedAt:Date.now()")),"CONSENT_FLOW_MISSING");
   assert.equal(inspectProductionHtml("firebase welcome"),"NO_APPLICATION_HTML");
+});
+test("production public smoke accepts actual reviewed index.html JS Firebase initializer",()=>{
+  assert.equal(inspectProductionHtml(realSource),"READY");
+  assert.equal(inspectProductionHtml(realSource.replace('projectId:"souqna-sweida"','projectId:"souqna-staging"')),"WRONG_PRODUCTION_PROJECT");
 });
 test("post-deploy smoke is read-only, checks both exact production domains and required PWA files",async()=>{
   const calls=[];
