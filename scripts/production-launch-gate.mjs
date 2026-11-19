@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root=resolve(fileURLToPath(new URL("..",import.meta.url)));
 export const OWNER_GATES=Object.freeze([
   {key:"legal",env:"SOUQNA_SIGNOFF_LEGAL",expected:"approved",description:"Legal/operator/contact/refund policy signed off"},
+  {key:"support",env:"SOUQNA_SIGNOFF_SUPPORT",expected:"verified",description:"Owner tested sending, receiving, replying and categorizing customer support and privacy requests at the published support mailbox"},
   {key:"billing",env:"SOUQNA_SIGNOFF_BILLING",expected:"approved",description:"Cloud Functions billing and operating limits approved"},
   {key:"backup",env:"SOUQNA_SIGNOFF_BACKUP",expected:"restored",description:"Firestore backup and isolated restore drill completed"},
   {key:"domain",env:"SOUQNA_SIGNOFF_DOMAIN",expected:"verified",description:"Production DNS/HTTPS/Auth authorized domains checked"},
