@@ -12,6 +12,8 @@
     "test:release": "npm run test:source && npm run test:build-isolation && npm run build:hosting",
     "test:build-isolation": "node --test tests/staging-build.test.mjs",
     "build:staging": "node scripts/build-hosting.mjs staging",
+    "build:production": "node scripts/build-hosting.mjs production",
+    "preflight:production": "node scripts/preflight-production.mjs",
     "preflight:staging": "node scripts/preflight-staging.mjs",
     "seed:staging": "node scripts/seed-staging.mjs",
     "setup:staging:auto": "node scripts/auto-staging-setup.mjs",
