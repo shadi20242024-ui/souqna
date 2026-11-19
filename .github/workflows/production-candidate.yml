@@ -1,0 +1,92 @@
+name: SOUQNA production release candidate package
+
+on:
+  push:
+    branches:
+      - feature/legal-help-2026-11-19
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact source revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare Java 21 for local emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install audited project test dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install backend test dependencies
+        run: npm --prefix functions install --no-audit --no-fund
+      - name: Test client, rules, and backend locally
+        run: npm test
+      - name: Build production Hosting files offline
+        env:
+          SOUQNA_PRODUCTION_BUILD_APPROVED: souqna-sweida:2026-11-19
+        run: npm run build:production
+      - name: Verify production package and privacy
+        run: |
+          npm run preflight:production
+          test -f dist/index.html
+          test -f dist/assets/souqna-guide.js
+          test -f dist/sw.js
+          test -f dist/manifest.webmanifest
+          test ! -e dist/tests
+          test ! -e dist/functions
+          test ! -e dist/firestore.rules
+          grep -q 'projectId:"souqna-sweida"' dist/index.html
+          grep -q 'المشغّل المعلن:</b> شادي (Shadi)' dist/assets/souqna-guide.js
+          if grep -q 'souqna-preview-disabled' dist/index.html; then exit 1; fi
+          if grep -q 'id="souqna-environment-banner"' dist/index.html; then exit 1; fi
+          if grep -q 'noindex,nofollow,noarchive' dist/index.html; then exit 1; fi
+      - name: Package Hosting and Firebase backend for owner inspection
+        run: |
+          set -eu
+          mkdir -p release/dist release/functions release/docs
+          cp -R dist/. release/dist/
+          cp firebase.json firestore.rules release/
+          cp functions/index.js functions/marketplace.js functions/moderation.js functions/package.json release/functions/
+          cp docs/PRODUCTION_RELEASE_RUNBOOK_AR.md docs/STAGING_UAT_AR.md docs/REFUND_POLICY_DRAFT_AR.md release/docs/
+          cp docs/PUBLISH_CANDIDATE_README_AR.md release/README_AR.md
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const metadata={
+              type:"SOUQNA production release candidate",
+              gitCommit:process.env.GITHUB_SHA,
+              targetFirebaseProject:"souqna-sweida",
+              app:"web/PWA",
+              includes:["dist/","functions/","firestore.rules","firebase.json","docs/"],
+              releaseStatus:"NOT_DEPLOYED_BACKEND_UNVERIFIED",
+              tests:"GitHub local and emulator tests passed",
+              disclaimer:"No public commercial deployment or live Firebase acceptance performed by this workflow"
+            };
+            fs.writeFileSync("release/RELEASE_MANIFEST.json",JSON.stringify(metadata,null,2)+"\n");
+          '
+          test ! -e release/.git
+          test ! -e release/.env
+          test ! -e release/firebase.staging.json
+          test ! -e release/functions/node_modules
+          if grep -R -E -q 'private_key|service_account|GOOGLE_APPLICATION_CREDENTIALS' release/dist; then
+            echo 'Aborting: sensitive credential pattern found in public bundle'
+            exit 1
+          fi
+      - name: Upload release candidate for owner download
+        uses: actions/upload-artifact@v4
+        with:
+          name: souqna-release-candidate
+          path: release/
+          if-no-files-found: error
+          retention-days: 30
