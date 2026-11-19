@@ -71,6 +71,7 @@ function financeCallable(){
     if(id==="./social-promotion")return requireFunctions("./social-promotion.js");
     if(id==="./marketplace")return()=>async()=>({ok:true});
     if(id==="./delete-ad")return stubbedDelete;
+    if(id==="./social-status")return{makeSocialQueueStatus:()=>async()=>({ok:true,jobs:[]})};
     throw new Error("Unexpected dependency in finance integration: "+id);
   };
   mod._compile(source,mod.filename);
