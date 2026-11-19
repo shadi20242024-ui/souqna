@@ -59,5 +59,6 @@ npm run preflight:launch
 - [الوظائف الجديدة وحدودها](docs/NEW_FEATURES_PRELAUNCH_AR.md)
 - [نظام مساعدة المستخدم وشروطه](docs/HELP_AND_LEGAL_RELEASE_AR.md)
 - [تشغيل صندوق الدعم وشكاوى المستخدمين وطلبات الخصوصية](docs/SUPPORT_OPERATIONS_AR.md)
+- [اختبار قبول النسخة التجريبية (19 حالة)](docs/STAGING_UAT_AR.md)
 
 هذا المستودع لا ينفّذ النشر أو تعديل قاعدة بيانات العملاء تلقائياً.
