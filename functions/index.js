@@ -3,6 +3,7 @@ const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { logger } = require("firebase-functions");
 const { createHash } = require("node:crypto");
+const {expiresFromPromotion,createSocialPromotionJob,extendSocialPromotionJob}=require("./social-promotion");
 
 initializeApp();
 const db = getFirestore();
@@ -156,7 +157,18 @@ async function approvePromotion(tx, id, actor, now) {
   const days = numberInRange(pack.days, 1, 365, "مدة التمييز");
   const balance = validBalance(userSnap.data().stars || 0);
   debitUser(tx, userRef, balance, amount);
-  tx.update(adRef, { featuredUntil: Math.max(now, Number(ad.featuredUntil || 0)) + days * 86400000 });
+  const expiresAt = expiresFromPromotion(ad,days,now);
+  tx.update(adRef, { featuredUntil: expiresAt });
+  if (socialSnap.exists) {
+    const update=extendSocialPromotionJob(socialSnap.data(),{
+      ad,promoId:id,expiresAt,now
+    });
+    tx.update(socialRef,update);
+  } else {
+    tx.create(socialRef,createSocialPromotionJob({
+      ad,adId:promo.adId,userId:promo.userId,promoId:id,expiresAt,now
+    }));
+  }
   ledger(tx, "promo_" + id, {
     userId: promo.userId, type: "debit", amount: -amount,
     note: "تمييز إعلان: " + String(ad.title || "").slice(0, 120),
