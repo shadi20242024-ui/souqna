@@ -107,6 +107,8 @@ const marketplace=async (action,collectionName,fields,id=doc(collection(db,colle
 let pendingCleanupId="";
 let pendingCleanupJobs=[];
 let cleanupJobsLoaded=false;
+let socialQueueLoaded=false;
+let socialQueueJobs=[];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fetchCleanupJobs=async()=>{
@@ -130,6 +132,31 @@ const cleanupJobsHtml=()=>{
     '<div class="box"><b dir="ltr">'+esc(item.id)+'</b><p class="mut">الصور المتبقية: '+
       item.failedImages+'</p><button class="btn" data-a="retryCleanupItem" data-id="'+
       esc(item.id)+'">إعادة تنظيف الصور</button></div>'
+  ).join("")+'</div>';
+};
+const fetchSocialQueue=async()=>{
+  const call=httpsCallable(functions,"souqnaSocialQueueStatus");
+  const response=await call({});
+  if(response.data?.ok!==true||!Array.isArray(response.data.jobs))
+    throw new Error("تعذّر تحميل حالة المنشورات الاجتماعية");
+  socialQueueJobs=response.data.jobs.slice(0,25).map(item=>({
+    id:String(item.id||"").slice(0,128),
+    title:String(item.title||"").slice(0,150),
+    expiresAt:Number.isSafeInteger(item.expiresAt)?item.expiresAt:0,
+    facebook:String(item.facebook||"unknown").slice(0,32),
+    instagram:String(item.instagram||"unknown").slice(0,32),
+    requiresReview:item.requiresReview===true
+  }));
+  socialQueueLoaded=true;
+};
+const socialQueueHtml=()=>{
+  if(!socialQueueLoaded)return '<p class="mut">الصفحات لم تُربط بعد. اضغط تحديث الحالة لمراجعة طلبات النشر.</p>';
+  if(!socialQueueJobs.length)return '<p class="mut">لا توجد إعلانات مدفوعة تنتظر النشر الاجتماعي.</p>';
+  return '<div class="grid">'+socialQueueJobs.map(item=>
+    '<div class="box"><b>'+esc(item.title)+'</b><p class="mut">Facebook: '+esc(item.facebook)+
+    ' · Instagram: '+esc(item.instagram)+'</p><p class="mut">انتهاء التمييز: '+
+    (item.expiresAt?new Date(item.expiresAt).toLocaleString("ar-SY"):"غير محدد")+
+    '</p>'+(item.requiresReview?'<p class="mut">⚠️ يحتاج مراجعة الإدارة</p>':'')+'</div>'
   ).join("")+'</div>';
 };
 const safeHttpUrl=raw=>{try{const url=new URL(String(raw||"").trim());return url.protocol==="https:"||url.protocol==="http:"?url.href:""}catch{return ""}};
@@ -528,6 +555,7 @@ function render(){
     <div class="grid">${pk.map(p=>`<div class="box"><b>⭐ ${p.stars} نجوم</b><div class="mut">يظهر إعلانك في الأعلى ${p.days} يومًا</div><button class="btn" data-a="promo" data-id="${p.id}">اطلب التمييز</button></div>`).join("")||'<p class="mut">لا توجد باقات حاليًا.</p>'}</div>`;
   }else if(view=="admin"&&isStaff()){
     A.innerHTML=adminErrorBanner()+adminDashboardHtml()+(isAdm()?`<div class="box"><h3>🧹 متابعة تنظيف صور الإعلانات</h3><p class="mut">خاص ببيئة الاختبار. أدخل معرّف إعلان محذوف له صور قيد التنظيف.</p><div class="row"><input id="cleanup-ad-id" dir="ltr" maxlength="128" placeholder="معرّف الإعلان" value="${esc(pendingCleanupId)}"><button class="btn" data-a="retryCleanup">إعادة محاولة تنظيف الصور</button><button class="btn" data-a="loadCleanupJobs">تحديث المهام المعلّقة</button></div>${cleanupJobsHtml()}</div>
+    <div class="box"><h3>📣 النشر الاجتماعي للإعلانات المميزة</h3><p class="mut">الربط مع صفحات سوقنا الرسمية قيد التجهيز. يُنشر الإعلان بعد تفعيل التمييز المدفوع وتُزال منشوراته عند انتهاء المدة إذا سمحت صلاحيات Meta.</p><button class="btn" data-a="loadSocialQueue">تحديث حالة المنشورات</button>${socialQueueHtml()}</div>
     <div class="box"><h3>⚙️ رقم واتساب الإدارة</h3><input id="s-wa" dir="ltr" value="${esc(wa)}" placeholder="9639XXXXXXXX"><button class="btn" data-a="savewa">حفظ</button></div>
     <div class="box"><h3>⭐ الباقات</h3>${pk.map(p=>`<div class="row" style="align-items:center;margin-bottom:6px"><span>⭐ ${p.stars} · ${p.days} يوم</span><button class="btn r" data-a="delpk" data-id="${p.id}">حذف</button></div>`).join("")}
     <div class="row"><input id="k-s" type="number" placeholder="نجوم"><input id="k-d" type="number" placeholder="أيام"></div><button class="btn" data-a="addpk">إضافة باقة</button> ${pk.length?"":'<button class="btn g" data-a="seed">الباقات الافتراضية</button>'}</div>
@@ -764,6 +792,13 @@ document.addEventListener("click",async e=>{
         await deleteDoc(doc(db,"ads",id));
       }
       await loadPublic();await loadMine();render()
+    }
+    else if(a=="loadSocialQueue"){
+      if(!isAdm()||app.options.projectId!=="souqna-staging")
+        return toast("هذه الخدمة متاحة لمدير سوقنا التجريبي فقط");
+      await fetchSocialQueue();
+      render();
+      toast("تم تحديث حالة النشر الاجتماعي");
     }
     else if(a=="loadCleanupJobs"){
       if(!isAdm()||app.options.projectId!=="souqna-staging")
