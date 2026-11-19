@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFileSync } from "node:fs";
-import { GUIDE_VERSION } from "../assets/souqna-guide.js";
+import { GUIDE_VERSION, GUIDE_SUPPORT_EMAIL } from "../assets/souqna-guide.js";
 import {
   inspectGuideAsset, checkGuideAssets, STAGING_DOMAINS, GUIDE_FILES
 } from "../scripts/check-staging-guide-assets.mjs";
@@ -13,6 +13,7 @@ test("staging asset verifier recognizes the exact legal version and complete gui
   assert.equal(inspectGuideAsset(js,"js"),"READY");
   assert.equal(inspectGuideAsset(css,"css"),"READY");
   assert.equal(inspectGuideAsset(js.replaceAll(GUIDE_VERSION,"2025-01-01"),"js"),"GUIDE_VERSION_MISMATCH");
+  assert.equal(inspectGuideAsset(js.replace(GUIDE_SUPPORT_EMAIL,"someone@example.invalid"),"js"),"SUPPORT_CONTACT_MISMATCH");
   assert.equal(inspectGuideAsset("main {color:blue}".repeat(10),"css"),"GUIDE_STYLES_MISSING");
   assert.equal(inspectGuideAsset("<!DOCTYPE html><html>hosting fallback</html>".repeat(4),"js"),"HTML_FALLBACK_INSTEAD_OF_ASSET");
   assert.equal(inspectGuideAsset("missing","js"),"EMPTY_ASSET");
