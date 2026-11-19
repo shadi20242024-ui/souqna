@@ -299,3 +299,45 @@ test("admin cleanup list becomes empty after successful retry",async()=>{
   assert.equal(retry.failedImages,0);
   assert.deepEqual((await h.listJobs()).jobs,[]);
 });
+
+test("repeated delete request resumes pending cleanup after an ambiguous first response",async()=>{
+  const h=harness({failPath:"ads/owner/image_001.jpg"});
+  const first=await h.call();
+  assert.equal(first.failedImages,1);
+  assert.equal(h.database.has("ads/test_ad"),false);
+  assert.equal(h.database.has("mediaCleanupJobs/test_ad"),true);
+  h.restoreStorage();
+  const second=await h.call();
+  assert.equal(second.ok,true);
+  assert.equal(second.failedImages,0);
+  assert.equal(second.deletedImages,1);
+  assert.equal(h.database.has("mediaCleanupJobs/test_ad"),false);
+  assert.deepEqual(h.deleted,["ads/test_ad"]);
+});
+
+test("unrelated user cannot resume pending cleanup by repeating the deletion request",async()=>{
+  const h=harness({failPath:"ads/owner/image_001.jpg"});
+  await h.call();
+  h.database.set("users/intruder",{role:"user"});
+  const attempts=h.storageDeletes.length;
+  await assert.rejects(h.call("intruder"),error=>error.code==="permission-denied");
+  assert.equal(h.storageDeletes.length,attempts);
+  assert.equal(h.database.has("mediaCleanupJobs/test_ad"),true);
+});
+
+test("repeated deletion of image-free listing reports missing listing without touching Storage",async()=>{
+  const h=harness({files:[]});
+  await h.call();
+  await assert.rejects(h.call(),error=>error.code==="not-found");
+  assert.deepEqual(h.storageDeletes,[]);
+});
+
+test("existing cleanup job blocks deletion of a newly created listing using the same ID",async()=>{
+  const h=harness();
+  h.database.set("mediaCleanupJobs/test_ad",{
+    ownerId:"owner",objects:[],createdAt:Date.now(),status:"pending"
+  });
+  await assert.rejects(h.call(),error=>error.code==="failed-precondition");
+  assert.equal(h.database.has("ads/test_ad"),true);
+  assert.deepEqual(h.storageDeletes,[]);
+});
