@@ -23,6 +23,11 @@ export function inspectPublishedHtml(html) {
   if (!html.includes('name="robots" content="noindex,nofollow,noarchive"')) {
     return "STAGING_NOINDEX_MISSING";
   }
+  if (!html.includes('href="assets/souqna-guide.css"') ||
+      !html.includes('from"./assets/souqna-guide.js"')) return "GUIDE_NOT_DEPLOYED";
+  if (!html.includes("acceptedTermsVersion:GUIDE_VERSION") ||
+      !html.includes("acceptedPrivacyVersion:GUIDE_VERSION") ||
+      !html.includes("acceptedAt:serverTimestamp()")) return "CONSENT_FLOW_NOT_DEPLOYED";
   return "READY";
 }
 

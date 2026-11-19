@@ -1,0 +1,45 @@
+name: Validate SOUQNA recovery on Windows PowerShell
+
+on:
+  push:
+    branches:
+      - feature/legal-help-2026-11-19
+    paths:
+      - scripts/reset-staging-owner-password.ps1
+      - Reset-SOUQNA-Password.cmd
+      - .github/workflows/check-powershell-recovery.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-recovery-script:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse recovery script with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $script = Join-Path $pwd 'scripts\reset-staging-owner-password.ps1'
+          $tokens = $null
+          $parseErrors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$parseErrors)
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Error ("PowerShell syntax error at line {0}: {1}" -f $_.Extent.StartLineNumber, $_.Message) }
+            exit 1
+          }
+          $source = Get-Content -Raw $script
+          if (($source.Split(@('function Get-LocalDesktopClient'), [System.StringSplitOptions]::None).Count -ne 2) -or
+              ($source.Split(@('SOUQNA STAGING - ONE-STEP OWNER RECOVERY'), [System.StringSplitOptions]::None).Count -ne 2)) {
+            throw 'Unexpected duplicate script sections'
+          }
+          Write-Host 'PowerShell 5.1 recovery script parses successfully.'
+      - name: Check no-op dry run on Windows without Firebase credentials
+        shell: powershell
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\reset-staging-owner-password.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

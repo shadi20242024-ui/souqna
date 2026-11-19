@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import {
-  collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, deleteDoc, runTransaction, increment
+  collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, deleteDoc, runTransaction, increment, serverTimestamp
 } from "firebase/firestore";
 
 test("SOUQNA Firestore authorization matrix", async (t) => {
@@ -162,10 +162,84 @@ test("SOUQNA Firestore authorization matrix", async (t) => {
     await assertFails(updateDoc(doc(admin,"sponsorRequests","pending"),{status:"approved"}));
     await assertFails(setDoc(doc(admin,"sponsors","forged-paid"),{title:"مدفوع",active:true,requestId:"pending"}));
   });
+  await t.test("New accounts must record current consent version with a server timestamp", async () => {
+    const charlie=env.authenticatedContext("charlie",{email:"charlie@example.test"}).firestore();
+    const ref=doc(charlie,"users","charlie");
+    const base={name:"مستخدم جديد",email:"charlie@example.test",role:"user",stars:0};
+    const valid={...base,acceptedTermsVersion:"2026-11-19",acceptedPrivacyVersion:"2026-11-19",acceptedAt:serverTimestamp()};
+    await assertFails(setDoc(ref,base));
+    await assertFails(setDoc(ref,{...valid,acceptedTermsVersion:"2026-01-01"}));
+    await assertFails(setDoc(ref,{...valid,acceptedAt:Date.now()}));
+    await assertFails(setDoc(ref,{...valid,stars:999}));
+    await assertFails(setDoc(doc(bob,"users","charlie"),valid));
+    await assertSucceeds(setDoc(ref,valid));
+    const user=await getDoc(ref);
+    assert.equal(user.data().acceptedTermsVersion,"2026-11-19");
+    assert.equal(user.data().acceptedPrivacyVersion,"2026-11-19");
+    assert.ok(user.data().acceptedAt?.toDate() instanceof Date);
+    await assertFails(updateDoc(ref,{acceptedTermsVersion:"2099-01-01"}));
+  });
+
   await t.test("New account may have only default customer role and zero stars", async () => {
     await assertSucceeds(setDoc(doc(bob,"users","bob"),{name:"تغيير الاسم",email:"bob@example.test",role:"user",stars:0}));
     await assertFails(setDoc(doc(bob,"users","bob"),{role:"admin",stars:500},{merge:true}));
   });
+  await t.test("Identity fields and staff roles reject unsafe writes", async () => {
+    const dan=env.authenticatedContext("dan",{email:"dan@example.test"}).firestore();
+    const original={name:"دان",email:"dan@example.test",role:"user",stars:0,
+      acceptedTermsVersion:"2026-11-19",acceptedPrivacyVersion:"2026-11-19",
+      acceptedAt:serverTimestamp()};
+    await assertFails(setDoc(doc(dan,"users","dan"),{...original,email:"different@example.test"}));
+    await assertFails(setDoc(doc(dan,"users","dan"),{...original,name:"x".repeat(120)}));
+    await assertSucceeds(setDoc(doc(dan,"users","dan"),original));
+    await assertFails(updateDoc(doc(dan,"users","dan"),{name:"x".repeat(130)}));
+    await assertFails(updateDoc(doc(admin,"users","alice"),{role:"superadmin"}));
+    await assertSucceeds(updateDoc(doc(dan,"users","dan"),{name:"دان الجديد"}));
+  });
+
+  await t.test("Store owner edits check field limits and media types", async () => {
+    await assertSucceeds(updateDoc(doc(alice,"stores","open"),{desc:"وصف المتجر"}));
+    await assertFails(updateDoc(doc(alice,"stores","open"),{phone:"123"}));
+    await assertFails(updateDoc(doc(alice,"stores","open"),{map:"javascript:alert(1)"}));
+    await assertFails(updateDoc(doc(alice,"stores","open"),{name:"x".repeat(130)}));
+    await assertFails(updateDoc(doc(alice,"stores","open"),{logo:"data:image/svg+xml;base64,ZmFrZQ=="}));
+    await assertSucceeds(updateDoc(doc(alice,"stores","open"),{phone:"963999999999"}));
+  });
+
+  await t.test("Public ratings require a published store and preserve attribution", async () => {
+    const now=Date.now();
+    const base={storeId:"open",userId:"alice",userName:"أليس",stars:5,text:"متجر ممتاز",createdAt:now};
+    const ref=doc(alice,"reviews","open_alice");
+    await assertFails(setDoc(doc(alice,"reviews","closed_alice"),{...base,storeId:"closed"}));
+    await assertFails(setDoc(ref,{...base,stars:5.5}));
+    await assertFails(setDoc(ref,{...base,text:"x".repeat(1600)}));
+    await assertSucceeds(setDoc(ref,base));
+    await assertFails(updateDoc(ref,{createdAt:now+1}));
+    await assertFails(updateDoc(ref,{userName:"x".repeat(130)}));
+    await assertFails(updateDoc(doc(bob,"reviews","open_alice"),{stars:1}));
+    await assertSucceeds(updateDoc(ref,{stars:4,text:"خدمة جيدة"}));
+  });
+
+  await t.test("Private service orders and notifications reject forgery", async () => {
+    await env.withSecurityRulesDisabled(async ctx =>
+      setDoc(doc(ctx.firestore(),"services","design"),{name:"تصميم",active:true})
+    );
+    const order={userId:"alice",userName:"أليس",serviceId:"design",serviceName:"تصميم",
+      partnerName:"",details:"أريد تصميماً",status:"new",createdAt:Date.now()};
+    await assertFails(setDoc(doc(alice,"sorders","wrong"),{...order,userId:"bob"}));
+    await assertFails(setDoc(doc(alice,"sorders","wrong-service"),{...order,serviceName:"مزيف"}));
+    await assertSucceeds(setDoc(doc(alice,"sorders","order-valid"),order));
+    await assertFails(updateDoc(doc(alice,"sorders","order-valid"),{status:"done"}));
+    await assertFails(updateDoc(doc(moderator,"sorders","order-valid"),{userId:"moderator"}));
+    await assertSucceeds(updateDoc(doc(moderator,"sorders","order-valid"),{status:"progress",note:"جارٍ المتابعة"}));
+    const note={userId:"alice",text:"طلبك قيد التنفيذ",read:false,createdAt:Date.now()};
+    await assertFails(setDoc(doc(moderator,"notifs","invalid-notice"),{...note,userId:"unlisted"}));
+    await assertFails(setDoc(doc(moderator,"notifs","invalid-notice-2"),{...note,text:""}));
+    await assertSucceeds(setDoc(doc(moderator,"notifs","valid-notice"),note));
+    await assertFails(updateDoc(doc(moderator,"notifs","valid-notice"),{userId:"bob"}));
+    await assertSucceeds(updateDoc(doc(alice,"notifs","valid-notice"),{read:true}));
+  });
+
   await t.test("All client-side billing transactions are forbidden even to admins", async () => {
     await env.withSecurityRulesDisabled(async (context) => {
       await setDoc(doc(context.firestore(),"starOrders","topup-1"),{

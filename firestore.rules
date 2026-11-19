@@ -52,6 +52,42 @@ service cloud.firestore {
     function safePhone(value) {
       return value is string && value.matches('^[0-9]{9,15}$');
     }
+    function validStoreEdits() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return (!changed.hasAny(["name"]) || safeText(request.resource.data.name, 2, 120))
+        && (!changed.hasAny(["desc"]) || safeText(request.resource.data.desc, 0, 3000))
+        && (!changed.hasAny(["phone"]) || safePhone(request.resource.data.phone))
+        && (!changed.hasAny(["area"]) || safeText(request.resource.data.area, 1, 100))
+        && (!changed.hasAny(["map"]) || (safeText(request.resource.data.map, 0, 1200)
+          && (request.resource.data.map == "" || request.resource.data.map.matches('^https://.+$'))))
+        && (!changed.hasAny(["logo"]) || safeImageData(request.resource.data.logo))
+        && (!changed.hasAny(["cover"]) || safeImageData(request.resource.data.cover))
+        && request.resource.data.get("logo", "").size()
+          + request.resource.data.get("cover", "").size() <= 850000;
+    }
+    function validReviewData(id) {
+      return signedIn()
+        && safeDocumentId(id)
+        && request.resource.data.keys().hasOnly([
+          "storeId", "userId", "userName", "stars", "text", "createdAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "storeId", "userId", "userName", "stars", "text", "createdAt"
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.storeId is string
+        && safeDocumentId(request.resource.data.storeId)
+        && id == request.resource.data.storeId + "_" + request.auth.uid
+        && safeText(request.resource.data.userName, 1, 100)
+        && safeText(request.resource.data.text, 0, 1500)
+        && request.resource.data.stars is int
+        && request.resource.data.stars >= 1
+        && request.resource.data.stars <= 5
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0
+        && exists(/databases/$(database)/documents/stores/$(request.resource.data.storeId))
+        && get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.status == "approved";
+    }
     function safeImageData(value) {
       return value is string
         && value.size() <= 700000
@@ -79,12 +115,23 @@ service cloud.firestore {
       allow create: if isSelf(uid)
         && request.resource.data.role == "user"
         && request.resource.data.stars == 0
-        && request.resource.data.keys().hasOnly(["name", "email", "role", "stars"]);
+        && request.resource.data.keys().hasOnly(["name", "email", "role", "stars", "acceptedTermsVersion", "acceptedPrivacyVersion", "acceptedAt"])
+        && request.resource.data.keys().hasAll(["name", "email", "role", "stars", "acceptedTermsVersion", "acceptedPrivacyVersion", "acceptedAt"])
+        && safeText(request.resource.data.name, 1, 100)
+        && safeText(request.resource.data.email, 6, 254)
+        && request.auth.token.email is string
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.acceptedTermsVersion == "2026-11-19"
+        && request.resource.data.acceptedPrivacyVersion == "2026-11-19"
+        && request.resource.data.acceptedAt == request.time;
       allow update: if (isAdmin() && changedOnly(["name", "role", "specialties"])
+          && safeText(request.resource.data.name, 1, 100)
+          && request.resource.data.role in ["user", "specialist", "moderator", "accountant", "editor", "admin"]
           && request.resource.data.get("specialties", []) is list
           && request.resource.data.get("specialties", []).hasOnly(["jobs", "pharmacy", "doctor", "fuel"])
           && request.resource.data.get("specialties", []).size() <= 4)
-        || (isSelf(uid) && changedOnly(["name"]));
+        || (isSelf(uid) && changedOnly(["name"])
+          && safeText(request.resource.data.name, 1, 100));
       allow delete: if isAdmin();
     }
 
@@ -115,7 +162,8 @@ service cloud.firestore {
       allow update: if (isAdmin()
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(["plan", "planUntil", "status", "ownerId", "createdAt"]))
         || (signedIn() && resource.data.ownerId == request.auth.uid
-          && changedOnly(["name", "desc", "phone", "area", "map", "logo", "cover"]));
+          && changedOnly(["name", "desc", "phone", "area", "map", "logo", "cover"])
+          && validStoreEdits());
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
 
@@ -146,14 +194,12 @@ service cloud.firestore {
 
     match /reviews/{id} {
       allow read: if true;
-      allow create, update: if safeDocumentId(id) && signedIn()
-        && request.resource.data.userId == request.auth.uid
-        && id == request.resource.data.storeId + "_" + request.auth.uid
-        && request.resource.data.stars >= 1
-        && request.resource.data.stars <= 5
-        && request.resource.data.keys().hasOnly([
-          "storeId", "userId", "userName", "stars", "text", "createdAt"
-        ]);
+      allow create: if validReviewData(id);
+      allow update: if validReviewData(id)
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.storeId == resource.data.storeId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && changedOnly(["userName", "stars", "text"]);
       allow delete: if isAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
     }
@@ -287,8 +333,26 @@ service cloud.firestore {
         || (signedIn() && resource.data.userId == request.auth.uid);
       allow create: if safeDocumentId(id) && signedIn()
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == "new";
-      allow update: if isStaff();
+        && request.resource.data.status == "new"
+        && safeText(request.resource.data.userName, 1, 100)
+        && request.resource.data.serviceId is string
+        && safeDocumentId(request.resource.data.serviceId)
+        && exists(/databases/$(database)/documents/services/$(request.resource.data.serviceId))
+        && request.resource.data.serviceName ==
+          get(/databases/$(database)/documents/services/$(request.resource.data.serviceId)).data.name
+        && safeText(request.resource.data.serviceName, 1, 120)
+        && safeText(request.resource.data.partnerName, 0, 120)
+        && safeText(request.resource.data.details, 2, 3000)
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0
+        && request.resource.data.keys().hasOnly([
+          "userId", "userName", "serviceId", "serviceName", "partnerName", "details",
+          "status", "createdAt"
+        ]);
+      allow update: if isStaff()
+        && changedOnly(["status", "note"])
+        && request.resource.data.status in ["new", "progress", "done", "rejected"]
+        && safeText(request.resource.data.get("note", ""), 0, 500);
       allow delete: if isAdmin();
     }
 
@@ -314,8 +378,19 @@ service cloud.firestore {
       // Financial and personal notifications remain private to owner and administrator.
       allow read: if isAdmin()
         || (signedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isStaff();
-      allow update: if isStaff()
+      allow create: if isStaff()
+        && safeDocumentId(id)
+        && request.resource.data.keys().hasOnly(["userId", "text", "read", "createdAt"])
+        && request.resource.data.userId is string
+        && safeDocumentId(request.resource.data.userId)
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.userId))
+        && safeText(request.resource.data.text, 1, 500)
+        && request.resource.data.read == false
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt > 0;
+      allow update: if (isAdmin() && changedOnly(["read", "text"])
+          && request.resource.data.read is bool
+          && safeText(request.resource.data.text, 1, 500))
         || (signedIn() && resource.data.userId == request.auth.uid
           && changedOnly(["read"]) && request.resource.data.read == true);
       allow delete: if isAdmin();

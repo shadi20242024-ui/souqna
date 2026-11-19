@@ -3,14 +3,15 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, write
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertSafeHostingOutput } from "./hosting-output.mjs";
+import { GUIDE_VERSION } from "../assets/souqna-guide.js";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const target=resolve(process.env.SOUQNA_HOSTING_OUT||join(root,"dist"));
 assertSafeHostingOutput(target,root);
 const mode=process.argv[2]||"preview";
-assert.ok(["preview","staging"].includes(mode),"Usage: node scripts/build-hosting.mjs [preview|staging path/to/firebase.staging.json]");
+assert.ok(["preview","staging","production"].includes(mode),"Usage: node scripts/build-hosting.mjs [preview|staging path/to/firebase.staging.json|production]");
 const publicFiles=Object.freeze([
-  "index.html","assets/responsive.css","assets/admin-metrics.js","assets/souqna-extras.js","assets/souqna-media.js","assets/syrian-market.js",
+  "index.html","assets/responsive.css","assets/souqna-guide.css","assets/souqna-guide.js","assets/admin-metrics.js","assets/souqna-extras.js","assets/souqna-media.js","assets/syrian-market.js",
   "assets/category-photos/furniture.webp","assets/category-photos/furniture-scene.webp","assets/category-photos/electronics.webp","assets/category-photos/electronics-scene.webp","assets/category-photos/jobs.webp","assets/category-photos/jobs-scene.webp","assets/category-photos/cars.webp","assets/category-photos/cars-scene.webp","assets/category-photos/real_estate.webp","assets/category-photos/real_estate-scene.webp","assets/category-photos/misc.webp","assets/category-photos/misc-scene.webp","assets/category-photos/lost_found.webp","assets/category-photos/lost_found-scene.webp","assets/category-photos/fashion.webp","assets/category-photos/fashion-scene.webp","assets/category-photos/community.webp","assets/category-photos/community-scene.webp","assets/category-photos/services.webp","assets/category-photos/services-scene.webp","assets/souqna-approved-logo.jpg","assets/souqna-3d-mark.webp",
   "sw.js","manifest.webmanifest","logo.png","icon-192.png","icon-512.png"
 ]);
@@ -66,6 +67,17 @@ if(mode==="staging"){
   assert.ok(existsSync(path),"Staging Firebase Web SDK config file not found.");
   config=JSON.parse(readFileSync(path,"utf8"));
   validateStaging(config);
+}else if(mode==="production"){
+  assert.equal(process.argv.length,3,"Production build takes no Firebase config arguments.");
+  assert.equal(process.env.SOUQNA_PRODUCTION_BUILD_APPROVED,"souqna-sweida:"+GUIDE_VERSION,
+    "Production compilation needs explicit release approval; no deployment is performed.");
+  const rules=readFileSync(join(root,"firestore.rules"),"utf8");
+  assert.ok(rules.includes('acceptedTermsVersion == "'+GUIDE_VERSION+'"') &&
+    rules.includes('acceptedPrivacyVersion == "'+GUIDE_VERSION+'"'),
+    "Production terms version does not match Firestore rules.");
+  assert.equal(production.projectId,"souqna-sweida","Production project mismatch.");
+  assert.equal(production.authDomain,"souqna-sweida.firebaseapp.com","Production auth domain mismatch.");
+  config=production;
 }else{
   assert.ok(process.argv.length===2||process.argv.length===3,"Preview mode accepts no Firebase config.");
   // Preview must not contact real Firebase: this intentionally nonfunctional config
@@ -84,15 +96,36 @@ const environmentText=mode==="preview"
   ?"⚠️ نسخة معاينة معزولة — لا تتصل بقاعدة البيانات ولا تعمل كنسخة منشورة"
   :"🧪 بيئة اختبار سوقنا — بيانات تجريبية فقط — "+config.projectId;
 const environmentBanner='<div id="souqna-environment-banner" role="status" style="position:relative;z-index:110;padding:9px 14px;text-align:center;background:#fdf0c4;color:#1f2d48;border-bottom:2px solid #d89e25;font:700 14px system-ui,sans-serif" dir="rtl">'+environmentText+'</div>';
-const output=html.replace(original[0],()=>replacement)
-  .replace("</head>",'<meta name="robots" content="noindex,nofollow,noarchive">\n</head>')
-  .replace("<body>","<body>\n"+environmentBanner);
-assert.ok(!output.includes(production.apiKey),"Production Firebase key leaked into staging/preview.");
-assert.ok(!output.includes('projectId:"souqna-sweida"'),"HTML still points to production.");
-assert.ok(!output.includes(production.appId),"Production Firebase app ID leaked into staging/preview.");
+let output=mode==="production"?html:
+  html.replace(original[0],()=>replacement)
+    .replace("</head>",'<meta name="robots" content="noindex,nofollow,noarchive">\n</head>')
+    .replace("<body>","<body>\n"+environmentBanner);
+if(mode==="preview"){
+  // The isolated preview is an interactive mock-data demo. It does not run the
+  // real Firebase application or ask visitors for accounts or payment details.
+  const moduleScript=/<script type="module">[\s\S]*?<\/script>/;
+  assert.ok(moduleScript.test(output),"Expected a single main Firebase module for preview replacement.");
+  output=output.replace(moduleScript,
+    '<script id="souqna-preview-config" type="application/json">{"projectId":"souqna-preview-disabled","mockData":true}</script>\n'+
+    '<script type="module" src="./assets/preview-demo.js"></script>')
+    .replace("</head>",'<link rel="stylesheet" href="assets/preview-demo.css">\n</head>');
+}
+if(mode!=="production"){
+  assert.ok(!output.includes(production.apiKey),"Production Firebase key leaked into staging/preview.");
+  assert.ok(!output.includes('projectId:"souqna-sweida"'),"HTML still points to production.");
+  assert.ok(!output.includes(production.appId),"Production Firebase app ID leaked into staging/preview.");
+}else{
+  assert.ok(!output.includes('name="robots" content="noindex,nofollow,noarchive"'),
+    "Production HTML must not be noindexed.");
+  assert.ok(!output.includes('id="souqna-environment-banner"'),
+    "Production must not display a staging warning.");
+}
 
+const bundleFiles=mode==="preview"
+  ?[...publicFiles,"assets/preview-demo.js","assets/preview-demo.css"]
+  :publicFiles;
 rmSync(target,{recursive:true,force:true});
-for(const filename of publicFiles){
+for(const filename of bundleFiles){
   const src=join(root,filename),dest=join(target,filename);
   assert.ok(existsSync(src),"Public asset missing: "+filename);
   mkdirSync(dirname(dest),{recursive:true});
@@ -109,4 +142,6 @@ console.log("Bundle project: "+config.projectId);
 console.log("Published public files: "+publicFiles.join(", "));
 console.log(mode==="preview"
   ?"WARNING: Preview is disconnected from Firebase. It is NOT a working staging environment."
-  :"NOTE: Build targets a separate staging project. No deployment performed.");
+  :mode==="staging"
+    ?"NOTE: Build targets a separate staging project. No deployment performed."
+    :"PRODUCTION BUILD CREATED LOCALLY ONLY. NO CLOUD DEPLOYMENT. External release approval still required.");
