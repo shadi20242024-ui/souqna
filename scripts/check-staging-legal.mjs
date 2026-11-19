@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { resolve } from "node:path";
 import { GUIDE_VERSION } from "../assets/souqna-guide.js";
 
 export const STAGING_PROJECT = "souqna-staging";
@@ -68,6 +69,6 @@ async function main(){
   console.log("Read-only check; no rules were created, changed or deployed.");
 }
 
-if(process.argv[1]&&fileURLToPath(import.meta.url)===fileURLToPath(new URL("file://"+process.argv[1]))){
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   main().catch(error=>{console.error("STAGING LEGAL VERIFICATION FAILED: "+error.message);process.exitCode=2;});
 }
