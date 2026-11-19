@@ -19,7 +19,7 @@ export function inspectProductionHtml(html){
   // Production index.html deliberately uses a static JavaScript object literal
   // with unquoted property names; staging bundles use JSON.stringify instead.
   // Parse only the six expected string fields without executing page code.
-  const pairs=[...match[1].matchAll(/(?:"([a-zA-Z]\\w*)"|([a-zA-Z]\\w*))\\s*:\\s*"([^"\\\\]*)"/g)]
+  const pairs=[...match[1].matchAll(/(?:"([a-zA-Z]\w*)"|([a-zA-Z]\w*))\s*:\s*"([^"\\]*)"/g)]
     .map(m=>[m[1]||m[2],m[3]]);
   const config=Object.fromEntries(pairs);
   if(pairs.length!==6 || Object.keys(config).length!==6 ||
