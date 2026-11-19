@@ -22,8 +22,12 @@ test("recovery verifies existing owner account READ-ONLY before requesting secre
   assert.match(js,/if\(checkOnly\)/);
   assert.match(js,/await getVerifiedOwner\(getAuth\(app\)\)/);
   assert.match(ps,/--inspect-auth-users/);
-  assert.match(ps,/Confirm account: type the full email displayed above/);
-  assert.match(ps,/Confirm account: type the six-character UID suffix displayed above/);
+  assert.match(ps,/Type the CORRECT Gmail address displayed above to approve the email correction/);
+  assert.match(ps,/\$candidate -cne "shadi20242024@gmail.om"/);
+  assert.match(ps,/\$enteredEmail -cne \$account/);
+  assert.match(ps,/\$env:SOUQNA_STAGING_REPAIR_EMAIL = \$account/);
+  assert.match(ps,/\$env:SOUQNA_STAGING_REPAIR_EMAIL = \$null/);
+  assert.match(ps,/Type the six-character UID suffix displayed above/);
   assert.match(ps,/SOUQNA_STAGING_CONFIRMED_OWNER_UID/);
   assert.match(js,/await auth\.updateUser\(user\.uid,\{password\}\)/);
   assert.ok(ps.indexOf("& node.exe $target --check-auth") < ps.indexOf('Read-Host "New password"'));
