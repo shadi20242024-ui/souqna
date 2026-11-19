@@ -7,7 +7,7 @@ const realSource=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const css=readFileSync(new URL("../assets/souqna-guide.css",import.meta.url),"utf8");
 const sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
 const manifest=readFileSync(new URL("../manifest.webmanifest",import.meta.url),"utf8");
-const config={apiKey:"public-firebase-key",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",appId:"1:123:web:abc"};
+const config={apiKey:"public-firebase-key",authDomain:"souqna-sweida.firebaseapp.com",projectId:"souqna-sweida",storageBucket:"souqna-sweida.firebasestorage.app",messagingSenderId:"123456789012",appId:"1:123456789012:web:abc"};
 const html=(c=config)=>'<html><head><link rel="stylesheet" href="assets/souqna-guide.css"></head><body><script type="module">import{renderGuide,GUIDE_VERSION}from"./assets/souqna-guide.js";acceptedTermsVersion:GUIDE_VERSION;acceptedPrivacyVersion:GUIDE_VERSION;acceptedAt:serverTimestamp();const app=initializeApp('+JSON.stringify(c)+');</script></body></html>';
 test("production hosting rejects staging banners, preview settings, noindex, and wrong Firebase",()=>{
   assert.equal(inspectProductionHtml(html()),"READY");
