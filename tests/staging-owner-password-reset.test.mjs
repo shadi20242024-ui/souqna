@@ -18,7 +18,9 @@ test("staging owner password reset is safe by default and never uses production"
   assert.match(source,/const PROJECT="souqna-staging"/);
   assert.match(source,/const ACCOUNT_EMAIL="shadi20242024@gmail.com"/);
   assert.match(source,/resolveStagingOwner\(auth,ACCOUNT_EMAIL\)/);
-  assert.match(source,/resolveStagingOwner\(getAuth\(app\),ACCOUNT_EMAIL\)/);
+  assert.match(source,/resolveConfirmedSingleStagingAccount\(auth,confirmedEmail,confirmedUid\)/);
+  assert.match(source,/getVerifiedOwner\(getAuth\(app\)\)/);
+  assert.match(source,/inspectSingleStagingAccount\(getAuth\(app\)\)/);
   assert.match(source,/auth\.updateUser\(user.uid,\{password\}\)/);
   assert.doesNotMatch(source,/deleteUser\(|createUser\(|setCustomUserClaims\(/);
   assert.ok(source.includes("process.stdin"));
