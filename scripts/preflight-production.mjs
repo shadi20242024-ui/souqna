@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { GUIDE_VERSION } from "../assets/souqna-guide.js";
+import { GUIDE_VERSION, GUIDE_SUPPORT_EMAIL } from "../assets/souqna-guide.js";
 import { assertSafeHostingOutput } from "./hosting-output.mjs";
 
 const root=resolve(fileURLToPath(new URL("..",import.meta.url)));
@@ -51,6 +51,7 @@ export function inspectProductionBundle(folder=dist){
   const worker=readFileSync(join(folder,"sw.js"),"utf8");
   const guide=readFileSync(join(folder,"assets/souqna-guide.js"),"utf8");
   if(!guide.includes('GUIDE_VERSION="'+GUIDE_VERSION+'"'))return "HELP_VERSION_MISMATCH";
+  if(!guide.includes('GUIDE_SUPPORT_EMAIL="'+GUIDE_SUPPORT_EMAIL+'"'))return "SUPPORT_EMAIL_MISSING";
   const firebase=JSON.parse(readFileSync(join(root,"firebase.json"),"utf8"));
   if(firebase.hosting?.public!=="dist")return "WRONG_HOSTING_ROOT";
   const globalHeaders=firebase.hosting.headers?.find(x=>x.source==="/**")?.headers||[];
