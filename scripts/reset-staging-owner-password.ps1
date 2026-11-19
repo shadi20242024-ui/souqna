@@ -3,63 +3,139 @@ param([switch]$Apply)
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $root
 $target = Join-Path $root "functions\reset-staging-owner-password.cjs"
+$project = "souqna-staging"
+$account = "shadi20242024@gmail.com"
+
+function Assert-ExitCode([string]$action) {
+    if ($LASTEXITCODE -ne 0) {
+        throw "$action failed (exit code $LASTEXITCODE). No password change was confirmed."
+    }
+}
+
+function Test-SelectedClient {
+    param([string]$AdcPath,[string]$ExpectedClientId)
+    if (-not (Test-Path -LiteralPath $AdcPath -PathType Leaf)) { return $false }
+    try {
+        $adc = Get-Content -Raw -LiteralPath $AdcPath -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        if ($adc.type -ne "authorized_user") { return $false }
+        return ([string]$adc.client_id -ceq $ExpectedClientId)
+    } catch {
+        return $false
+    }
+}
+
+function Get-LocalDesktopClient {
+    $downloads = Join-Path $env:USERPROFILE "Downloads"
+    if (-not (Test-Path -LiteralPath $downloads -PathType Container)) {
+        throw "The Downloads folder was not found. Download the Desktop OAuth client JSON for souqna-staging first."
+    }
+    $files = @(Get-ChildItem -LiteralPath $downloads -Filter "client_secret_*.json" -File -ErrorAction Stop |
+        Sort-Object LastWriteTime -Descending)
+    foreach ($item in $files) {
+        try {
+            $json = Get-Content -Raw -LiteralPath $item.FullName -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            if ($null -eq $json.installed) { continue }
+            $clientId = [string]$json.installed.client_id
+            if ($clientId -match '^[A-Za-z0-9_-]+-[A-Za-z0-9_-]+[.]apps[.]googleusercontent[.]com$') {
+                return @{ path = $item.FullName; client_id = $clientId }
+            }
+        } catch {
+            continue
+        }
+    }
+    throw "No Desktop OAuth client JSON found in Downloads. Download it from Google Cloud > souqna-staging > Google Auth Platform > Clients. Do not send it to anyone."
+}
 
 if (-not (Get-Command node.exe -ErrorAction SilentlyContinue)) {
-    throw "Node.js is missing. Install Node.js 22+ and try again."
+    throw "Node.js is missing; install Node.js 22 or later."
 }
-if (-not (Test-Path $target)) {
-    throw "Missing reset tool: update the souqna-test Git branch first."
+if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
+    throw "SOUQNA reset tool is missing. Update souqna-test from GitHub first."
 }
 
 Write-Host ""
-Write-Host "SOUQNA STAGING - OWNER PASSWORD RECOVERY"
-Write-Host "Project: souqna-staging ONLY"
-Write-Host "Account: shadi20242024@gmail.com"
-Write-Host "No existing account will be deleted, and production will not be accessed."
+Write-Host "SOUQNA STAGING - ONE-STEP OWNER RECOVERY"
+Write-Host "Project: $project ONLY"
+Write-Host "Account: $account"
+Write-Host "No production change, service-account key, billing change, or email reset required."
 Write-Host ""
 
 if (-not $Apply) {
     & node.exe $target
-    exit $LASTEXITCODE
+    Assert-ExitCode "Local dry run"
+    return
 }
 
-# The stock gcloud OAuth desktop client cannot authenticate Firebase Auth Admin requests.
-# Check only the public client identifier, never print tokens or credential contents.
-if (-not $env:GOOGLE_APPLICATION_CREDENTIALS) {
-    $adcPath = Join-Path $env:APPDATA "gcloud\application_default_credentials.json"
-    if (Test-Path -LiteralPath $adcPath) {
-        $adc = Get-Content -Raw -LiteralPath $adcPath | ConvertFrom-Json
-        if ($adc.type -eq "authorized_user" -and [string]$adc.client_id -match '^764086051850-') {
-            Write-Host "BLOCKED: default gcloud OAuth client is not supported by Firebase Auth Admin." -ForegroundColor Yellow
-            Write-Host "In Google Cloud > Google Auth Platform > Clients, create a Desktop OAuth client for souqna-staging."
-            Write-Host 'Then run: gcloud.cmd auth application-default login --client-id-file="C:\full\path\to\desktop-oauth-client.json"'
-            Write-Host "Then run: gcloud.cmd auth application-default set-quota-project souqna-staging"
-            Write-Host "No password prompt was opened and no account was changed."
-            exit 3
-        }
+if (-not (Get-Command gcloud.cmd -ErrorAction SilentlyContinue)) {
+    throw "Google Cloud CLI (gcloud.cmd) is missing."
+}
+
+$client = Get-LocalDesktopClient
+$adcPath = Join-Path $env:APPDATA "gcloud\application_default_credentials.json"
+$env:GOOGLE_APPLICATION_CREDENTIALS = $null
+
+if (-not (Test-SelectedClient -AdcPath $adcPath -ExpectedClientId $client.client_id)) {
+    Write-Host "Opening Google sign-in with the downloaded SOUQNA Desktop OAuth client..." -ForegroundColor Cyan
+    Write-Host "Approve the Google consent prompt in your browser. The OAuth file remains on your computer."
+    & gcloud.cmd auth application-default login "--client-id-file=$($client.path)"
+    Assert-ExitCode "OAuth sign-in"
+    if (-not (Test-SelectedClient -AdcPath $adcPath -ExpectedClientId $client.client_id)) {
+        throw "Google saved a different OAuth client. The password recovery stopped before any account change."
     }
+} else {
+    Write-Host "Verified: ADC already uses your Desktop OAuth client." -ForegroundColor Green
 }
 
-Write-Host "Enter a NEW password of at least 12 characters. Input will be hidden."
+$adc = Get-Content -Raw -LiteralPath $adcPath | ConvertFrom-Json
+if ([string]$adc.quota_project_id -cne $project) {
+    Write-Host "Setting ADC quota project to $project (no billing activation)..."
+    & gcloud.cmd auth application-default set-quota-project $project
+    Assert-ExitCode "ADC quota project configuration"
+}
+
+if (-not (Test-Path -LiteralPath (Join-Path $root "functions\node_modules\firebase-admin") -PathType Container)) {
+    if (-not (Get-Command npm.cmd -ErrorAction SilentlyContinue)) {
+        throw "npm.cmd is missing; install Node.js 22 or later."
+    }
+    Write-Host "Installing the existing Firebase Admin project dependencies..."
+    & npm.cmd --prefix functions install --ignore-scripts --no-audit --no-fund
+    Assert-ExitCode "Firebase dependencies installation"
+}
+
+Write-Host "Checking the existing owner account (READ ONLY)..." -ForegroundColor Cyan
+& node.exe $target --check-auth
+Assert-ExitCode "Staging owner Firebase Auth check"
+
+Write-Host ""
+Write-Host "Account check passed. Choose a NEW password of at least 12 characters." -ForegroundColor Green
+Write-Host "You will type the password only on this computer; it will not display on screen."
 $secret = Read-Host "New password" -AsSecureString
 $confirmation = Read-Host "Confirm new password" -AsSecureString
 $firstPtr = [IntPtr]::Zero
 $secondPtr = [IntPtr]::Zero
 $first = $null
 $second = $null
+$oldOutputEncoding = $OutputEncoding
 try {
     $firstPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
     $secondPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($confirmation)
     $first = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($firstPtr)
     $second = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($secondPtr)
-    if ($first -cne $second) { throw "Passwords do not match. No account was changed." }
-    if ($first.Length -lt 12) { throw "New password must be at least 12 characters. No account was changed." }
+    if ($first -cne $second) { throw "The two passwords do not match. No account was changed." }
+    if ($first.Length -lt 12 -or $first.Length -gt 128) {
+        throw "Choose 12 to 128 characters. No account was changed."
+    }
+    if ($first -match "[\r\n]") { throw "Newline characters are not allowed. No account was changed." }
+    $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
     $first | & node.exe $target --execute --confirm RESET-OWNER-PASSWORD:souqna-staging
-    if ($LASTEXITCODE -ne 0) { throw "Firebase refused the password update. Check the error code above and project permissions." }
+    Assert-ExitCode "Firebase password update"
+    Write-Host "Password update completed for the existing staging account." -ForegroundColor Green
 } finally {
+    $OutputEncoding = $oldOutputEncoding
     if ($firstPtr -ne [IntPtr]::Zero) {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($firstPtr)
     }
