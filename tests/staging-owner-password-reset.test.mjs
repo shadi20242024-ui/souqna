@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import {readFileSync} from "node:fs";
 import {spawnSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
 
 const path=new URL("../functions/reset-staging-owner-password.cjs",import.meta.url);
 const source=readFileSync(path,"utf8");
-const run=(args=[],input="",extra={})=>spawnSync(process.execPath,[path.pathname,...args],{
+const run=(args=[],input="",extra={})=>spawnSync(process.execPath,[fileURLToPath(path),...args],{
   encoding:"utf8",input,timeout:12000,env:{...process.env,...extra}
 });
 test("staging owner password reset is safe by default and never uses production",()=>{
