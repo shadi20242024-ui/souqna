@@ -20,7 +20,7 @@ test("one-click recovery requires real local Desktop OAuth credentials and never
 test("recovery verifies existing owner account READ-ONLY before requesting secret, and never bypasses authorization",()=>{
   assert.match(ps,/& node\.exe \$target --check-auth/);
   assert.match(js,/if\(checkOnly\)/);
-  assert.match(js,/await getAuth\(app\)\.getUserByEmail\(ACCOUNT_EMAIL\)/);
+  assert.match(js,/await resolveStagingOwner\(getAuth\(app\),ACCOUNT_EMAIL\)/);
   assert.match(js,/await auth\.updateUser\(user\.uid,\{password\}\)/);
   assert.ok(ps.indexOf("& node.exe $target --check-auth") < ps.indexOf('Read-Host "New password"'));
   assert.ok(ps.indexOf("Test-SelectedClient") < ps.indexOf("& node.exe $target --check-auth"));
