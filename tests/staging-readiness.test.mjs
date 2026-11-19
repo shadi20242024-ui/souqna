@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CHECKS, STAGING_ID, buildReadiness, formatStatus } from "../scripts/staging-readiness.mjs";
 
-test("release gate requires all five staging checks",()=>{
+test("release gate requires all six staging checks",()=>{
   assert.equal(STAGING_ID,"souqna-staging");
-  assert.deepEqual(CHECKS.map(x=>x.key),["hosting","functions","legal","admin","categories"]);
+  assert.deepEqual(CHECKS.map(x=>x.key),["hosting","functions","legal","admin","categories","guide"]);
   assert.equal(buildReadiness(CHECKS.map(x=>formatStatus(x,0))).ready,true);
   assert.equal(buildReadiness([formatStatus(CHECKS[0],0)]).ready,false);
 });
