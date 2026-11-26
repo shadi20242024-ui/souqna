@@ -277,3 +277,5 @@ exports.souqnaFinance = onCall(OPTIONS, async request => {
 // All user listing/store creation is enforced by server-side quotas and ownership checks.
 exports.souqnaMarketplace=require("./marketplace")(db,OPTIONS);
 exports.souqnaModeration=require("./moderation")(db,OPTIONS);
+
+exports.souqnaSurvey=require("./survey")(db,OPTIONS);
