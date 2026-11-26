@@ -279,3 +279,5 @@ exports.souqnaMarketplace=require("./marketplace")(db,OPTIONS);
 exports.souqnaModeration=require("./moderation")(db,OPTIONS);
 
 exports.souqnaSurvey=require("./survey")(db,OPTIONS);
+
+Object.assign(exports,require("./auctions")(db,OPTIONS));
