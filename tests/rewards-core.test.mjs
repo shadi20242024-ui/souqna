@@ -1,0 +1,12 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import rewards from "../functions/rewards-core.js";
+const {quoteSale,confirmSale,surveyAllocation}=rewards;
+const terms={discountBps:1000,commissionBps:400,cashbackBps:100,surveyBps:100,currency:"SYP"};
+const sale={customerUid:"c",merchantUid:"m",status:"issued",expiresAt:100,terms};
+const confirm=(s,actorUid,amountMinor=100000,now=1)=>confirmSale(s,{actorUid,amountMinor,now});
+test("discount, commission and reserves balance",()=>{const q=quoteSale({...terms,amountMinor:100000});assert.equal(q.paidMinor,90000);assert.equal(q.commissionMinor,3600);assert.equal(q.platformNetMinor,1800);assert.equal(q.merchantNetMinor+q.cashbackMinor+q.surveyReserveMinor+q.platformNetMinor,q.paidMinor);});
+test("both parties required, either order",()=>{for(const [a,b] of [["c","m"],["m","c"]]){const p=confirm(sale,a);assert.equal(p.status,"pending");assert.equal(p.financials,null);const s=confirm(p,b);assert.equal(s.status,"confirmed");assert.equal(s.settlementStatus,"awaiting_collection");assert.throws(()=>confirm(s,b));}});
+test("disputes cannot create payable rewards",()=>{const s=confirm(confirm(sale,"c"),"m",99999);assert.equal(s.status,"disputed");assert.equal(s.financials,null);});
+test("duplicate confirmation is idempotent and tampering rejected",()=>{const p=confirm(sale,"c");assert.deepEqual(confirm(p,"c"),p);assert.throws(()=>confirm(p,"c",99999));assert.throws(()=>confirm(sale,"x"));assert.throws(()=>confirm(sale,"m",100000,100));});
+test("survey budget and currency validation",()=>{assert.equal(surveyAllocation({budgetMinor:1000,rewardMinor:100,maxResponses:10,currency:"SYP"}).reservedMinor,1000);assert.throws(()=>surveyAllocation({budgetMinor:999,rewardMinor:100,maxResponses:10,currency:"SYP"}));assert.throws(()=>quoteSale({...terms,amountMinor:100000,cashbackBps:401}));assert.throws(()=>quoteSale({...terms,amountMinor:1.5}));});
