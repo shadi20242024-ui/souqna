@@ -395,5 +395,16 @@ service cloud.firestore {
           && changedOnly(["read"]) && request.resource.data.read == true);
       allow delete: if isAdmin();
     }
+
+    // Survey data goes through authenticated server callables only.
+    match /rewardsSurveys/{id} {
+      allow read, write: if false;
+    }
+    match /rewardsSurveyParticipants/{id} {
+      allow read, write: if false;
+    }
+    match /rewardsSurveyResponses/{id} {
+      allow read, write: if false;
+    }
   }
 }
