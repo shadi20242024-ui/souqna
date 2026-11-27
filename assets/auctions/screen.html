@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><meta name="theme-color" content="#131311" /><title>
+    مزادات سوقنا | SOUQNA AUCTIONS
+  </title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #101110;
+      color: #f4efe2;
+      font:
+        16px/1.7 Tahoma,
+        Arial,
+        sans-serif;
+    }
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+    button,
+    a,
+    select {
+      cursor: pointer;
+    }
+    a {
+      color: #f5d58c;
+    }
+    header,
+    .bar,
+    main,
+    footer {
+      max-width: 1180px;
+      margin: auto;
+      padding: 16px clamp(14px, 4vw, 52px);
+    }
+    header,
+    .row,
+    .tools {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    header {
+      border-bottom: 1px solid #51452e;
+    }
+    .mark {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .gem {
+      background: linear-gradient(
+        145deg,
+        #fff4bd 4%,
+        #d3aa5f 27%,
+        #f8e7ac 49%,
+        #8d652d 50%,
+        #dcb36a 78%,
+        #735730
+      );
+      clip-path: polygon(50% 0, 100% 35%, 85% 78%, 50% 100%, 15% 78%, 0 35%);
+      width: 40px;
+      height: 46px;
+    }
+    .en,
+    small {
+      color: #d5b779;
+      font-size: 12px;
+      letter-spacing: 0.09em;
+    }
+    .en {
+      direction: ltr;
+      display: block;
+      text-align: right;
+    }
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0 0 8px;
+    }
+    h1 {
+      font-size: clamp(28px, 5vw, 56px);
+      line-height: 1.17;
+    }
+    h2 {
+      font-size: 25px;
+    }
+    button,
+    .btn,
+    select,
+    input,
+    textarea {
+      border: 1px solid #514c3c;
+      border-radius: 9px;
+      padding: 8px 12px;
+      background: #22231f;
+      color: #f3f0e6;
+    }
+    button:hover,
+    .btn:hover {
+      border-color: #f2cb79;
+    }
+    .gold {
+      background: linear-gradient(120deg, #f4deab, #c99c53);
+      color: #1d1c17;
+      font-weight: 700;
+    }
+    .bar {
+      background: #1d201b;
+      overflow: hidden;
+      color: #eddbb4;
+    }
+    .ticker {
+      display: inline-block;
+      animation: drift 7s ease-in-out infinite alternate;
+    }
+    @keyframes drift {
+      to {
+        transform: translateX(-12px);
+      }
+    }
+    .hero {
+      position: relative;
+      isolation: isolate;
+      background: #25271f;
+      border: 1px solid #4e4938;
+      border-radius: 18px;
+      overflow: hidden;
+      padding: clamp(25px, 5vw, 68px);
+      margin: 12px 0 26px;
+    }
+    .hero:before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background:
+        linear-gradient(270deg, #11150ff5 15%, #121510dd 43%, #1112 100%),
+        var(--hero) left 48% / cover;
+    }
+    .hero p {
+      color: #dcd6c7;
+      max-width: 40ch;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 255px), 1fr));
+      gap: 16px;
+    }
+    .card,
+    .panel {
+      background: #1b1d19;
+      border: 1px solid #403f34;
+      border-radius: 14px;
+      padding: 17px;
+    }
+    .card img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 9px;
+      background: #292a23;
+    }
+    .card button {
+      width: 100%;
+      margin-top: 12px;
+    }
+    .money {
+      color: #ffda8f;
+      font-weight: bold;
+    }
+    .tag {
+      color: #b9d2b6;
+    }
+    .tools {
+      margin: 16px 0;
+    }
+    .panel {
+      margin: 12px 0;
+    }
+    .pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+      gap: 12px;
+    }
+    label {
+      display: grid;
+      gap: 4px;
+      color: #dcd6c6;
+    }
+    input,
+    select,
+    textarea {
+      max-width: 100%;
+      min-width: 0;
+    }
+    button:focus-visible,
+    a:focus-visible {
+      outline: 3px solid #e9c678;
+    }
+    .photo {
+      width: 100%;
+      height: clamp(180px, 32vw, 365px);
+      object-fit: contain;
+      background: #121410;
+      border-radius: 8px;
+    }
+    .thumbs {
+      display: flex;
+      gap: 6px;
+      overflow: auto;
+    }
+    .thumbs img {
+      width: 60px;
+      height: 46px;
+      object-fit: cover;
+    }
+    .muted,
+    footer {
+      color: #bbb9ab;
+    }
+    .hide {
+      display: none !important;
+    }
+    dialog {
+      max-width: min(96vw, 900px);
+      background: #171915;
+      color: white;
+      border: 1px solid #bd9c62;
+      border-radius: 12px;
+    }
+    dialog img {
+      display: block;
+      max-width: 85vw;
+      max-height: 75vh;
+    }
+    dialog::backdrop {
+      background: #000b;
+    }
+    #notice {
+      position: fixed;
+      z-index: 5;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f8e7be;
+      color: #221d13;
+      padding: 8px 18px;
+      border-radius: 9px;
+      max-width: 94vw;
+    }
+    #notice:empty {
+      display: none;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .active {
+      border-color: #d9ac60;
+      color: #f4dca5;
+    }
+    details {
+      padding: 10px 0;
+    }
+    summary {
+      cursor: pointer;
+    }
+    .report {
+      overflow: auto;
+    }
+    td,
+    th {
+      text-align: right;
+      padding: 6px;
+      border-bottom: 1px solid #544f41;
+    }
+    .line {
+      border-bottom: 1px solid #413f36;
+      padding: 7px 0;
+    }
+    button:disabled {
+      opacity: 0.55;
+    }
+    @media (max-width: 700px) {
+      .pair {
+        grid-template-columns: 1fr;
+      }
+      header {
+        gap: 8px;
+      }
+      .hero {
+        padding: 27px 17px;
+      }
+      .hero:before {
+        background-image:
+          linear-gradient(270deg, #11150fea, #12151088), var(--hero);
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .tools > * {
+        flex-grow: 1;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+      }
+    }
+    @media print {
+      body {
+        color: black;
+        background: white;
+      }
+      body > *:not(#printout) {
+        display: none !important;
+      }
+      #printout {
+        display: block !important;
+        color: black;
+      }
+      table {
+        width: 100%;
+      }
+    }
+    .card .category-mark {
+      width: 32px;
+      height: 32px;
+      object-fit: cover;
+      vertical-align: middle;
+      border-radius: 8px;
+    }
+    .card {
+      transition: transform 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+    }
+  </style>
+  <header>
+    <div class="mark">
+      <span class="gem" aria-hidden="true"></span>
+      <div><b>مزادات سوقنا</b><span class="en">SOUQNA AUCTIONS</span></div>
+    </div>
+    <div class="tabs">
+      <button id="home">المزادات</button
+      ><button id="office" hidden>مكتب المزادات</button
+      ><button id="sound" aria-pressed="false">الصوت مغلق</button>
+    </div>
+  </header>
+  <div class="bar">
+    <span class="ticker" id="ticker">المزادات القادمة</span>
+  </div>
+  <main>
+    <div class="tools">
+      <strong id="environment"></strong><label id="identity"></label>
+    </div>
+    <div id="screen"></div>
+  </main>
+  <footer>سوقنا · السويداء</footer>
+  <div role="status" id="notice"></div>
+  <article hidden id="printout" dir="rtl"></article>
+  <dialog id="zoom">
+    <button onclick="this.parentElement.close()">إغلاق</button
+    ><img alt="عرض مكبّر" />
+  </dialog>
+  <script>
+    /*AUCTION_CORE*/
+  </script>
+  <script>
+    /*AUCTION_DATA*/
+  </script>
+  <script>
+    /*AUCTION_APP*/
+  </script>
+</html>

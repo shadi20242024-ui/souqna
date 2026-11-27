@@ -1,3 +1,4 @@
+import {buildAuctions} from "./build-auctions.mjs";
 import assert from "node:assert/strict";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -131,6 +132,11 @@ for(const filename of bundleFiles){
   mkdirSync(dirname(dest),{recursive:true});
   if(filename==="index.html")writeFileSync(dest,output,"utf8");
   else cpSync(src,dest);
+}
+if(mode==="preview"||mode==="staging"&&(config.projectId==="souqna-staging"||config.projectId.startsWith("demo-"))){
+  buildAuctions(root,target,mode,config);
+  const entry=join(target,"index.html");
+  writeFileSync(entry,readFileSync(entry,"utf8").replace('<main id="app">','<div dir="rtl" style="padding:8px 4%;background:#171914"><a style="color:#f2d396" href="./assets/auctions/index.html">مزادات سوقنا · SOUQNA AUCTIONS</a></div><main id="app">'));
 }
 const topLevel=readdirSync(target).sort();
 assert.deepEqual(topLevel,["assets","icon-192.png","icon-512.png","index.html","logo.png","manifest.webmanifest","sw.js"].sort());

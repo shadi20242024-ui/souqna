@@ -396,6 +396,29 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    function auctionOffice() {
+      return isAdmin() || (signedIn()
+        && exists(/databases/$(database)/documents/auctionTestStaff/$(request.auth.uid))
+        && get(/databases/$(database)/documents/auctionTestStaff/$(request.auth.uid)).data.enabled == true);
+    }
+    match /auctionTestPublic/{id} {
+      allow read: if true;
+      match /history/{bid} { allow read: if true; }
+    }
+    match /auctionTestSettings/{id} { allow read: if true; }
+    match /auctionTestReports/{id} { allow read: if auctionOffice(); }
+    match /auctionTestLots/{id} {
+      allow read: if auctionOffice() && resource.data.status == "draft";
+      match /media/{file} {
+        allow get: if auctionOffice() || (exists(/databases/$(database)/documents/auctionTestPublic/$(id))
+          && (file in get(/databases/$(database)/documents/auctionTestPublic/$(id)).data.photos
+            || file == get(/databases/$(database)/documents/auctionTestPublic/$(id)).data.pdf));
+      }
+    }
+    match /auctionTestWallets/{uid} { allow get: if isSelf(uid) || auctionOffice(); }
+    match /auctionTestAudit/{id} { allow read: if isAdmin(); }
+    match /auctionTestIssues/{id} { allow read: if auctionOffice() || isSelf(resource.data.uid); }
+
     // Survey data goes through authenticated server callables only.
     match /rewardsSurveys/{id} {
       allow read, write: if false;
